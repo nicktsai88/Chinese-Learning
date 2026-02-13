@@ -1215,10 +1215,7 @@
             const [historyLog, setHistoryLog] = useState([]);
             const [mistakeLog, setMistakeLog] = useState([]);
             const [completedDays, setCompletedDays] = useState([]); 
-            // Separate session states
-            const [savedLevelSession, setSavedLevelSession] = useState(null);
-            const [savedWaterfallSession, setSavedWaterfallSession] = useState(null);
-
+            const [savedSession, setSavedSession] = useState(null);
             const [learnPage, setLearnPage] = useState(0);
             const [quizQuestions, setQuizQuestions] = useState([]);
             const [quizScore, setQuizScore] = useState(0);
@@ -1228,9 +1225,6 @@
             const musicPlayerRef = useRef(null);
 
             const triggerMusic = () => { if(musicPlayerRef.current) musicPlayerRef.current.triggerPlay(); };
-
-            useEffect(() => { const randomNum = Math.floor(Math.random() * 5) + 1; setBgImage(`Chinese-Idiom4-images/san${randomNum}.jpg`); }, []);
-            const [bgImage, setBgImage] = useState('');
 
             useEffect(() => {
                 if (!isFirebaseInitialized) { setConnectionStatus('error'); return; }
@@ -1271,10 +1265,7 @@
                         });
                         setCompletedDays(formattedProgress);
                         
-                        // Load separate sessions
-                        setSavedLevelSession(data.currentLevelSession || null);
-                        setSavedWaterfallSession(data.currentWaterfallSession || null);
-
+                        setSavedSession(data.currentQuizSession || null);
                         setConnectionStatus('success');
                     } else {
                         // Initialize new user doc safely without overwriting arrays
@@ -1314,23 +1305,23 @@
                 }
             };
             const handleQuickLogin = (name) => { setUserName(name); setIsLocked(true); setShowNameWarning(false); };
-            const handleLogout = () => { if(confirm('確定要登出嗎？')) { setIsLocked(false); setUserName(''); setFavorites([]); setHistoryLog([]); setMistakeLog([]); setCompletedDays([]); setSavedLevelSession(null); setSavedWaterfallSession(null); } };
-            const handleDeleteUser = async () => { if (!isFirebaseReady) { alert("請先連線至雲端"); return; } if (confirm('【危險操作】確定要刪除這位使用者的所有資料嗎？')) { if (confirm('再次確認：這將會清除所有學習紀錄、收藏和錯題本，且無法復原！確定要執行嗎？')) { try { const globalDocRef = doc(db, COLLECTION_NAME, DOC_GLOBAL); await updateDoc(globalDocRef, { users: arrayRemove(userName) }); const userDocRef = doc(db, COLLECTION_NAME, userName); await setDoc(userDocRef, { deleted: true }); setFavorites([]); setHistoryLog([]); setMistakeLog([]); setCompletedDays([]); setSavedLevelSession(null); setSavedWaterfallSession(null); setIsLocked(false); setUserName(''); } catch (e) { alert("刪除失敗"); } } } };
+            const handleLogout = () => { if(confirm('確定要登出嗎？')) { setIsLocked(false); setUserName(''); setFavorites([]); setHistoryLog([]); setMistakeLog([]); setCompletedDays([]); setSavedSession(null); } };
+            const handleDeleteUser = async () => { if (!isFirebaseReady) { alert("請先連線至雲端"); return; } if (confirm('【危險操作】確定要刪除這位使用者的所有資料嗎？')) { if (confirm('再次確認：這將會清除所有學習紀錄、收藏和錯題本，且無法復原！確定要執行嗎？')) { try { const globalDocRef = doc(db, COLLECTION_NAME, DOC_GLOBAL); await updateDoc(globalDocRef, { users: arrayRemove(userName) }); const userDocRef = doc(db, COLLECTION_NAME, userName); await setDoc(userDocRef, { deleted: true }); setFavorites([]); setHistoryLog([]); setMistakeLog([]); setCompletedDays([]); setSavedSession(null); setIsLocked(false); setUserName(''); } catch (e) { alert("刪除失敗"); } } } };
             const toggleFavorite = (id) => { const newFavorites = favorites.includes(id) ? favorites.filter(fid => fid !== id) : [...favorites, id]; setFavorites(newFavorites); updateUserData('favorites', newFavorites); };
             const clearHistoryLog = () => { setHistoryLog([]); updateUserData('history', []); };
             const clearMistakeLog = () => { setMistakeLog([]); updateUserData('mistakes', []); };
 
             const playSoundEffect = (type) => { try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (!AudioContext) return; const ctx = new AudioContext(); const now = ctx.currentTime; if (type === 'correct') { const osc1 = ctx.createOscillator(); const gain1 = ctx.createGain(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(523.25, now); gain1.gain.setValueAtTime(0.1, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc1.connect(gain1); gain1.connect(ctx.destination); osc1.start(now); osc1.stop(now + 0.5); const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(659.25, now + 0.1); gain2.gain.setValueAtTime(0.1, now + 0.1); gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(now + 0.1); osc2.stop(now + 0.6); } else { const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(now); osc.stop(now + 0.3); } } catch (e) {} };
 
-            // Waterfall Mode Handler (Uses savedWaterfallSession)
+            // Waterfall Mode Handler
             const handleStartWaterfall = () => {
                 if (!isLocked) { setShowNameWarning(true); return; }
                 
-                // Check for saved WATERFALL session
-                if (savedWaterfallSession) {
-                    setQuizQuestions(savedWaterfallSession.questions);
-                    setQuizScore(savedWaterfallSession.score);
-                    setCombo(savedWaterfallSession.combo);
+                // Check for saved session and load DIRECTLY (no confirm)
+                if (savedSession && savedSession.category === 'waterfall') {
+                    setQuizQuestions(savedSession.questions);
+                    setQuizScore(savedSession.score);
+                    setCombo(savedSession.combo);
                     setQuizPage(0);
                     setActiveCategory('waterfall');
                     setCurrentMode('quiz');
@@ -1338,7 +1329,9 @@
                     return;
                 }
 
-                // New waterfall session
+                // If not resuming or no session, clear any existing session (e.g. from other modes) and start new
+                updateUserData('currentQuizSession', null); 
+
                 let questions = [...allItems]; 
                 questions.sort(() => Math.random() - 0.5);
                 
@@ -1358,17 +1351,16 @@
                 window.scrollTo(0, 0);
             };
 
-            // Level Quiz Handler (Uses savedLevelSession)
             const handleStartQuiz = (category, pageIdx = 0, isMistakeMode = false) => {
                 if (!isLocked) { setShowNameWarning(true); return; }
                 
-                // Check for saved LEVEL session
-                if (savedLevelSession && savedLevelSession.category === category && savedLevelSession.pageIdx === pageIdx && !isMistakeMode) { 
-                    setQuizQuestions(savedLevelSession.questions); 
-                    setQuizScore(savedLevelSession.score); 
-                    setCombo(savedLevelSession.combo); 
-                    setQuizPage(savedLevelSession.pageIdx); 
-                    setActiveCategory(savedLevelSession.category); 
+                // Auto-resume if saved session matches the requested category and page (DIRECTLY LOAD)
+                if (savedSession && savedSession.category === category && savedSession.pageIdx === pageIdx && !isMistakeMode) { 
+                    setQuizQuestions(savedSession.questions); 
+                    setQuizScore(savedSession.score); 
+                    setCombo(savedSession.combo); 
+                    setQuizPage(savedSession.pageIdx); 
+                    setActiveCategory(savedSession.category); 
                     setCurrentMode('quiz'); 
                     return; 
                 }
@@ -1427,20 +1419,15 @@
                 }
                 setQuizQuestions(newQuestions);
                 
-                const sessionData = {
-                    questions: newQuestions,
-                    score: newScore,
-                    combo: newCombo,
-                    category: activeCategory,
-                    pageIdx: quizPage,
-                    timestamp: new Date().toISOString()
-                };
-
-                // Save to separate fields based on category
-                if (activeCategory === 'waterfall') {
-                    updateUserData('currentWaterfallSession', sessionData);
-                } else if (activeCategory !== '錯題本') {
-                    updateUserData('currentLevelSession', sessionData);
+                if (activeCategory !== '錯題本') {
+                    updateUserData('currentQuizSession', {
+                        questions: newQuestions,
+                        score: newScore,
+                        combo: newCombo,
+                        category: activeCategory,
+                        pageIdx: quizPage,
+                        timestamp: new Date().toISOString()
+                    });
                 }
             };
 
@@ -1466,13 +1453,7 @@
                         updateUserData('progress', newCompleted); 
                     } 
                 }
-                
-                // Clear separate sessions
-                if (activeCategory === 'waterfall') {
-                    updateUserData('currentWaterfallSession', null);
-                } else if (activeCategory !== '錯題本') {
-                    updateUserData('currentLevelSession', null);
-                }
+                updateUserData('currentQuizSession', null);
             };
 
             return (
