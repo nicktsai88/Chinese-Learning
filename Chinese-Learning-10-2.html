@@ -1200,6 +1200,60 @@
             );
         };
 
+        const MistakeView = ({ mistakes, mistakeLog, setMistakeLog, onMenu, onReviewAll }) => {
+            return (
+                <div className="max-w-7xl mx-auto px-4 py-8 mt-12 animate-fade-in-up">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                        <div className="flex items-center">
+                            <button onClick={onMenu} className="mr-4 p-3 bg-white rounded-xl shadow border border-gray-200 hover:bg-gray-50"><Icon path={icons.left} className="w-5 h-5"/></button>
+                            <h2 className="text-3xl font-black text-gray-800 flex items-center"><Icon path={icons.alert} className="w-8 h-8 text-red-500 mr-3"/> 錯題軍令狀</h2>
+                        </div>
+                        {mistakes.length > 0 && (
+                            <div className="flex gap-2">
+                                <button onClick={onReviewAll} className="px-6 py-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 font-bold flex items-center justify-center">
+                                    <Icon path={icons.play} className="w-5 h-5 mr-2" fill="currentColor"/>
+                                    立即複習 ({mistakes.length})
+                                </button>
+                                <button onClick={() => {if(confirm('確定清空錯題本？這將移除所有錯誤紀錄。')) { setMistakeLog([]); } }} className="px-6 py-3 bg-white text-gray-500 rounded-xl shadow border border-gray-200 hover:bg-gray-50 font-bold">
+                                    <Icon path={icons.trash} className="w-5 h-5"/>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {mistakes.length === 0 ? (
+                        <div className="text-center py-32 bg-white/80 backdrop-blur rounded-3xl shadow-sm border border-green-100">
+                            <div className="text-8xl mb-6">🎉</div>
+                            <p className="text-2xl text-gray-800 font-black mb-2">太棒了！</p>
+                            <p className="text-gray-500">目前沒有錯題紀錄，繼續保持！</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {mistakes.map(item => { 
+                                const log = mistakeLog.find(m => m.id === item.id); 
+                                return (
+                                    <div key={item.id} className="bg-white rounded-2xl p-6 shadow-sm border-2 border-transparent hover:border-red-200 hover:shadow-md transition-all relative overflow-hidden group flex flex-col">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h3 className="text-3xl font-black text-gray-800">{item.term}</h3>
+                                            <span className="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full border border-red-200 whitespace-nowrap">
+                                                錯誤 {log.count} 次
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-600 text-sm leading-relaxed mb-4 flex-1 whitespace-pre-wrap">{item.definition}</p>
+                                        
+                                        <div className="border-t border-gray-100 pt-3 flex justify-between items-center text-xs text-gray-400 font-mono mt-auto">
+                                            <span>#{String(item.id).padStart(3,'0')}</span>
+                                            <span>{new Date(log.lastMissed).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                ); 
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
         const App = () => {
             const parsedData = useMemo(() => ({ "精選成語": IDIOM_DATA }), []);
             const allItems = IDIOM_DATA;
@@ -1225,6 +1279,9 @@
             const musicPlayerRef = useRef(null);
 
             const triggerMusic = () => { if(musicPlayerRef.current) musicPlayerRef.current.triggerPlay(); };
+
+            useEffect(() => { const randomNum = Math.floor(Math.random() * 5) + 1; setBgImage(`Chinese-Idiom4-images/san${randomNum}.jpg`); }, []);
+            const [bgImage, setBgImage] = useState('');
 
             useEffect(() => {
                 if (!isFirebaseInitialized) { setConnectionStatus('error'); return; }
@@ -1296,23 +1353,6 @@
             const handleStartWaterfall = () => {
                 if (!isLocked) { setShowNameWarning(true); return; }
                 
-                // Check for saved session
-                if (savedSession && savedSession.category === 'waterfall') {
-                     if (confirm('發現您有未完成的「瀑布刷題」進度，是否繼續作答？')) {
-                        setQuizQuestions(savedSession.questions);
-                        setQuizScore(savedSession.score);
-                        setCombo(savedSession.combo);
-                        setQuizPage(0);
-                        setActiveCategory('waterfall');
-                        setCurrentMode('quiz');
-                        window.scrollTo(0, 0);
-                        return;
-                     }
-                }
-
-                // If not resuming or no session, clear any existing session (e.g. from other modes) and start new
-                updateUserData('currentQuizSession', null); 
-
                 let questions = [...allItems]; 
                 questions.sort(() => Math.random() - 0.5);
                 
@@ -1389,7 +1429,7 @@
                 }
                 setQuizQuestions(newQuestions);
                 
-                if (activeCategory !== '錯題本') {
+                if (activeCategory !== '錯題本' && activeCategory !== 'waterfall') {
                     updateUserData('currentQuizSession', {
                         questions: newQuestions,
                         score: newScore,
