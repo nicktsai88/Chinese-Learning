@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>國文學習 App - 總部大廳</title>
+    <!-- 引入 Noto Serif TC (明體) 用於標題，Noto Sans TC (黑體) 用於內文 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 國文主題配色：水墨與硃砂 */
+            --bg: #f9f7f2;            /* 背景：米白宣紙色 */
+            --text-main: #2c2c2c;     /* 主字色：墨黑 */
+            --card-bg: #ffffff;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--bg);
+            /* 加入淡淡的紙張紋理感 */
+            background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
+            background-size: 20px 20px;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-main);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            max-width: 800px;
+        }
+
+        .header h1 {
+            font-family: 'Noto Serif TC', serif; /* 標題使用明體 */
+            color: var(--text-main);
+            font-size: 3em;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+        }
+
+        .header p {
+            color: #5d4037; /* 深褐色文字 */
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+
+        /* 返回按鈕樣式 - 改為紫金漸層，象徵尊貴與智慧 */
+        .home-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #512da8 0%, #673ab7 100%);
+            color: white;
+            padding: 12px 40px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(103, 58, 183, 0.3);
+            transition: all 0.3s ease;
+            border: 2px solid white;
+        }
+
+        .home-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(103, 58, 183, 0.4);
+        }
+        
+        /* 網格佈局 */
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* 卡片基礎樣式 */
+        .app-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            text-decoration: none;
+            color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-top: 6px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        }
+
+        /* 動態顏色類別 */
+        /* 藍紫色系 (字形、文法) */
+        .theme-blue { --theme-color: #3949ab; --theme-light: #e8eaf6; }
+        /* 橙紅色系 (字音、成語) */
+        .theme-orange { --theme-color: #e65100; --theme-light: #fff3e0; }
+        /* 綠色系 (造字、句義) */
+        .theme-green { --theme-color: #2e7d32; --theme-light: #e8f5e9; }
+        /* 青色系 (字義、寫作) */
+        .theme-teal { --theme-color: #00695c; --theme-light: #e0f2f1; }
+        /* 紫色系 (詞語、詩詞) */
+        .theme-purple { --theme-color: #6a1b9a; --theme-light: #f3e5f5; }
+        /* 紅色系 (應用文) */
+        .theme-red { --theme-color: #c62828; --theme-light: #ffebee; }
+        /* 褐色/金色系 (國學、文言) */
+        .theme-brown { --theme-color: #8d6e63; --theme-light: #efebe9; }
+        /* 深藍系 (圖表、進階) */
+        .theme-indigo { --theme-color: #283593; --theme-light: #e8eaf6; }
+
+        .app-card {
+            border-top-color: var(--theme-color, #ccc);
+        }
+        .app-card .card-icon {
+            background: var(--theme-light, #f5f5f5);
+            color: var(--theme-color, #555);
+            border-color: var(--theme-light, #eee);
+        }
+        .app-card .card-title {
+            color: var(--theme-color, #333);
+        }
+        .app-card:hover {
+            box-shadow: 0 12px 30px rgba(0,0,0,0.15); /* 簡化陰影顏色處理 */
+        }
+
+        /* 標籤圖示 */
+        .card-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+        }
+
+        /* 標題 */
+        .card-title {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.25em;
+            font-weight: 900;
+            margin-bottom: 8px;
+            min-height: 2.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 描述文字 (包含檔案名稱) */
+        .card-desc {
+            font-size: 0.85em;
+            color: #757575;
+            line-height: 1.4;
+            margin-bottom: 15px;
+            font-family: monospace; /* 檔案名稱用等寬字體 */
+            background: #f5f5f5;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        /* 狀態標籤 */
+        .card-badge {
+            margin-top: auto;
+            padding: 5px 12px;
+            background: #4caf50; /* 預設開放綠色 */
+            color: white;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* 分隔線 */
+        .divider {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            margin: 40px 0 20px 0;
+            color: #555;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 2px solid #ddd;
+        }
+        .divider::before { margin-right: 15px; }
+        .divider::after { margin-left: 15px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📜 國文主題式學習總部</h1>
+        <p>全方位國文素養提升計畫</p>
+        
+        <!-- 返回百寶箱按鈕 -->
+        <a href="https://nicktsai88.github.io/List/" class="home-btn">
+            🎁 返回快樂學習百寶箱
+        </a>
+    </div>
+
+    <div class="app-grid">
+        
+        <!-- ================= 認識字形 ================= -->
+        <div class="divider">認識字形</div>
+        
+        <a href="Chinese-Learning-1.html" class="app-card theme-blue">
+            <div class="card-icon">✍️</div>
+            <div class="card-title">第 1 站<br>「相似詞語」的分辨</div>
+            <div class="card-desc">Chinese-Learning-1</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-2.html" class="app-card theme-blue">
+            <div class="card-icon">👀</div>
+            <div class="card-title">第 2 站<br>「形近字」的分辨</div>
+            <div class="card-desc">Chinese-Learning-2</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-3.html" class="app-card theme-blue">
+            <div class="card-icon">🔍</div>
+            <div class="card-title">第 3 站<br>「音近字」的分辨</div>
+            <div class="card-desc">Chinese-Learning-3</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-4.html" class="app-card theme-blue">
+            <div class="card-icon">✅</div>
+            <div class="card-title">第 4 站<br>重要詞語辨正</div>
+            <div class="card-desc">Chinese-Learning-4</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 分辨字音 ================= -->
+        <div class="divider">分辨字音</div>
+
+        <a href="Chinese-Learning-5.html" class="app-card theme-orange">
+            <div class="card-icon">👂</div>
+            <div class="card-title">第 1 站<br>相似字「字音」辨正</div>
+            <div class="card-desc">Chinese-Learning-5</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-6.html" class="app-card theme-orange">
+            <div class="card-icon">🗣️</div>
+            <div class="card-title">第 2 站<br>一字多音辨正</div>
+            <div class="card-desc">Chinese-Learning-6</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-7.html" class="app-card theme-orange">
+            <div class="card-icon">🔊</div>
+            <div class="card-title">第 3 站<br>重要讀音辨正</div>
+            <div class="card-desc">Chinese-Learning-7</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 欣賞造字法則 ================= -->
+        <div class="divider">欣賞造字法則</div>
+
+        <a href="Chinese-Learning-8.html" class="app-card theme-green">
+            <div class="card-icon">🧱</div>
+            <div class="card-title">第 1 站<br>造字法則</div>
+            <div class="card-desc">Chinese-Learning-8</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-9.html" class="app-card theme-green">
+            <div class="card-icon">📜</div>
+            <div class="card-title">第 2 站<br>漢字形體的演變</div>
+            <div class="card-desc">Chinese-Learning-9</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 判別字義 ================= -->
+        <div class="divider">判別字義</div>
+
+        <a href="Chinese-Learning-10.html" class="app-card theme-teal">
+            <div class="card-icon">📏</div>
+            <div class="card-title">第 1 站<br>量詞</div>
+            <div class="card-desc">Chinese-Learning-10</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-11.html" class="app-card theme-teal">
+            <div class="card-icon">🔢</div>
+            <div class="card-title">第 2 站<br>實數、虛數</div>
+            <div class="card-desc">Chinese-Learning-11</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-12.html" class="app-card theme-teal">
+            <div class="card-icon">📖</div>
+            <div class="card-title">第 3 站<br>重要字義、一字多義</div>
+            <div class="card-desc">Chinese-Learning-12</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-13.html" class="app-card theme-teal">
+            <div class="card-icon">💡</div>
+            <div class="card-title">第 4 站<br>其他特殊字義</div>
+            <div class="card-desc">Chinese-Learning-13</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 理解詞語 ================= -->
+        <div class="divider">理解詞語</div>
+
+        <a href="Chinese-Learning-14.html" class="app-card theme-purple">
+            <div class="card-icon">🔔</div>
+            <div class="card-title">第 1 站<br>狀聲詞</div>
+            <div class="card-desc">Chinese-Learning-14</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-15.html" class="app-card theme-purple">
+            <div class="card-icon">🙏</div>
+            <div class="card-title">第 2 站<br>敬詞、謙詞</div>
+            <div class="card-desc">Chinese-Learning-15</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-16.html" class="app-card theme-purple">
+            <div class="card-icon">💬</div>
+            <div class="card-title">第 3 站<br>慣用語</div>
+            <div class="card-desc">Chinese-Learning-16</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-17.html" class="app-card theme-purple">
+            <div class="card-icon">🔄</div>
+            <div class="card-title">第 4 站<br>一詞多義</div>
+            <div class="card-desc">Chinese-Learning-17</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-18.html" class="app-card theme-purple">
+            <div class="card-icon">😵</div>
+            <div class="card-title">第 5 站<br>容易混淆的詞語</div>
+            <div class="card-desc">Chinese-Learning-18</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-19.html" class="app-card theme-purple">
+            <div class="card-icon">⚖️</div>
+            <div class="card-title">第 6 站<br>偏義複詞</div>
+            <div class="card-desc">Chinese-Learning-19</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-20.html" class="app-card theme-purple">
+            <div class="card-icon">📝</div>
+            <div class="card-title">第 7 站<br>一般常用詞語</div>
+            <div class="card-desc">Chinese-Learning-20</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 活用成語 ================= -->
+        <div class="divider">活用成語</div>
+
+        <a href="Chinese-Learning-21.html" class="app-card theme-orange">
+            <div class="card-icon">🐉</div>
+            <div class="card-title">第 1 站<br>容易混淆的成語</div>
+            <div class="card-desc">Chinese-Learning-21</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-22.html" class="app-card theme-orange">
+            <div class="card-icon">🧑‍🏫</div>
+            <div class="card-title">第 2 站<br>成語中的名人</div>
+            <div class="card-desc">Chinese-Learning-22</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-23.html" class="app-card theme-orange">
+            <div class="card-icon">📉</div>
+            <div class="card-title">第 3 站<br>貶義成語</div>
+            <div class="card-desc">Chinese-Learning-23</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-24.html" class="app-card theme-orange">
+            <div class="card-icon">🤝</div>
+            <div class="card-title">第 4 站<br>義近成語</div>
+            <div class="card-desc">Chinese-Learning-24</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-25.html" class="app-card theme-orange">
+            <div class="card-icon">🏗️</div>
+            <div class="card-title">第 5 站<br>成語的特殊結構</div>
+            <div class="card-desc">Chinese-Learning-25</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 辨識文法 ================= -->
+        <div class="divider">辨識文法</div>
+
+        <a href="Chinese-Learning-26.html" class="app-card theme-blue">
+            <div class="card-icon">🔄</div>
+            <div class="card-title">第 1 站<br>詞性轉換（轉品）</div>
+            <div class="card-desc">Chinese-Learning-26</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-27.html" class="app-card theme-blue">
+            <div class="card-icon">📝</div>
+            <div class="card-title">第 2 站<br>句子的種類</div>
+            <div class="card-desc">Chinese-Learning-27</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-28.html" class="app-card theme-blue">
+            <div class="card-icon">🎯</div>
+            <div class="card-title">第 3 站<br>主語判斷</div>
+            <div class="card-desc">Chinese-Learning-28</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 探索應用文 ================= -->
+        <div class="divider">探索應用文</div>
+
+        <a href="Chinese-Learning-29.html" class="app-card theme-red">
+            <div class="card-icon">✉️</div>
+            <div class="card-title">第 1 站<br>書信、柬帖</div>
+            <div class="card-desc">Chinese-Learning-29</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-30.html" class="app-card theme-red">
+            <div class="card-icon">📌</div>
+            <div class="card-title">第 2 站<br>啟事、便條</div>
+            <div class="card-desc">Chinese-Learning-30</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-31.html" class="app-card theme-red">
+            <div class="card-icon">🧧</div>
+            <div class="card-title">第 3 站<br>對聯、題辭</div>
+            <div class="card-desc">Chinese-Learning-31</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 貫通國學常識 ================= -->
+        <div class="divider">貫通國學常識</div>
+
+        <a href="Chinese-Learning-32.html" class="app-card theme-brown">
+            <div class="card-icon">🏮</div>
+            <div class="card-title">第 1 站<br>季節、節慶的比較</div>
+            <div class="card-desc">Chinese-Learning-32</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-33.html" class="app-card theme-brown">
+            <div class="card-icon">⏳</div>
+            <div class="card-title">第 2 站<br>年齡、天干地支</div>
+            <div class="card-desc">Chinese-Learning-33</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-34.html" class="app-card theme-brown">
+            <div class="card-icon">📚</div>
+            <div class="card-title">第 3 站<br>各代文學主流</div>
+            <div class="card-desc">Chinese-Learning-34</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-35.html" class="app-card theme-brown">
+            <div class="card-icon">🎵</div>
+            <div class="card-title">第 4 站<br>詩詞曲格律比較</div>
+            <div class="card-desc">Chinese-Learning-35</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 品賞寫作技巧 ================= -->
+        <div class="divider">品賞寫作技巧</div>
+
+        <a href="Chinese-Learning-36.html" class="app-card theme-teal">
+            <div class="card-icon">✨</div>
+            <div class="card-title">第 1 站<br>善用修辭一：生動</div>
+            <div class="card-desc">Chinese-Learning-36</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-37.html" class="app-card theme-teal">
+            <div class="card-icon">🌸</div>
+            <div class="card-title">第 2 站<br>善用修辭二：優美</div>
+            <div class="card-desc">Chinese-Learning-37</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-38.html" class="app-card theme-teal">
+            <div class="card-icon">，</div>
+            <div class="card-title">第 3 站<br>標點符號的使用</div>
+            <div class="card-desc">Chinese-Learning-38</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-39.html" class="app-card theme-teal">
+            <div class="card-icon">✂️</div>
+            <div class="card-title">第 4 站<br>冗言贅字判斷</div>
+            <div class="card-desc">Chinese-Learning-39</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-40.html" class="app-card theme-teal">
+            <div class="card-icon">🩺</div>
+            <div class="card-title">第 5 站<br>語病判斷</div>
+            <div class="card-desc">Chinese-Learning-40</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-41.html" class="app-card theme-teal">
+            <div class="card-icon">🖋️</div>
+            <div class="card-title">第 6 站<br>寫作技巧判斷</div>
+            <div class="card-desc">Chinese-Learning-41</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 領會句義 ================= -->
+        <div class="divider">領會句義</div>
+
+        <a href="Chinese-Learning-42.html" class="app-card theme-green">
+            <div class="card-icon">🧠</div>
+            <div class="card-title">第 1 站<br>句式邏輯</div>
+            <div class="card-desc">Chinese-Learning-42</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-43.html" class="app-card theme-green">
+            <div class="card-icon">⚖️</div>
+            <div class="card-title">第 2 站<br>雙句句義比較</div>
+            <div class="card-desc">Chinese-Learning-43</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-44.html" class="app-card theme-green">
+            <div class="card-icon">🗣️</div>
+            <div class="card-title">第 3 站<br>俗語、諺語</div>
+            <div class="card-desc">Chinese-Learning-44</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-45.html" class="app-card theme-green">
+            <div class="card-icon">🤔</div>
+            <div class="card-title">第 4 站<br>語氣判斷</div>
+            <div class="card-desc">Chinese-Learning-45</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 填空與重組 ================= -->
+        <div class="divider">填空與重組</div>
+
+        <a href="Chinese-Learning-46.html" class="app-card theme-orange">
+            <div class="card-icon">✏️</div>
+            <div class="card-title">第 1 站<br>白話詩文填空</div>
+            <div class="card-desc">Chinese-Learning-46</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-47.html" class="app-card theme-orange">
+            <div class="card-icon">🖌️</div>
+            <div class="card-title">第 2 站<br>文言詩文填空</div>
+            <div class="card-desc">Chinese-Learning-47</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-48.html" class="app-card theme-orange">
+            <div class="card-icon">🧩</div>
+            <div class="card-title">第 3 站<br>白話詩文重組</div>
+            <div class="card-desc">Chinese-Learning-48</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-49.html" class="app-card theme-orange">
+            <div class="card-icon">📜</div>
+            <div class="card-title">第 4 站<br>文言詩文重組</div>
+            <div class="card-desc">Chinese-Learning-49</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 閱讀圖文表 ================= -->
+        <div class="divider">閱讀圖文表</div>
+
+        <a href="Chinese-Learning-50.html" class="app-card theme-indigo">
+            <div class="card-icon">📢</div>
+            <div class="card-title">第 1 站<br>文宣廣告閱讀測驗</div>
+            <div class="card-desc">Chinese-Learning-50</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-51.html" class="app-card theme-indigo">
+            <div class="card-icon">📊</div>
+            <div class="card-title">第 2 站<br>圖文表單題閱讀</div>
+            <div class="card-desc">Chinese-Learning-51</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-52.html" class="app-card theme-indigo">
+            <div class="card-icon">📈</div>
+            <div class="card-title">第 3 站<br>圖文表題組閱讀</div>
+            <div class="card-desc">Chinese-Learning-52</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 閱讀白話文 ================= -->
+        <div class="divider">閱讀白話文</div>
+
+        <a href="Chinese-Learning-53.html" class="app-card theme-red">
+            <div class="card-icon">📖</div>
+            <div class="card-title">第 1 站<br>白話文單題閱讀</div>
+            <div class="card-desc">Chinese-Learning-53</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-54.html" class="app-card theme-red">
+            <div class="card-icon">📚</div>
+            <div class="card-title">第 2 站<br>白話文題組閱讀</div>
+            <div class="card-desc">Chinese-Learning-54</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-55.html" class="app-card theme-red">
+            <div class="card-icon">🌍</div>
+            <div class="card-title">第 3 站<br>核心議題單題閱讀</div>
+            <div class="card-desc">Chinese-Learning-55</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-56.html" class="app-card theme-red">
+            <div class="card-icon">🌐</div>
+            <div class="card-title">第 4 站<br>核心議題題組閱讀</div>
+            <div class="card-desc">Chinese-Learning-56</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-57.html" class="app-card theme-red">
+            <div class="card-icon">🌱</div>
+            <div class="card-title">第 5 站<br>17 項 SDGs 單題</div>
+            <div class="card-desc">Chinese-Learning-57</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-58.html" class="app-card theme-red">
+            <div class="card-icon">🌿</div>
+            <div class="card-title">第 6 站<br>17 項 SDGs 題組</div>
+            <div class="card-desc">Chinese-Learning-58</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 閱讀詩詞曲 ================= -->
+        <div class="divider">閱讀詩詞曲</div>
+
+        <a href="Chinese-Learning-59.html" class="app-card theme-purple">
+            <div class="card-icon">⛅</div>
+            <div class="card-title">第 1 站<br>現代詩單題閱讀</div>
+            <div class="card-desc">Chinese-Learning-59</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-60.html" class="app-card theme-purple">
+            <div class="card-icon">🌧️</div>
+            <div class="card-title">第 2 站<br>現代詩題組閱讀</div>
+            <div class="card-desc">Chinese-Learning-60</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-61.html" class="app-card theme-purple">
+            <div class="card-icon">🌙</div>
+            <div class="card-title">第 3 站<br>詩詞曲單題閱讀</div>
+            <div class="card-desc">Chinese-Learning-61</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-62.html" class="app-card theme-purple">
+            <div class="card-icon">🏯</div>
+            <div class="card-title">第 4 站<br>詩詞曲題組閱讀</div>
+            <div class="card-desc">Chinese-Learning-62</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 閱讀文言文 ================= -->
+        <div class="divider">閱讀文言文</div>
+
+        <a href="Chinese-Learning-63.html" class="app-card theme-brown">
+            <div class="card-icon">📜</div>
+            <div class="card-title">第 1 站<br>文言文單題閱讀</div>
+            <div class="card-desc">Chinese-Learning-63</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-64.html" class="app-card theme-brown">
+            <div class="card-icon">🕯️</div>
+            <div class="card-title">第 2 站<br>文言文題組閱讀</div>
+            <div class="card-desc">Chinese-Learning-64</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+        <!-- ================= 進階閱讀素養 ================= -->
+        <div class="divider">進階閱讀素養</div>
+
+        <a href="Chinese-Learning-65.html" class="app-card theme-indigo">
+            <div class="card-icon">👓</div>
+            <div class="card-title">第 1 站<br>白話文雙文閱讀</div>
+            <div class="card-desc">Chinese-Learning-65</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-66.html" class="app-card theme-indigo">
+            <div class="card-icon">⚖️</div>
+            <div class="card-title">第 2 站<br>古今雙文閱讀</div>
+            <div class="card-desc">Chinese-Learning-66</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+        <a href="Chinese-Learning-67.html" class="app-card theme-indigo">
+            <div class="card-icon">🎓</div>
+            <div class="card-title">第 3 站<br>文言文雙文閱讀</div>
+            <div class="card-desc">Chinese-Learning-67</div>
+            <div class="card-badge">進入學習</div>
+        </a>
+
+    </div>
+
+</body>
+</html>
