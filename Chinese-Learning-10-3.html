@@ -1296,16 +1296,18 @@
             const handleStartWaterfall = () => {
                 if (!isLocked) { setShowNameWarning(true); return; }
                 
-                // Check for saved session and load DIRECTLY (no confirm)
+                // Check for saved session
                 if (savedSession && savedSession.category === 'waterfall') {
-                    setQuizQuestions(savedSession.questions);
-                    setQuizScore(savedSession.score);
-                    setCombo(savedSession.combo);
-                    setQuizPage(0);
-                    setActiveCategory('waterfall');
-                    setCurrentMode('quiz');
-                    window.scrollTo(0, 0);
-                    return;
+                     if (confirm('發現您有未完成的「瀑布刷題」進度，是否繼續作答？')) {
+                        setQuizQuestions(savedSession.questions);
+                        setQuizScore(savedSession.score);
+                        setCombo(savedSession.combo);
+                        setQuizPage(0);
+                        setActiveCategory('waterfall');
+                        setCurrentMode('quiz');
+                        window.scrollTo(0, 0);
+                        return;
+                     }
                 }
 
                 // If not resuming or no session, clear any existing session (e.g. from other modes) and start new
@@ -1332,18 +1334,7 @@
 
             const handleStartQuiz = (category, pageIdx = 0, isMistakeMode = false) => {
                 if (!isLocked) { setShowNameWarning(true); return; }
-                
-                // Auto-resume if saved session matches the requested category and page (DIRECTLY LOAD)
-                if (savedSession && savedSession.category === category && savedSession.pageIdx === pageIdx && !isMistakeMode) { 
-                    setQuizQuestions(savedSession.questions); 
-                    setQuizScore(savedSession.score); 
-                    setCombo(savedSession.combo); 
-                    setQuizPage(savedSession.pageIdx); 
-                    setActiveCategory(savedSession.category); 
-                    setCurrentMode('quiz'); 
-                    return; 
-                }
-
+                if (savedSession && savedSession.category === category && savedSession.pageIdx === pageIdx && !isMistakeMode) { if (confirm('發現您有未完成的進度，是否繼續作答？')) { setQuizQuestions(savedSession.questions); setQuizScore(savedSession.score); setCombo(savedSession.combo); setQuizPage(savedSession.pageIdx); setActiveCategory(savedSession.category); setCurrentMode('quiz'); return; } else { updateUserData('currentQuizSession', null); } }
                 let questions = [];
                 if (isMistakeMode) { const mistakeIds = mistakeLog.map(m => m.id); questions = allItems.filter(i => mistakeIds.includes(i.id)); questions.sort(() => Math.random() - 0.5); } 
                 else { 
