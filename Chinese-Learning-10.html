@@ -1074,8 +1074,30 @@
                         </div>
                         <div className="flex-1 overflow-auto bg-white p-0">
                             <table className="w-full text-left border-collapse prose-table">
-                                <thead className="bg-purple-50 sticky top-0 z-10 shadow-sm"><tr><th className="p-2 text-center w-12">收藏</th><th className="p-2 text-center w-12">編號</th><th className="p-4 w-32">量詞</th><th className="p-4 w-48">釋義/注音</th><th className="p-4 w-96">應用範例</th></tr></thead>
-                                <tbody className="divide-y divide-gray-100">{filteredItems.map(item => (<tr key={item.id} className="hover:bg-purple-50/50 transition-colors"><td className="p-2 text-center"><button onClick={() => toggleFavorite(item.id)}><Icon path={icons.heart} className={`w-6 h-6 ${favorites.includes(item.id) ? "text-red-500" : "text-gray-300 hover:text-red-400"}`} fill={favorites.includes(item.id) ? "currentColor" : "none"} /></button></td><td className="p-2 text-center font-mono text-gray-500">{item.id}</td><td className="p-4 font-bold text-gray-900">{item.term}</td><td className="p-4 text-gray-600 text-sm whitespace-pre-wrap">{item.definition}</td><td className="p-4 text-gray-500 italic text-sm">{item.sentence1}</td></tr>))}</tbody>
+                                <thead className="bg-purple-50 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        <th className="p-2 text-center w-16 text-lg">收藏</th> {/* w-12 -> w-16, added text-lg */}
+                                        <th className="p-2 text-center w-16 text-lg">編號</th> {/* w-12 -> w-16, added text-lg */}
+                                        <th className="p-4 w-40 text-lg">量詞</th> {/* w-32 -> w-40, added text-lg */}
+                                        <th className="p-4 w-64 text-lg">釋義/注音</th> {/* w-48 -> w-64, added text-lg */}
+                                        <th className="p-4 min-w-[24rem] text-lg">應用範例</th> {/* w-96 -> min-w-[24rem], added text-lg */}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredItems.map(item => (
+                                        <tr key={item.id} className="hover:bg-purple-50/50 transition-colors">
+                                            <td className="p-2 text-center">
+                                                <button onClick={() => toggleFavorite(item.id)}>
+                                                    <Icon path={icons.heart} className={`w-8 h-8 ${favorites.includes(item.id) ? "text-red-500" : "text-gray-300 hover:text-red-400"}`} fill={favorites.includes(item.id) ? "currentColor" : "none"} />
+                                                </button>
+                                            </td>
+                                            <td className="p-2 text-center font-mono text-xl text-gray-500">{item.id}</td> {/* text-xl */}
+                                            <td className="p-4 font-black text-gray-900 text-3xl">{item.term}</td> {/* font-black text-3xl */}
+                                            <td className="p-4 text-gray-700 text-xl whitespace-pre-wrap leading-relaxed">{item.definition}</td> {/* text-xl */}
+                                            <td className="p-4 text-gray-600 italic text-xl leading-relaxed">{item.sentence1}</td> {/* text-xl */}
+                                        </tr>
+                                    ))}
+                                </tbody>
                             </table>
                         </div>
                     </div>
