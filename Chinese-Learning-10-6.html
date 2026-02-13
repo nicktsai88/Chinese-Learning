@@ -1343,20 +1343,8 @@
                 questions.sort(() => Math.random() - 0.5);
                 
                 const quizSet = questions.map(item => { 
-                    // 過濾掉與正確答案相同文字的選項，避免誤導
-                    let pool = allItems.filter(i => i.term !== item.term);
-                    pool.sort(() => Math.random() - 0.5);
-                    
-                    const distractors = [];
-                    const seen = new Set();
-                    for (let cand of pool) {
-                        if (!seen.has(cand.term)) {
-                            distractors.push(cand);
-                            seen.add(cand.term);
-                            if (distractors.length >= 3) break;
-                        }
-                    }
-                    
+                    let pool = allItems.filter(i => i.id !== item.id); 
+                    const distractors = pool.sort(() => Math.random() - 0.5).slice(0, 3); 
                     const options = [...distractors, item].sort(() => Math.random() - 0.5); 
                     return { ...item, options, userAnswer: null, isCorrect: null }; 
                 });
@@ -1395,26 +1383,7 @@
                     questions = sourceItems.slice(start, start + ITEMS_PER_PAGE); 
                 }
                 if (questions.length === 0) { alert(isMistakeMode ? "目前沒有錯題！" : "此頁面無題目"); return; }
-                
-                const quizSet = questions.map(item => { 
-                    // 過濾掉與正確答案相同文字的選項，避免誤導
-                    let pool = allItems.filter(i => i.term !== item.term);
-                    pool.sort(() => Math.random() - 0.5);
-                    
-                    const distractors = [];
-                    const seen = new Set();
-                    for (let cand of pool) {
-                        if (!seen.has(cand.term)) {
-                            distractors.push(cand);
-                            seen.add(cand.term);
-                            if (distractors.length >= 3) break;
-                        }
-                    }
-                    
-                    const options = [...distractors, item].sort(() => Math.random() - 0.5); 
-                    return { ...item, options, userAnswer: null, isCorrect: null }; 
-                });
-
+                const quizSet = questions.map(item => { let pool = allItems.filter(i => i.id !== item.id); const distractors = pool.sort(() => Math.random() - 0.5).slice(0, 3); const options = [...distractors, item].sort(() => Math.random() - 0.5); return { ...item, options, userAnswer: null, isCorrect: null }; });
                 setQuizQuestions(quizSet); setQuizScore(0); setCombo(0); setQuizPage(pageIdx); setActiveCategory(isMistakeMode ? '錯題本' : category); setCurrentMode('quiz'); window.scrollTo(0,0);
             };
 
