@@ -35,7 +35,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
-            background-color: #fcf9f2;
+            background-color: #fcf9f2; /* 預設背景色，替代原本的背景圖 */
         }
         
         /* 捲軸美化 */
@@ -205,18 +205,20 @@
         const ITEMS_PER_PAGE = 20;
 
         // --- 量詞資料庫 ---
+        // Helper function to create simple item
         const c = (id, term, def, scene = "") => ({
             id, 
             term, 
             definition: def, 
             sentence1: def, 
-            sentence2: def.replace(new RegExp(term, 'g'), "____"), 
+            sentence2: def.replace(new RegExp(term, 'g'), "____"), // 自動生成填充題
             scene 
         });
 
+        // 處理特殊帶有注音或說明的 term
         const c_complex = (id, term, fullDef, examples, scene = "") => ({
             id,
-            term, 
+            term, // 核心量詞
             definition: fullDef,
             sentence1: examples,
             sentence2: examples.replace(new RegExp(term, 'g'), "____"),
@@ -553,8 +555,7 @@
             skipBack: <><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line></>,
             skipForward: <><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19"></line></>,
             print: <><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></>,
-            lock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></>,
-            activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            lock: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></>
         };
 
         const Icon = ({ path, className, fill = "none" }) => (
@@ -686,6 +687,9 @@
                                             </div>
                                         );
                                     } else {
+                                        // 量詞填空：顯示前兩字（如果有），後接括號或空格
+                                        // 這裡直接顯示量詞本身讓學生造句，或顯示量詞，旁邊空格
+                                        // 根據原本邏輯，這裡顯示量詞，然後兩個格子
                                         content = (
                                             <div className="flex items-center gap-1">
                                                 <span className="font-serif text-xl font-bold mr-2 w-12 text-center border-r border-gray-400 pr-2">{item.term}</span>
@@ -717,7 +721,7 @@
             userName, setUserName, showNameWarning, mistakeLog, favorites, parsedData, 
             onStartLearn, onStartQuiz, onViewHistory, onViewMistakes, onViewTable, onPrint,
             onLogin, isLocked, onQuickLogin, globalUsers, onLogout, onDeleteUser,
-            triggerMusic, connectionStatus, completedDays, onStartWaterfall 
+            triggerMusic, connectionStatus, completedDays
         }) => {
             const totalPages = Math.ceil(parsedData["精選成語"].length / ITEMS_PER_PAGE);
             const progressPercent = totalPages > 0 ? Math.min(100, Math.round((completedDays.length / totalPages) * 100)) : 0;
@@ -882,6 +886,7 @@
                                 <h3 className="text-2xl font-black text-blue-900 mb-6 flex items-center">
                                     🗺️ 修煉進度地圖 <span className="ml-3 text-sm font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">共 {totalPages} 關</span>
                                 </h3>
+                                {/* Added max-height and overflow-y-auto for scrollbar */}
                                 <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                         {Array.from({ length: totalPages }).map((_, i) => {
@@ -904,6 +909,7 @@
                                                             <div className="bg-green-100 text-green-600 p-1 rounded-full mb-1">
                                                                 <Icon path={icons.check} className="w-6 h-6"/>
                                                             </div>
+                                                            {/* Modified: Increased font size to text-sm and adjusted padding */}
                                                             <span className="text-sm font-mono text-green-600 font-bold bg-green-100/50 px-2 py-0.5 rounded">{status.date}</span>
                                                         </div>
                                                     ) : (
@@ -923,13 +929,13 @@
                                 </div>
                             </div>
 
-                            {/* Main Cards (Learning & My Favorites & Waterfall) */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Main Cards (Learning & My Favorites) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* 學習模式 */}
                                 <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-md border-2 border-amber-100 hover:border-amber-300 transition-all group relative overflow-hidden cursor-pointer" onClick={() => { onStartLearn('精選成語'); triggerMusic(); }}>
                                     <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-100 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                                     <h3 className="text-2xl font-black text-amber-900 mb-2 relative z-10">📖 研讀量詞</h3>
-                                    <p className="text-gray-500 mb-6 relative z-10 h-12 text-sm">瀏覽所有量詞，學習釋義與應用範例。</p>
+                                    <p className="text-gray-500 mb-6 relative z-10 h-12">瀏覽所有量詞，學習釋義與應用範例，奠定基礎。</p>
                                     <div className="flex gap-3 relative z-10">
                                         <button className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 py-3 rounded-xl font-bold transition-colors flex items-center justify-center">
                                             <Icon path={icons.book} className="w-5 h-5 mr-2"/> 開始研讀
@@ -937,32 +943,20 @@
                                     </div>
                                 </div>
 
-                                {/* 我的收藏 */}
+                                {/* 我的收藏 (Moved from bottom) */}
                                 <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-md border-2 border-rose-100 hover:border-rose-300 transition-all group relative overflow-hidden">
                                     <div className="absolute -right-6 -top-6 w-24 h-24 bg-rose-100 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
                                     <div className="flex justify-between items-start relative z-10 mb-2">
                                         <h3 className="text-2xl font-black text-rose-900 flex items-center"><Icon path={icons.heart} className="w-6 h-6 mr-2 text-rose-500" fill="currentColor"/> 我的收藏</h3>
                                         <span className="bg-rose-100 text-rose-600 text-xs font-bold px-2 py-1 rounded-full">{favorites.length}</span>
                                     </div>
-                                    <p className="text-gray-500 mb-6 relative z-10 h-12 text-sm">複習您收藏的重點量詞，隨時溫故知新。</p>
+                                    <p className="text-gray-500 mb-6 relative z-10 h-12">複習您收藏的重點量詞，隨時溫故知新。</p>
                                     <div className="flex gap-3 relative z-10">
                                         <button onClick={() => { onStartLearn('收藏夾'); triggerMusic(); }} disabled={favorites.length===0} className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 py-3 rounded-xl font-bold transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                                             <Icon path={icons.book} className="w-5 h-5 mr-2"/> 溫故
                                         </button>
                                         <button onClick={() => { onStartQuiz('收藏夾'); triggerMusic(); }} disabled={favorites.length===0} className="flex-1 bg-rose-500 hover:bg-rose-600 text-white py-3 rounded-xl font-bold shadow-md transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                                             <Icon path={icons.play} className="w-5 h-5 mr-2"/> 知新
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* 瀑布刷題 */}
-                                <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-md border-2 border-cyan-100 hover:border-cyan-300 transition-all group relative overflow-hidden cursor-pointer" onClick={() => { onStartWaterfall(); triggerMusic(); }}>
-                                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-cyan-100 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500"></div>
-                                    <h3 className="text-2xl font-black text-cyan-900 mb-2 relative z-10">🌊 瀑布刷題</h3>
-                                    <p className="text-gray-500 mb-6 relative z-10 h-12 text-sm">不分卷數，一次挑戰所有題目，極速複習。</p>
-                                    <div className="flex gap-3 relative z-10">
-                                        <button className="flex-1 bg-cyan-100 hover:bg-cyan-200 text-cyan-800 py-3 rounded-xl font-bold transition-colors flex items-center justify-center">
-                                            <Icon path={icons.activity} className="w-5 h-5 mr-2"/> 立即開刷
                                         </button>
                                     </div>
                                 </div>
@@ -1001,6 +995,62 @@
             );
         };
 
+        const MistakeView = ({ mistakes, mistakeLog, setMistakeLog, onMenu, onReviewAll }) => {
+            return (
+                <div className="max-w-7xl mx-auto px-4 py-8 mt-12 animate-fade-in-up">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
+                        <div className="flex items-center">
+                            <button onClick={onMenu} className="mr-4 p-3 bg-white rounded-xl shadow border border-gray-200 hover:bg-gray-50"><Icon path={icons.left} className="w-5 h-5"/></button>
+                            <h2 className="text-3xl font-black text-gray-800 flex items-center"><Icon path={icons.alert} className="w-8 h-8 text-red-500 mr-3"/> 錯題軍令狀</h2>
+                        </div>
+                        {mistakes.length > 0 && (
+                            <div className="flex gap-2">
+                                <button onClick={onReviewAll} className="px-6 py-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 font-bold flex items-center justify-center">
+                                    <Icon path={icons.play} className="w-5 h-5 mr-2" fill="currentColor"/>
+                                    立即複習 ({mistakes.length})
+                                </button>
+                                <button onClick={() => {if(confirm('確定清空錯題本？這將移除所有錯誤紀錄。')) { setMistakeLog([]); } }} className="px-6 py-3 bg-white text-gray-500 rounded-xl shadow border border-gray-200 hover:bg-gray-50 font-bold">
+                                    <Icon path={icons.trash} className="w-5 h-5"/>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {mistakes.length === 0 ? (
+                        <div className="text-center py-32 bg-white/80 backdrop-blur rounded-3xl shadow-sm border border-green-100">
+                            <div className="text-8xl mb-6">🎉</div>
+                            <p className="text-2xl text-gray-800 font-black mb-2">太棒了！</p>
+                            <p className="text-gray-500">目前沒有錯題紀錄，繼續保持！</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {mistakes.map(item => { 
+                                const log = mistakeLog.find(m => m.id === item.id); 
+                                return (
+                                    <div key={item.id} className="bg-white rounded-2xl p-6 shadow-sm border-2 border-transparent hover:border-red-200 hover:shadow-md transition-all relative overflow-hidden group flex flex-col">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <h3 className="text-3xl font-black text-gray-800">{item.term}</h3>
+                                            <span className="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full border border-red-200 whitespace-nowrap">
+                                                錯誤 {log.count} 次
+                                            </span>
+                                        </div>
+                                        <p className="text-gray-600 text-sm leading-relaxed mb-4 flex-1 whitespace-pre-wrap">{item.definition}</p>
+                                        
+                                        <div className="border-t border-gray-100 pt-3 flex justify-between items-center text-xs text-gray-400 font-mono mt-auto">
+                                            <span>#{String(item.id).padStart(3,'0')}</span>
+                                            <span>{new Date(log.lastMissed).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                ); 
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // TableView, LearnView, QuizView, HistoryView Components
+        
         const TableView = ({ items, onMenu, favorites, toggleFavorite }) => {
             const [searchTerm, setSearchTerm] = useState("");
             const filteredItems = useMemo(() => {
@@ -1090,7 +1140,7 @@
             );
         };
 
-        const QuizView = ({ questions, score, userName, combo, onAnswer, onFinish, onMenu, onViewHistory, favorites, toggleFavorite, totalItems, quizPage, onPageChange, completedDays, activeCategory }) => {
+        const QuizView = ({ questions, score, userName, combo, onAnswer, onFinish, onMenu, onViewHistory, favorites, toggleFavorite, totalItems, quizPage, onPageChange, completedDays }) => {
             const [showResult, setShowResult] = useState(false);
             const isFinished = questions.length > 0 && questions.every(q => q.userAnswer !== null);
             const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
@@ -1114,18 +1164,7 @@
                 <div className="max-w-4xl mx-auto pb-20 px-4 mt-12 no-print">
                     <div className="bg-white/95 backdrop-blur shadow-sm p-4 rounded-b-2xl mb-8 sticky top-16 z-30 border-t-4 border-amber-500 flex flex-col md:flex-row justify-between items-center transition-all">
                         <div className="flex items-center gap-4 mb-4 md:mb-0 w-full md:w-auto justify-between md:justify-start"><button onClick={onMenu} className="text-gray-500 text-sm flex items-center hover:text-red-600 font-bold bg-gray-100 px-3 py-2 rounded-lg transition-colors"><Icon path={icons.left} className="w-4 h-4 mr-1"/> 撤退</button><div className="font-bold text-xl flex items-center gap-3"><span>{userName}</span><span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-sm font-black border border-amber-200">戰功: {score}</span></div></div>
-                        
-                        {/* 只有在非瀑布模式下顯示頁碼導覽 */}
-                        {activeCategory !== 'waterfall' && (
-                            <div className="flex overflow-x-auto overflow-y-hidden max-w-full w-full md:w-auto pb-1 md:pb-0 gap-2">
-                                {Array.from({ length: totalPages }).map((_, i) => (<button key={i} onClick={() => onPageChange(i)} className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-all flex-shrink-0 ${quizPage === i ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>卷{i + 1}{completedDays.some(item => item.id === `精選成語-${i}`) && <span className="bg-green-400 text-white text-[10px] w-3 h-3 flex items-center justify-center rounded-full">✓</span>}</button>))}
-                            </div>
-                        )}
-                        {activeCategory === 'waterfall' && (
-                            <div className="text-cyan-600 font-bold text-sm bg-cyan-50 px-3 py-1 rounded-full border border-cyan-200 flex items-center">
-                                <Icon path={icons.activity} className="w-4 h-4 mr-1"/> 瀑布模式：全題目挑戰
-                            </div>
-                        )}
+                        <div className="flex overflow-x-auto overflow-y-hidden max-w-full w-full md:w-auto pb-1 md:pb-0 gap-2">{Array.from({ length: totalPages }).map((_, i) => (<button key={i} onClick={() => onPageChange(i)} className={`px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-all flex-shrink-0 ${quizPage === i ? 'bg-amber-600 text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>卷{i + 1}{completedDays.some(item => item.id === `精選成語-${i}`) && <span className="bg-green-400 text-white text-[10px] w-3 h-3 flex items-center justify-center rounded-full">✓</span>}</button>))}</div>
                     </div>
                     <div className="space-y-8">
                         {questions.map((q, idx) => (
@@ -1200,60 +1239,7 @@
             );
         };
 
-        const MistakeView = ({ mistakes, mistakeLog, setMistakeLog, onMenu, onReviewAll }) => {
-            return (
-                <div className="max-w-7xl mx-auto px-4 py-8 mt-12 animate-fade-in-up">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-                        <div className="flex items-center">
-                            <button onClick={onMenu} className="mr-4 p-3 bg-white rounded-xl shadow border border-gray-200 hover:bg-gray-50"><Icon path={icons.left} className="w-5 h-5"/></button>
-                            <h2 className="text-3xl font-black text-gray-800 flex items-center"><Icon path={icons.alert} className="w-8 h-8 text-red-500 mr-3"/> 錯題軍令狀</h2>
-                        </div>
-                        {mistakes.length > 0 && (
-                            <div className="flex gap-2">
-                                <button onClick={onReviewAll} className="px-6 py-3 bg-red-600 text-white rounded-xl shadow-lg hover:bg-red-700 font-bold flex items-center justify-center">
-                                    <Icon path={icons.play} className="w-5 h-5 mr-2" fill="currentColor"/>
-                                    立即複習 ({mistakes.length})
-                                </button>
-                                <button onClick={() => {if(confirm('確定清空錯題本？這將移除所有錯誤紀錄。')) { setMistakeLog([]); } }} className="px-6 py-3 bg-white text-gray-500 rounded-xl shadow border border-gray-200 hover:bg-gray-50 font-bold">
-                                    <Icon path={icons.trash} className="w-5 h-5"/>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {mistakes.length === 0 ? (
-                        <div className="text-center py-32 bg-white/80 backdrop-blur rounded-3xl shadow-sm border border-green-100">
-                            <div className="text-8xl mb-6">🎉</div>
-                            <p className="text-2xl text-gray-800 font-black mb-2">太棒了！</p>
-                            <p className="text-gray-500">目前沒有錯題紀錄，繼續保持！</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {mistakes.map(item => { 
-                                const log = mistakeLog.find(m => m.id === item.id); 
-                                return (
-                                    <div key={item.id} className="bg-white rounded-2xl p-6 shadow-sm border-2 border-transparent hover:border-red-200 hover:shadow-md transition-all relative overflow-hidden group flex flex-col">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <h3 className="text-3xl font-black text-gray-800">{item.term}</h3>
-                                            <span className="bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full border border-red-200 whitespace-nowrap">
-                                                錯誤 {log.count} 次
-                                            </span>
-                                        </div>
-                                        <p className="text-gray-600 text-sm leading-relaxed mb-4 flex-1 whitespace-pre-wrap">{item.definition}</p>
-                                        
-                                        <div className="border-t border-gray-100 pt-3 flex justify-between items-center text-xs text-gray-400 font-mono mt-auto">
-                                            <span>#{String(item.id).padStart(3,'0')}</span>
-                                            <span>{new Date(log.lastMissed).toLocaleDateString()}</span>
-                                        </div>
-                                    </div>
-                                ); 
-                            })}
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
+        // App Component
         const App = () => {
             const parsedData = useMemo(() => ({ "精選成語": IDIOM_DATA }), []);
             const allItems = IDIOM_DATA;
@@ -1279,9 +1265,6 @@
             const musicPlayerRef = useRef(null);
 
             const triggerMusic = () => { if(musicPlayerRef.current) musicPlayerRef.current.triggerPlay(); };
-
-            useEffect(() => { const randomNum = Math.floor(Math.random() * 5) + 1; setBgImage(`Chinese-Idiom4-images/san${randomNum}.jpg`); }, []);
-            const [bgImage, setBgImage] = useState('');
 
             useEffect(() => {
                 if (!isFirebaseInitialized) { setConnectionStatus('error'); return; }
@@ -1349,29 +1332,6 @@
 
             const playSoundEffect = (type) => { try { const AudioContext = window.AudioContext || window.webkitAudioContext; if (!AudioContext) return; const ctx = new AudioContext(); const now = ctx.currentTime; if (type === 'correct') { const osc1 = ctx.createOscillator(); const gain1 = ctx.createGain(); osc1.type = 'sine'; osc1.frequency.setValueAtTime(523.25, now); gain1.gain.setValueAtTime(0.1, now); gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5); osc1.connect(gain1); gain1.connect(ctx.destination); osc1.start(now); osc1.stop(now + 0.5); const osc2 = ctx.createOscillator(); const gain2 = ctx.createGain(); osc2.type = 'sine'; osc2.frequency.setValueAtTime(659.25, now + 0.1); gain2.gain.setValueAtTime(0.1, now + 0.1); gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6); osc2.connect(gain2); gain2.connect(ctx.destination); osc2.start(now + 0.1); osc2.stop(now + 0.6); } else { const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'triangle'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now + 0.3); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3); osc.connect(gain); gain.connect(ctx.destination); osc.start(now); osc.stop(now + 0.3); } } catch (e) {} };
 
-            // Waterfall Mode Handler
-            const handleStartWaterfall = () => {
-                if (!isLocked) { setShowNameWarning(true); return; }
-                
-                let questions = [...allItems]; 
-                questions.sort(() => Math.random() - 0.5);
-                
-                const quizSet = questions.map(item => { 
-                    let pool = allItems.filter(i => i.id !== item.id); 
-                    const distractors = pool.sort(() => Math.random() - 0.5).slice(0, 3); 
-                    const options = [...distractors, item].sort(() => Math.random() - 0.5); 
-                    return { ...item, options, userAnswer: null, isCorrect: null }; 
-                });
-                
-                setQuizQuestions(quizSet);
-                setQuizScore(0);
-                setCombo(0);
-                setQuizPage(0);
-                setActiveCategory('waterfall');
-                setCurrentMode('quiz');
-                window.scrollTo(0, 0);
-            };
-
             const handleStartQuiz = (category, pageIdx = 0, isMistakeMode = false) => {
                 if (!isLocked) { setShowNameWarning(true); return; }
                 if (savedSession && savedSession.category === category && savedSession.pageIdx === pageIdx && !isMistakeMode) { if (confirm('發現您有未完成的進度，是否繼續作答？')) { setQuizQuestions(savedSession.questions); setQuizScore(savedSession.score); setCombo(savedSession.combo); setQuizPage(savedSession.pageIdx); setActiveCategory(savedSession.category); setCurrentMode('quiz'); return; } else { updateUserData('currentQuizSession', null); } }
@@ -1429,7 +1389,7 @@
                 }
                 setQuizQuestions(newQuestions);
                 
-                if (activeCategory !== '錯題本' && activeCategory !== 'waterfall') {
+                if (activeCategory !== '錯題本') {
                     updateUserData('currentQuizSession', {
                         questions: newQuestions,
                         score: newScore,
@@ -1445,7 +1405,7 @@
                 const record = { id: Date.now(), date: new Date().toLocaleString(), userName, score: quizScore, total: quizQuestions.length, category: activeCategory, details: quizQuestions.map(q => ({ term: q.term, definition: q.definition, sentence: q.sentence2, isCorrect: q.isCorrect, userAnswer: q.options.find(o => o.id === q.userAnswer)?.term || "未作答", correctAnswer: q.term })) };
                 const newHistory = [record, ...historyLog]; setHistoryLog(newHistory); updateUserData('history', newHistory);
                 
-                if (activeCategory !== '收藏夾' && activeCategory !== '錯題本' && activeCategory !== 'waterfall') { 
+                if (activeCategory !== '收藏夾' && activeCategory !== '錯題本') { 
                     const key = `${activeCategory}-${quizPage}`; 
                     if (quizScore > 0) { 
                         const todayStr = new Date().toLocaleDateString();
@@ -1473,9 +1433,9 @@
                     <div className="fixed inset-0 z-0 bg-white/70 backdrop-blur-[2px] no-print"></div>
                     <div className="relative z-10">
                         <MusicPlayer ref={musicPlayerRef} />
-                        {currentMode === 'menu' && <MenuView userName={userName} setUserName={setUserName} showNameWarning={showNameWarning} mistakeLog={mistakeLog} favorites={favorites} parsedData={parsedData} onStartLearn={(cat) => { setActiveCategory(cat); setLearnPage(0); setCurrentMode('learn'); }} onStartQuiz={(cat, page = 0) => handleStartQuiz(cat, page)} onViewHistory={() => setCurrentMode('history')} onViewMistakes={() => setCurrentMode('mistakes')} onViewTable={() => setCurrentMode('table')} onPrint={() => setCurrentMode('print')} onLogin={handleLogin} isLocked={isLocked} onQuickLogin={handleQuickLogin} lastUser={lastUser} onLogout={handleLogout} onDeleteUser={handleDeleteUser} globalUsers={globalUsers} triggerMusic={triggerMusic} connectionStatus={connectionStatus} completedDays={completedDays} onStartWaterfall={handleStartWaterfall} />}
+                        {currentMode === 'menu' && <MenuView userName={userName} setUserName={setUserName} showNameWarning={showNameWarning} mistakeLog={mistakeLog} favorites={favorites} parsedData={parsedData} onStartLearn={(cat) => { setActiveCategory(cat); setLearnPage(0); setCurrentMode('learn'); }} onStartQuiz={(cat, page = 0) => handleStartQuiz(cat, page)} onViewHistory={() => setCurrentMode('history')} onViewMistakes={() => setCurrentMode('mistakes')} onViewTable={() => setCurrentMode('table')} onPrint={() => setCurrentMode('print')} onLogin={handleLogin} isLocked={isLocked} onQuickLogin={handleQuickLogin} lastUser={lastUser} onLogout={handleLogout} onDeleteUser={handleDeleteUser} globalUsers={globalUsers} triggerMusic={triggerMusic} connectionStatus={connectionStatus} completedDays={completedDays} />}
                         {currentMode === 'learn' && <LearnView items={activeCategory === '收藏夾' ? allItems.filter(i => favorites.includes(i.id)) : parsedData["精選成語"]} learnPage={learnPage} setLearnPage={setLearnPage} favorites={favorites} toggleFavorite={toggleFavorite} completedDays={completedDays} onMenu={() => setCurrentMode('menu')} />}
-                        {currentMode === 'quiz' && <QuizView questions={quizQuestions} score={quizScore} userName={userName} combo={combo} onAnswer={handleAnswer} onFinish={finishQuiz} onMenu={() => setCurrentMode('menu')} onViewHistory={() => setCurrentMode('history')} favorites={favorites} toggleFavorite={toggleFavorite} activeCategory={activeCategory} totalItems={activeCategory === '收藏夾' ? favorites.length : parsedData["精選成語"].length} quizPage={quizPage} onPageChange={(page) => handleStartQuiz(activeCategory, page)} completedDays={completedDays} activeCategory={activeCategory} />}
+                        {currentMode === 'quiz' && <QuizView questions={quizQuestions} score={quizScore} userName={userName} combo={combo} onAnswer={handleAnswer} onFinish={finishQuiz} onMenu={() => setCurrentMode('menu')} onViewHistory={() => setCurrentMode('history')} favorites={favorites} toggleFavorite={toggleFavorite} activeCategory={activeCategory} totalItems={activeCategory === '收藏夾' ? favorites.length : parsedData["精選成語"].length} quizPage={quizPage} onPageChange={(page) => handleStartQuiz(activeCategory, page)} completedDays={completedDays} />}
                         {currentMode === 'history' && <HistoryView historyLog={historyLog} setHistoryLog={clearHistoryLog} onMenu={() => setCurrentMode('menu')} />}
                         {currentMode === 'mistakes' && <MistakeView mistakes={allItems.filter(i => mistakeLog.some(m => m.id === i.id))} mistakeLog={mistakeLog} setMistakeLog={clearMistakeLog} onMenu={() => setCurrentMode('menu')} onReviewAll={() => handleStartQuiz(null, 0, true)} />}
                         {currentMode === 'table' && <TableView items={allItems} onMenu={() => setCurrentMode('menu')} favorites={favorites} toggleFavorite={toggleFavorite} />}
