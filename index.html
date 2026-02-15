@@ -3,101 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國文學習 App - 總部大廳</title>
-    <!-- 引入 Noto Serif TC (明體) 用於標題，Noto Sans TC (黑體) 用於內文 -->
+    <title>國文學習 App - 雲端進化版</title>
+    
+    <!-- 字體 -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (用於快速佈局) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (UMD Global) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel (解析 JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Import Map for Firebase (Only for Firebase modules) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+        }
+    }
+    </script>
+
     <style>
         :root {
-            /* 國文主題配色：水墨與硃砂 */
-            --bg: #f9f7f2;            /* 背景：米白宣紙色 */
-            --text-main: #2c2c2c;     /* 主字色：墨黑 */
+            /* 國文主題配色 */
+            --bg: #f9f7f2;
+            --text-main: #2c2c2c;
             --card-bg: #ffffff;
+            --primary-amber: #ffab00;
         }
 
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: var(--bg);
-            /* 加入淡淡的紙張紋理感 */
             background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
             background-size: 20px 20px;
+            color: var(--text-main);
             margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 0;
             min-height: 100vh;
-            color: var(--text-main);
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 50px;
-            max-width: 800px;
-        }
-
-        .header h1 {
-            font-family: 'Noto Serif TC', serif; /* 標題使用明體 */
-            color: var(--text-main);
-            font-size: 3em;
-            margin-bottom: 15px;
-            letter-spacing: 2px;
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-        }
-
-        .header p {
-            color: #5d4037; /* 深褐色文字 */
-            font-size: 1.2em;
-            margin-bottom: 30px;
-            font-weight: 500;
-        }
-
-        /* 返回按鈕樣式 - 改為紫金漸層，象徵尊貴與智慧 */
-        .home-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: linear-gradient(135deg, #512da8 0%, #673ab7 100%);
-            color: white;
-            padding: 12px 40px;
-            border-radius: 50px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1.1em;
-            box-shadow: 0 4px 15px rgba(103, 58, 183, 0.3);
-            transition: all 0.3s ease;
-            border: 2px solid white;
-        }
-
-        .home-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(103, 58, 183, 0.4);
-        }
-        
-        /* 網格佈局 */
-        .app-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-            width: 100%;
-            max-width: 1200px;
-        }
+        /* 標題字體 */
+        .font-serif { font-family: 'Noto Serif TC', serif; }
 
         /* 卡片基礎樣式 */
         .app-card {
             background: var(--card-bg);
             border-radius: 12px;
-            padding: 25px;
-            text-decoration: none;
+            padding: 20px;
             color: #333;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             border-top: 6px solid #ccc;
+            border-left: 1px solid rgba(0,0,0,0.05);
+            border-right: 1px solid rgba(0,0,0,0.05);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+            cursor: pointer;
+            text-decoration: none;
             display: flex;
             flex-direction: column;
             align-items: center;
-            text-align: center;
-            position: relative;
-            border: 1px solid rgba(0,0,0,0.05);
         }
 
         .app-card:hover {
@@ -105,91 +77,42 @@
             box-shadow: 0 12px 30px rgba(0,0,0,0.1);
         }
 
-        /* 動態顏色類別 */
-        /* 藍紫色系 (字形、文法) */
-        .theme-blue { --theme-color: #3949ab; --theme-light: #e8eaf6; }
-        /* 橙紅色系 (字音、成語) */
-        .theme-orange { --theme-color: #e65100; --theme-light: #fff3e0; }
-        /* 綠色系 (造字、句義) */
-        .theme-green { --theme-color: #2e7d32; --theme-light: #e8f5e9; }
-        /* 青色系 (字義、寫作) */
-        .theme-teal { --theme-color: #00695c; --theme-light: #e0f2f1; }
-        /* 紫色系 (詞語、詩詞) */
-        .theme-purple { --theme-color: #6a1b9a; --theme-light: #f3e5f5; }
-        /* 紅色系 (應用文) */
-        .theme-red { --theme-color: #c62828; --theme-light: #ffebee; }
-        /* 褐色/金色系 (國學、文言) */
-        .theme-brown { --theme-color: #8d6e63; --theme-light: #efebe9; }
-        /* 深藍系 (圖表、進階) */
-        .theme-indigo { --theme-color: #283593; --theme-light: #e8eaf6; }
-
-        .app-card {
-            border-top-color: var(--theme-color, #ccc);
-        }
-        .app-card .card-icon {
-            background: var(--theme-light, #f5f5f5);
-            color: var(--theme-color, #555);
-            border-color: var(--theme-light, #eee);
-        }
-        .app-card .card-title {
-            color: var(--theme-color, #333);
-        }
-        .app-card:hover {
-            box-shadow: 0 12px 30px rgba(0,0,0,0.15); /* 簡化陰影顏色處理 */
+        /* === 已完成特效 === */
+        .app-card.completed {
+            border: 4px solid var(--primary-amber) !important;
+            border-top: 6px solid var(--primary-amber) !important;
+            box-shadow: 0 0 20px rgba(255, 171, 0, 0.5) !important;
+            transform: scale(1.02);
+            background-color: #fff8e1;
+            z-index: 10;
         }
 
-        /* 標籤圖示 */
+        .app-card.completed .card-badge {
+            background: var(--primary-amber) !important;
+            box-shadow: 0 0 8px rgba(255, 171, 0, 0.6);
+            color: #fff;
+        }
+
+        .app-card.completed .card-icon {
+            background: rgba(255, 171, 0, 0.1) !important;
+            color: #e65100 !important;
+        }
+
+        /* 圖示容器 */
         .card-icon {
-            font-size: 2.5em;
-            margin-bottom: 15px;
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid transparent;
-        }
-
-        /* 標題 */
-        .card-title {
-            font-family: 'Noto Serif TC', serif;
-            font-size: 1.25em;
-            font-weight: 900;
-            margin-bottom: 8px;
-            min-height: 2.5em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* 描述文字 (包含檔案名稱) */
-        .card-desc {
-            font-size: 0.85em;
-            color: #757575;
-            line-height: 1.4;
+            font-size: 2em;
             margin-bottom: 15px;
-            font-family: monospace; /* 檔案名稱用等寬字體 */
-            background: #f5f5f5;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-
-        /* 狀態標籤 */
-        .card-badge {
-            margin-top: auto;
-            padding: 5px 12px;
-            background: #4caf50; /* 預設開放綠色 */
-            color: white;
-            border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: bold;
-            letter-spacing: 1px;
+            border: 1px solid transparent;
         }
 
         /* 分隔線 */
         .divider {
-            grid-column: 1 / -1;
             display: flex;
             align-items: center;
             margin: 40px 0 20px 0;
@@ -206,493 +129,639 @@
         .divider::before { margin-right: 15px; }
         .divider::after { margin-left: 15px; }
 
+        /* 狀態燈號動畫 */
+        @keyframes pulse-dot {
+            0% { opacity: 0.6; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.6; transform: scale(0.9); }
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-loading { background-color: #fdd835; animation: pulse-dot 1.5s infinite; }
+        .status-success { background-color: #4caf50; }
+        .status-error { background-color: #ef5350; }
+        .status-offline { background-color: #9e9e9e; }
+
+        /* 主題色系定義 */
+        .theme-blue { --theme-c: #3949ab; --theme-bg: #e8eaf6; }
+        .theme-orange { --theme-c: #e65100; --theme-bg: #fff3e0; }
+        .theme-green { --theme-c: #2e7d32; --theme-bg: #e8f5e9; }
+        .theme-teal { --theme-c: #00695c; --theme-bg: #e0f2f1; }
+        .theme-purple { --theme-c: #6a1b9a; --theme-bg: #f3e5f5; }
+        .theme-red { --theme-c: #c62828; --theme-bg: #ffebee; }
+        .theme-brown { --theme-c: #8d6e63; --theme-bg: #efebe9; }
+        .theme-indigo { --theme-c: #283593; --theme-bg: #e8eaf6; }
+
+        .theme-item { border-top-color: var(--theme-c); }
+        .theme-item .card-icon { background: var(--theme-bg); color: var(--theme-c); }
+        .theme-item .card-title { color: var(--theme-c); }
+
+        /* 核取方塊樣式 */
+        .check-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            background: white;
+        }
+        .app-card:hover .check-circle { border-color: #bbb; }
+        .app-card.completed .check-circle {
+            background: var(--primary-amber);
+            border-color: var(--primary-amber);
+            color: white;
+        }
+
+        /* 滾動條美化 */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
     </style>
 </head>
 <body>
+    <div id="root"></div>
 
-    <div class="header">
-        <h1>📜 國文主題式學習總部</h1>
-        <p>全方位國文素養提升計畫</p>
+    <script type="text/babel" data-type="module">
+        import { initializeApp } from "firebase/app";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "firebase/auth";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc, arrayUnion } from "firebase/firestore";
         
-        <!-- 返回百寶箱按鈕 -->
-        <a href="https://nicktsai88.github.io/List/" class="home-btn">
-            🎁 返回快樂學習百寶箱
-        </a>
-    </div>
+        // ★ 修正重點：因為使用 CDN UMD 版本，React 已經是全域變數，不需要 import，直接解構使用即可。
+        const { useState, useEffect, useMemo } = React;
+        // ReactDOM 也是全域變數
 
-    <div class="app-grid">
+        /* ================= 資料定義 ================= */
+        const ALL_CATEGORIES = [
+            {
+                title: "認識字形",
+                theme: "theme-blue",
+                items: [
+                    { id: "L1", title: "第 1 站", subtitle: "「相似詞語」的分辨", file: "Chinese-Learning-1.html", icon: "✍️" },
+                    { id: "L2", title: "第 2 站", subtitle: "「形近字」的分辨", file: "Chinese-Learning-2.html", icon: "👀" },
+                    { id: "L3", title: "第 3 站", subtitle: "「音近字」的分辨", file: "Chinese-Learning-3.html", icon: "🔍" },
+                    { id: "L4", title: "第 4 站", subtitle: "重要詞語辨正", file: "Chinese-Learning-4.html", icon: "✅" }
+                ]
+            },
+            {
+                title: "分辨字音",
+                theme: "theme-orange",
+                items: [
+                    { id: "L5", title: "第 1 站", subtitle: "相似字「字音」辨正", file: "Chinese-Learning-5.html", icon: "👂" },
+                    { id: "L6", title: "第 2 站", subtitle: "一字多音辨正", file: "Chinese-Learning-6.html", icon: "🗣️" },
+                    { id: "L7", title: "第 3 站", subtitle: "重要讀音辨正", file: "Chinese-Learning-7.html", icon: "🔊" }
+                ]
+            },
+            {
+                title: "欣賞造字法則",
+                theme: "theme-green",
+                items: [
+                    { id: "L8", title: "第 1 站", subtitle: "造字法則", file: "Chinese-Learning-8.html", icon: "🧱" },
+                    { id: "L9", title: "第 2 站", subtitle: "漢字形體的演變", file: "Chinese-Learning-9.html", icon: "📜" }
+                ]
+            },
+            {
+                title: "判別字義",
+                theme: "theme-teal",
+                items: [
+                    { id: "L10", title: "第 1 站", subtitle: "量詞", file: "Chinese-Learning-10.html", icon: "📏" },
+                    { id: "L11", title: "第 2 站", subtitle: "實數、虛數", file: "Chinese-Learning-11.html", icon: "🔢" },
+                    { id: "L12", title: "第 3 站", subtitle: "重要字義、一字多義", file: "Chinese-Learning-12.html", icon: "📖" },
+                    { id: "L13", title: "第 4 站", subtitle: "其他特殊字義", file: "Chinese-Learning-13.html", icon: "💡" }
+                ]
+            },
+            {
+                title: "理解詞語",
+                theme: "theme-purple",
+                items: [
+                    { id: "L14", title: "第 1 站", subtitle: "狀聲詞", file: "Chinese-Learning-14.html", icon: "🔔" },
+                    { id: "L15", title: "第 2 站", subtitle: "敬詞、謙詞", file: "Chinese-Learning-15.html", icon: "🙏" },
+                    { id: "L16", title: "第 3 站", subtitle: "慣用語", file: "Chinese-Learning-16.html", icon: "💬" },
+                    { id: "L17", title: "第 4 站", subtitle: "一詞多義", file: "Chinese-Learning-17.html", icon: "🔄" },
+                    { id: "L18", title: "第 5 站", subtitle: "容易混淆的詞語", file: "Chinese-Learning-18.html", icon: "😵" },
+                    { id: "L19", title: "第 6 站", subtitle: "偏義複詞", file: "Chinese-Learning-19.html", icon: "⚖️" },
+                    { id: "L20", title: "第 7 站", subtitle: "一般常用詞語", file: "Chinese-Learning-20.html", icon: "📝" }
+                ]
+            },
+            {
+                title: "活用成語",
+                theme: "theme-orange",
+                items: [
+                    { id: "L21", title: "第 1 站", subtitle: "容易混淆的成語", file: "Chinese-Learning-21.html", icon: "🐉" },
+                    { id: "L22", title: "第 2 站", subtitle: "成語中的名人", file: "Chinese-Learning-22.html", icon: "🧑‍🏫" },
+                    { id: "L23", title: "第 3 站", subtitle: "貶義成語", file: "Chinese-Learning-23.html", icon: "📉" },
+                    { id: "L24", title: "第 4 站", subtitle: "義近成語", file: "Chinese-Learning-24.html", icon: "🤝" },
+                    { id: "L25", title: "第 5 站", subtitle: "成語的特殊結構", file: "Chinese-Learning-25.html", icon: "🏗️" }
+                ]
+            },
+            {
+                title: "辨識文法",
+                theme: "theme-blue",
+                items: [
+                    { id: "L26", title: "第 1 站", subtitle: "詞性轉換（轉品）", file: "Chinese-Learning-26.html", icon: "🔄" },
+                    { id: "L27", title: "第 2 站", subtitle: "句子的種類", file: "Chinese-Learning-27.html", icon: "📝" },
+                    { id: "L28", title: "第 3 站", subtitle: "主語判斷", file: "Chinese-Learning-28.html", icon: "🎯" }
+                ]
+            },
+            {
+                title: "探索應用文",
+                theme: "theme-red",
+                items: [
+                    { id: "L29", title: "第 1 站", subtitle: "書信、柬帖", file: "Chinese-Learning-29.html", icon: "✉️" },
+                    { id: "L30", title: "第 2 站", subtitle: "啟事、便條", file: "Chinese-Learning-30.html", icon: "📌" },
+                    { id: "L31", title: "第 3 站", subtitle: "對聯、題辭", file: "Chinese-Learning-31.html", icon: "🧧" }
+                ]
+            },
+            {
+                title: "貫通國學常識",
+                theme: "theme-brown",
+                items: [
+                    { id: "L32", title: "第 1 站", subtitle: "季節、節慶的比較", file: "Chinese-Learning-32.html", icon: "🏮" },
+                    { id: "L33", title: "第 2 站", subtitle: "年齡、天干地支", file: "Chinese-Learning-33.html", icon: "⏳" },
+                    { id: "L34", title: "第 3 站", subtitle: "各代文學主流", file: "Chinese-Learning-34.html", icon: "📚" },
+                    { id: "L35", title: "第 4 站", subtitle: "詩詞曲格律比較", file: "Chinese-Learning-35.html", icon: "🎵" }
+                ]
+            },
+            {
+                title: "品賞寫作技巧",
+                theme: "theme-teal",
+                items: [
+                    { id: "L36", title: "第 1 站", subtitle: "善用修辭一：生動", file: "Chinese-Learning-36.html", icon: "✨" },
+                    { id: "L37", title: "第 2 站", subtitle: "善用修辭二：優美", file: "Chinese-Learning-37.html", icon: "🌸" },
+                    { id: "L38", title: "第 3 站", subtitle: "標點符號的使用", file: "Chinese-Learning-38.html", icon: "，" },
+                    { id: "L39", title: "第 4 站", subtitle: "冗言贅字判斷", file: "Chinese-Learning-39.html", icon: "✂️" },
+                    { id: "L40", title: "第 5 站", subtitle: "語病判斷", file: "Chinese-Learning-40.html", icon: "🩺" },
+                    { id: "L41", title: "第 6 站", subtitle: "寫作技巧判斷", file: "Chinese-Learning-41.html", icon: "🖋️" }
+                ]
+            },
+            {
+                title: "領會句義",
+                theme: "theme-green",
+                items: [
+                    { id: "L42", title: "第 1 站", subtitle: "句式邏輯", file: "Chinese-Learning-42.html", icon: "🧠" },
+                    { id: "L43", title: "第 2 站", subtitle: "雙句句義比較", file: "Chinese-Learning-43.html", icon: "⚖️" },
+                    { id: "L44", title: "第 3 站", subtitle: "俗語、諺語", file: "Chinese-Learning-44.html", icon: "🗣️" },
+                    { id: "L45", title: "第 4 站", subtitle: "語氣判斷", file: "Chinese-Learning-45.html", icon: "🤔" }
+                ]
+            },
+            {
+                title: "填空與重組",
+                theme: "theme-orange",
+                items: [
+                    { id: "L46", title: "第 1 站", subtitle: "白話詩文填空", file: "Chinese-Learning-46.html", icon: "✏️" },
+                    { id: "L47", title: "第 2 站", subtitle: "文言詩文填空", file: "Chinese-Learning-47.html", icon: "🖌️" },
+                    { id: "L48", title: "第 3 站", subtitle: "白話詩文重組", file: "Chinese-Learning-48.html", icon: "🧩" },
+                    { id: "L49", title: "第 4 站", subtitle: "文言詩文重組", file: "Chinese-Learning-49.html", icon: "📜" }
+                ]
+            },
+            {
+                title: "閱讀圖文表",
+                theme: "theme-indigo",
+                items: [
+                    { id: "L50", title: "第 1 站", subtitle: "文宣廣告閱讀", file: "Chinese-Learning-50.html", icon: "📢" },
+                    { id: "L51", title: "第 2 站", subtitle: "圖文表單題", file: "Chinese-Learning-51.html", icon: "📊" },
+                    { id: "L52", title: "第 3 站", subtitle: "圖文表題組", file: "Chinese-Learning-52.html", icon: "📈" }
+                ]
+            },
+            {
+                title: "閱讀白話文",
+                theme: "theme-red",
+                items: [
+                    { id: "L53", title: "第 1 站", subtitle: "白話文單題", file: "Chinese-Learning-53.html", icon: "📖" },
+                    { id: "L54", title: "第 2 站", subtitle: "白話文題組", file: "Chinese-Learning-54.html", icon: "📚" },
+                    { id: "L55", title: "第 3 站", subtitle: "核心議題單題", file: "Chinese-Learning-55.html", icon: "🌍" },
+                    { id: "L56", title: "第 4 站", subtitle: "核心議題題組", file: "Chinese-Learning-56.html", icon: "🌐" },
+                    { id: "L57", title: "第 5 站", subtitle: "17 項 SDGs 單題", file: "Chinese-Learning-57.html", icon: "🌱" },
+                    { id: "L58", title: "第 6 站", subtitle: "17 項 SDGs 題組", file: "Chinese-Learning-58.html", icon: "🌿" }
+                ]
+            },
+            {
+                title: "閱讀詩詞曲",
+                theme: "theme-purple",
+                items: [
+                    { id: "L59", title: "第 1 站", subtitle: "現代詩單題", file: "Chinese-Learning-59.html", icon: "⛅" },
+                    { id: "L60", title: "第 2 站", subtitle: "現代詩題組", file: "Chinese-Learning-60.html", icon: "🌧️" },
+                    { id: "L61", title: "第 3 站", subtitle: "詩詞曲單題", file: "Chinese-Learning-61.html", icon: "🌙" },
+                    { id: "L62", title: "第 4 站", subtitle: "詩詞曲題組", file: "Chinese-Learning-62.html", icon: "🏯" }
+                ]
+            },
+            {
+                title: "閱讀文言文",
+                theme: "theme-brown",
+                items: [
+                    { id: "L63", title: "第 1 站", subtitle: "文言文單題", file: "Chinese-Learning-63.html", icon: "📜" },
+                    { id: "L64", title: "第 2 站", subtitle: "文言文題組", file: "Chinese-Learning-64.html", icon: "🕯️" }
+                ]
+            },
+            {
+                title: "進階閱讀素養",
+                theme: "theme-indigo",
+                items: [
+                    { id: "L65", title: "第 1 站", subtitle: "白話文雙文", file: "Chinese-Learning-65.html", icon: "👓" },
+                    { id: "L66", title: "第 2 站", subtitle: "古今雙文", file: "Chinese-Learning-66.html", icon: "⚖️" },
+                    { id: "L67", title: "第 3 站", subtitle: "文言文雙文", file: "Chinese-Learning-67.html", icon: "🎓" }
+                ]
+            }
+        ];
+
+        /* ================= Firebase 初始化 ================= */
+        // ★ 修正重點：提供預設物件，避免本地端執行時找不到 __firebase_config 而當機
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+          apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs",
+          authDomain: "chinese-learning-47f4d.firebaseapp.com",
+          projectId: "chinese-learning-47f4d",
+          storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+          messagingSenderId: "76289812052",
+          appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
         
-        <!-- ================= 認識字形 ================= -->
-        <div class="divider">認識字形</div>
-        
-        <a href="Chinese-Learning-1.html" class="app-card theme-blue">
-            <div class="card-icon">✍️</div>
-            <div class="card-title">第 1 站<br>「相似詞語」的分辨</div>
-            <div class="card-desc">Chinese-Learning-1</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-2.html" class="app-card theme-blue">
-            <div class="card-icon">👀</div>
-            <div class="card-title">第 2 站<br>「形近字」的分辨</div>
-            <div class="card-desc">Chinese-Learning-2</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-3.html" class="app-card theme-blue">
-            <div class="card-icon">🔍</div>
-            <div class="card-title">第 3 站<br>「音近字」的分辨</div>
-            <div class="card-desc">Chinese-Learning-3</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-4.html" class="app-card theme-blue">
-            <div class="card-icon">✅</div>
-            <div class="card-title">第 4 站<br>重要詞語辨正</div>
-            <div class="card-desc">Chinese-Learning-4</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        <!-- ================= 分辨字音 ================= -->
-        <div class="divider">分辨字音</div>
+        // 資料庫路徑 helper
+        const getPublicRef = (col) => collection(db, 'artifacts', appId, 'public', 'data', col);
+        const getUserRef = (uid, col) => collection(db, 'artifacts', appId, 'users', uid, col);
 
-        <a href="Chinese-Learning-5.html" class="app-card theme-orange">
-            <div class="card-icon">👂</div>
-            <div class="card-title">第 1 站<br>相似字「字音」辨正</div>
-            <div class="card-desc">Chinese-Learning-5</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-6.html" class="app-card theme-orange">
-            <div class="card-icon">🗣️</div>
-            <div class="card-title">第 2 站<br>一字多音辨正</div>
-            <div class="card-desc">Chinese-Learning-6</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-7.html" class="app-card theme-orange">
-            <div class="card-icon">🔊</div>
-            <div class="card-title">第 3 站<br>重要讀音辨正</div>
-            <div class="card-desc">Chinese-Learning-7</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+        /* ================= Components ================= */
 
-        <!-- ================= 欣賞造字法則 ================= -->
-        <div class="divider">欣賞造字法則</div>
+        // 狀態燈號
+        const StatusLight = ({ status }) => {
+            let dotClass = 'status-loading';
+            let text = '連線中...';
 
-        <a href="Chinese-Learning-8.html" class="app-card theme-green">
-            <div class="card-icon">🧱</div>
-            <div class="card-title">第 1 站<br>造字法則</div>
-            <div class="card-desc">Chinese-Learning-8</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-9.html" class="app-card theme-green">
-            <div class="card-icon">📜</div>
-            <div class="card-title">第 2 站<br>漢字形體的演變</div>
-            <div class="card-desc">Chinese-Learning-9</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+            if (status === 'success') {
+                dotClass = 'status-success';
+                text = '已同步';
+            } else if (status === 'error') {
+                dotClass = 'status-error';
+                text = '同步失敗';
+            } else if (status === 'loading') {
+                dotClass = 'status-loading';
+                text = '讀取資料中...';
+            } else {
+                dotClass = 'status-offline'; 
+                text = '離線模式';
+            }
 
-        <!-- ================= 判別字義 ================= -->
-        <div class="divider">判別字義</div>
+            return (
+                <div className="flex items-center text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm bg-opacity-90">
+                    <span className={`status-dot ${dotClass}`}></span>
+                    {text}
+                </div>
+            );
+        };
 
-        <a href="Chinese-Learning-10.html" class="app-card theme-teal">
-            <div class="card-icon">📏</div>
-            <div class="card-title">第 1 站<br>量詞</div>
-            <div class="card-desc">Chinese-Learning-10</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-11.html" class="app-card theme-teal">
-            <div class="card-icon">🔢</div>
-            <div class="card-title">第 2 站<br>實數、虛數</div>
-            <div class="card-desc">Chinese-Learning-11</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-12.html" class="app-card theme-teal">
-            <div class="card-icon">📖</div>
-            <div class="card-title">第 3 站<br>重要字義、一字多義</div>
-            <div class="card-desc">Chinese-Learning-12</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-13.html" class="app-card theme-teal">
-            <div class="card-icon">💡</div>
-            <div class="card-title">第 4 站<br>其他特殊字義</div>
-            <div class="card-desc">Chinese-Learning-13</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+        // 嵌入式登入組件 (取代全頁 LoginScreen)
+        const UserLoginWidget = ({ onLogin, usersList }) => {
+            const [newUsername, setNewUsername] = useState("");
+            const [isCreating, setIsCreating] = useState(false);
 
-        <!-- ================= 理解詞語 ================= -->
-        <div class="divider">理解詞語</div>
+            const handleCreate = async () => {
+                if (!newUsername.trim()) return;
+                setIsCreating(true);
+                await onLogin(newUsername.trim(), true);
+                setIsCreating(false);
+            };
 
-        <a href="Chinese-Learning-14.html" class="app-card theme-purple">
-            <div class="card-icon">🔔</div>
-            <div class="card-title">第 1 站<br>狀聲詞</div>
-            <div class="card-desc">Chinese-Learning-14</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-15.html" class="app-card theme-purple">
-            <div class="card-icon">🙏</div>
-            <div class="card-title">第 2 站<br>敬詞、謙詞</div>
-            <div class="card-desc">Chinese-Learning-15</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-16.html" class="app-card theme-purple">
-            <div class="card-icon">💬</div>
-            <div class="card-title">第 3 站<br>慣用語</div>
-            <div class="card-desc">Chinese-Learning-16</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-17.html" class="app-card theme-purple">
-            <div class="card-icon">🔄</div>
-            <div class="card-title">第 4 站<br>一詞多義</div>
-            <div class="card-desc">Chinese-Learning-17</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-18.html" class="app-card theme-purple">
-            <div class="card-icon">😵</div>
-            <div class="card-title">第 5 站<br>容易混淆的詞語</div>
-            <div class="card-desc">Chinese-Learning-18</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-19.html" class="app-card theme-purple">
-            <div class="card-icon">⚖️</div>
-            <div class="card-title">第 6 站<br>偏義複詞</div>
-            <div class="card-desc">Chinese-Learning-19</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-20.html" class="app-card theme-purple">
-            <div class="card-icon">📝</div>
-            <div class="card-title">第 7 站<br>一般常用詞語</div>
-            <div class="card-desc">Chinese-Learning-20</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+            return (
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-lg w-full mx-auto text-left relative z-10">
+                    <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                        <span className="text-2xl">👋</span> 誰要開始修煉？
+                    </h2>
+                    
+                    {/* 現有使用者列表 (Quick Login) */}
+                    <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        {usersList.length === 0 ? (
+                            <p className="text-center text-gray-400 py-4 text-sm bg-gray-50 rounded-lg">
+                                目前尚無挑戰紀錄，成為第一位挑戰者吧！
+                            </p>
+                        ) : (
+                            usersList.map((user) => (
+                                <button
+                                    key={user.uid}
+                                    onClick={() => onLogin(user, false)}
+                                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-purple-50 border border-transparent hover:border-purple-200 transition-all text-left group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm">
+                                            {user.name.charAt(0)}
+                                        </div>
+                                        <span className="font-bold text-gray-700">{user.name}</span>
+                                    </div>
+                                    <span className="text-xs text-gray-400 group-hover:text-purple-600">進入 &rarr;</span>
+                                </button>
+                            ))
+                        )}
+                    </div>
 
-        <!-- ================= 活用成語 ================= -->
-        <div class="divider">活用成語</div>
+                    {/* 建立新使用者 */}
+                    <div className="pt-4 border-t border-gray-100">
+                        <label className="text-xs text-gray-400 mb-2 block">或建立新挑戰者</label>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newUsername}
+                                onChange={(e) => setNewUsername(e.target.value)}
+                                placeholder="輸入您的名字"
+                                className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                onKeyPress={(e) => e.key === 'Enter' && handleCreate()}
+                            />
+                            <button
+                                onClick={handleCreate}
+                                disabled={!newUsername.trim() || isCreating}
+                                className="px-4 py-2 bg-purple-700 text-white text-sm rounded-lg font-bold hover:bg-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                                {isCreating ? '建立中...' : '開始'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-        <a href="Chinese-Learning-21.html" class="app-card theme-orange">
-            <div class="card-icon">🐉</div>
-            <div class="card-title">第 1 站<br>容易混淆的成語</div>
-            <div class="card-desc">Chinese-Learning-21</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-22.html" class="app-card theme-orange">
-            <div class="card-icon">🧑‍🏫</div>
-            <div class="card-title">第 2 站<br>成語中的名人</div>
-            <div class="card-desc">Chinese-Learning-22</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-23.html" class="app-card theme-orange">
-            <div class="card-icon">📉</div>
-            <div class="card-title">第 3 站<br>貶義成語</div>
-            <div class="card-desc">Chinese-Learning-23</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-24.html" class="app-card theme-orange">
-            <div class="card-icon">🤝</div>
-            <div class="card-title">第 4 站<br>義近成語</div>
-            <div class="card-desc">Chinese-Learning-24</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-25.html" class="app-card theme-orange">
-            <div class="card-icon">🏗️</div>
-            <div class="card-title">第 5 站<br>成語的特殊結構</div>
-            <div class="card-desc">Chinese-Learning-25</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+        // 課程卡片組件
+        const LessonCard = ({ item, theme, isCompleted, onToggle }) => {
+            return (
+                <div 
+                    onClick={(e) => {
+                        // 防止點擊連結時觸發 Toggle (如果未來把 div 換回 a tag)
+                        // 但現在我們是用 div wrap，點擊整張卡片都 toggle 比較直覺
+                        onToggle();
+                    }}
+                    className={`app-card ${theme} theme-item ${isCompleted ? 'completed' : ''} group select-none`}
+                >
+                    {/* 核取方塊 (視覺輔助) */}
+                    <div className="absolute top-3 right-3 z-20">
+                        <div className="check-circle">
+                            {isCompleted && <span className="text-sm font-bold">✓</span>}
+                        </div>
+                    </div>
 
-        <!-- ================= 辨識文法 ================= -->
-        <div class="divider">辨識文法</div>
+                    <div className="card-icon group-hover:scale-110 transition-transform duration-300">
+                        {item.icon}
+                    </div>
+                    
+                    <div className="card-title text-center text-lg mb-2">
+                        {item.title}<br/>
+                        <span className="text-base font-normal opacity-90">{item.subtitle}</span>
+                    </div>
+                    
+                    <div className="card-desc text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded mb-4 font-mono">
+                        {item.file}
+                    </div>
 
-        <a href="Chinese-Learning-26.html" class="app-card theme-blue">
-            <div class="card-icon">🔄</div>
-            <div class="card-title">第 1 站<br>詞性轉換（轉品）</div>
-            <div class="card-desc">Chinese-Learning-26</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-27.html" class="app-card theme-blue">
-            <div class="card-icon">📝</div>
-            <div class="card-title">第 2 站<br>句子的種類</div>
-            <div class="card-desc">Chinese-Learning-27</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-28.html" class="app-card theme-blue">
-            <div class="card-icon">🎯</div>
-            <div class="card-title">第 3 站<br>主語判斷</div>
-            <div class="card-desc">Chinese-Learning-28</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                    <div className={`card-badge rounded-full px-3 py-1 text-xs font-bold tracking-wider text-white mt-auto ${isCompleted ? '' : 'bg-green-600'}`}>
+                        {isCompleted ? '已完成' : '進入學習'}
+                    </div>
 
-        <!-- ================= 探索應用文 ================= -->
-        <div class="divider">探索應用文</div>
+                    {/* 隱藏的實際連結，點擊卡片時可以選擇是否要跳轉，或者純紀錄進度 */}
+                    {/* 這裡設計為：點擊卡片切換狀態，並非直接跳轉，讓使用者作為 Checkbox List 使用 */}
+                    {/* 若需要跳轉，可以把 onClick 改成 window.location.href，但題目要求 "手動核取方塊" */}
+                </div>
+            );
+        };
 
-        <a href="Chinese-Learning-29.html" class="app-card theme-red">
-            <div class="card-icon">✉️</div>
-            <div class="card-title">第 1 站<br>書信、柬帖</div>
-            <div class="card-desc">Chinese-Learning-29</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-30.html" class="app-card theme-red">
-            <div class="card-icon">📌</div>
-            <div class="card-title">第 2 站<br>啟事、便條</div>
-            <div class="card-desc">Chinese-Learning-30</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-31.html" class="app-card theme-red">
-            <div class="card-icon">🧧</div>
-            <div class="card-title">第 3 站<br>對聯、題辭</div>
-            <div class="card-desc">Chinese-Learning-31</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+        // 主程式
+        const App = () => {
+            const [user, setUser] = useState(null); // Firebase Auth User
+            const [currentProfile, setCurrentProfile] = useState(null); // App 內選擇的身分 { name, uid }
+            const [usersList, setUsersList] = useState([]); // 所有使用者列表
+            const [progress, setProgress] = useState({}); // 個人進度 { lessonId: true }
+            const [status, setStatus] = useState('loading'); // 連線狀態
 
-        <!-- ================= 貫通國學常識 ================= -->
-        <div class="divider">貫通國學常識</div>
+            // 1. 初始化 Auth & 監聽全域使用者列表
+            useEffect(() => {
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (err) {
+                        console.error("Auth Error:", err);
+                        setStatus('error');
+                    }
+                };
+                initAuth();
 
-        <a href="Chinese-Learning-32.html" class="app-card theme-brown">
-            <div class="card-icon">🏮</div>
-            <div class="card-title">第 1 站<br>季節、節慶的比較</div>
-            <div class="card-desc">Chinese-Learning-32</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-33.html" class="app-card theme-brown">
-            <div class="card-icon">⏳</div>
-            <div class="card-title">第 2 站<br>年齡、天干地支</div>
-            <div class="card-desc">Chinese-Learning-33</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-34.html" class="app-card theme-brown">
-            <div class="card-icon">📚</div>
-            <div class="card-title">第 3 站<br>各代文學主流</div>
-            <div class="card-desc">Chinese-Learning-34</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-35.html" class="app-card theme-brown">
-            <div class="card-icon">🎵</div>
-            <div class="card-title">第 4 站<br>詩詞曲格律比較</div>
-            <div class="card-desc">Chinese-Learning-35</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+                    if (u) {
+                        setUser(u);
+                        // 監聽公共使用者列表
+                        const listRef = doc(getPublicRef('user_directory'), 'all_users');
+                        const unsubList = onSnapshot(listRef, (docSnap) => {
+                            if (docSnap.exists()) {
+                                setUsersList(docSnap.data().list || []);
+                            } else {
+                                // 如果文件不存在，設為空陣列 (第一次使用)
+                                setUsersList([]);
+                            }
+                            setStatus('success');
+                        }, (err) => {
+                            console.error("List Fetch Error:", err);
+                            setStatus('error');
+                        });
+                        return () => unsubList();
+                    }
+                });
 
-        <!-- ================= 品賞寫作技巧 ================= -->
-        <div class="divider">品賞寫作技巧</div>
+                return () => unsubscribeAuth();
+            }, []);
 
-        <a href="Chinese-Learning-36.html" class="app-card theme-teal">
-            <div class="card-icon">✨</div>
-            <div class="card-title">第 1 站<br>善用修辭一：生動</div>
-            <div class="card-desc">Chinese-Learning-36</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-37.html" class="app-card theme-teal">
-            <div class="card-icon">🌸</div>
-            <div class="card-title">第 2 站<br>善用修辭二：優美</div>
-            <div class="card-desc">Chinese-Learning-37</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-38.html" class="app-card theme-teal">
-            <div class="card-icon">，</div>
-            <div class="card-title">第 3 站<br>標點符號的使用</div>
-            <div class="card-desc">Chinese-Learning-38</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-39.html" class="app-card theme-teal">
-            <div class="card-icon">✂️</div>
-            <div class="card-title">第 4 站<br>冗言贅字判斷</div>
-            <div class="card-desc">Chinese-Learning-39</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-40.html" class="app-card theme-teal">
-            <div class="card-icon">🩺</div>
-            <div class="card-title">第 5 站<br>語病判斷</div>
-            <div class="card-desc">Chinese-Learning-40</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-41.html" class="app-card theme-teal">
-            <div class="card-icon">🖋️</div>
-            <div class="card-title">第 6 站<br>寫作技巧判斷</div>
-            <div class="card-desc">Chinese-Learning-41</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+            // 2. 監聽個人進度 (當 currentProfile 改變時)
+            useEffect(() => {
+                if (!user || !currentProfile) return;
 
-        <!-- ================= 領會句義 ================= -->
-        <div class="divider">領會句義</div>
+                setStatus('loading');
+                const progressRef = doc(getUserRef(currentProfile.uid, 'user_progress'), 'main');
+                
+                const unsubProgress = onSnapshot(progressRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        setProgress(docSnap.data().completed || {});
+                    } else {
+                        setProgress({});
+                    }
+                    setStatus('success');
+                }, (err) => {
+                    console.error("Progress Sync Error:", err);
+                    setStatus('error');
+                });
 
-        <a href="Chinese-Learning-42.html" class="app-card theme-green">
-            <div class="card-icon">🧠</div>
-            <div class="card-title">第 1 站<br>句式邏輯</div>
-            <div class="card-desc">Chinese-Learning-42</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-43.html" class="app-card theme-green">
-            <div class="card-icon">⚖️</div>
-            <div class="card-title">第 2 站<br>雙句句義比較</div>
-            <div class="card-desc">Chinese-Learning-43</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-44.html" class="app-card theme-green">
-            <div class="card-icon">🗣️</div>
-            <div class="card-title">第 3 站<br>俗語、諺語</div>
-            <div class="card-desc">Chinese-Learning-44</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-45.html" class="app-card theme-green">
-            <div class="card-icon">🤔</div>
-            <div class="card-title">第 4 站<br>語氣判斷</div>
-            <div class="card-desc">Chinese-Learning-45</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                return () => unsubProgress();
+            }, [user, currentProfile]);
 
-        <!-- ================= 填空與重組 ================= -->
-        <div class="divider">填空與重組</div>
+            // 處理登入 / 建立新用戶
+            const handleLogin = async (userDataOrName, isNew) => {
+                if (!user) return;
 
-        <a href="Chinese-Learning-46.html" class="app-card theme-orange">
-            <div class="card-icon">✏️</div>
-            <div class="card-title">第 1 站<br>白話詩文填空</div>
-            <div class="card-desc">Chinese-Learning-46</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-47.html" class="app-card theme-orange">
-            <div class="card-icon">🖌️</div>
-            <div class="card-title">第 2 站<br>文言詩文填空</div>
-            <div class="card-desc">Chinese-Learning-47</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-48.html" class="app-card theme-orange">
-            <div class="card-icon">🧩</div>
-            <div class="card-title">第 3 站<br>白話詩文重組</div>
-            <div class="card-desc">Chinese-Learning-48</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-49.html" class="app-card theme-orange">
-            <div class="card-icon">📜</div>
-            <div class="card-title">第 4 站<br>文言詩文重組</div>
-            <div class="card-desc">Chinese-Learning-49</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                if (isNew) {
+                    const newProfile = {
+                        name: userDataOrName,
+                        uid: crypto.randomUUID(), // 生成一個虛擬 ID 來區分不同使用者 (都在同一個 Auth 帳號下管理)
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    // 更新全域列表
+                    const listRef = doc(getPublicRef('user_directory'), 'all_users');
+                    try {
+                        // 檢查文件是否存在，若無則建立
+                        const docSnap = await getDoc(listRef);
+                        if (!docSnap.exists()) {
+                            await setDoc(listRef, { list: [newProfile] });
+                        } else {
+                            await updateDoc(listRef, {
+                                list: arrayUnion(newProfile)
+                            });
+                        }
+                        setCurrentProfile(newProfile);
+                    } catch (e) {
+                        console.error("Create User Error:", e);
+                        alert("建立失敗，請稍後再試");
+                    }
+                } else {
+                    // 選擇既有用戶
+                    setCurrentProfile(userDataOrName);
+                }
+            };
 
-        <!-- ================= 閱讀圖文表 ================= -->
-        <div class="divider">閱讀圖文表</div>
+            const handleLogout = () => {
+                setCurrentProfile(null);
+                setProgress({});
+            };
 
-        <a href="Chinese-Learning-50.html" class="app-card theme-indigo">
-            <div class="card-icon">📢</div>
-            <div class="card-title">第 1 站<br>文宣廣告閱讀測驗</div>
-            <div class="card-desc">Chinese-Learning-50</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-51.html" class="app-card theme-indigo">
-            <div class="card-icon">📊</div>
-            <div class="card-title">第 2 站<br>圖文表單題閱讀</div>
-            <div class="card-desc">Chinese-Learning-51</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-52.html" class="app-card theme-indigo">
-            <div class="card-icon">📈</div>
-            <div class="card-title">第 3 站<br>圖文表題組閱讀</div>
-            <div class="card-desc">Chinese-Learning-52</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+            // 切換完成狀態
+            const toggleProgress = async (lessonId) => {
+                if (!currentProfile) return;
+                
+                const newStatus = !progress[lessonId];
+                // 樂觀更新 (UI First)
+                const newProgress = { ...progress, [lessonId]: newStatus };
+                setProgress(newProgress);
 
-        <!-- ================= 閱讀白話文 ================= -->
-        <div class="divider">閱讀白話文</div>
+                // 寫入 Firestore
+                try {
+                    const progressRef = doc(getUserRef(currentProfile.uid, 'user_progress'), 'main');
+                    await setDoc(progressRef, { completed: newProgress }, { merge: true });
+                } catch (e) {
+                    console.error("Save Progress Error:", e);
+                    setStatus('error');
+                    // 回滾
+                    setProgress({ ...progress, [lessonId]: !newStatus });
+                }
+            };
 
-        <a href="Chinese-Learning-53.html" class="app-card theme-red">
-            <div class="card-icon">📖</div>
-            <div class="card-title">第 1 站<br>白話文單題閱讀</div>
-            <div class="card-desc">Chinese-Learning-53</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-54.html" class="app-card theme-red">
-            <div class="card-icon">📚</div>
-            <div class="card-title">第 2 站<br>白話文題組閱讀</div>
-            <div class="card-desc">Chinese-Learning-54</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-55.html" class="app-card theme-red">
-            <div class="card-icon">🌍</div>
-            <div class="card-title">第 3 站<br>核心議題單題閱讀</div>
-            <div class="card-desc">Chinese-Learning-55</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-56.html" class="app-card theme-red">
-            <div class="card-icon">🌐</div>
-            <div class="card-title">第 4 站<br>核心議題題組閱讀</div>
-            <div class="card-desc">Chinese-Learning-56</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-57.html" class="app-card theme-red">
-            <div class="card-icon">🌱</div>
-            <div class="card-title">第 5 站<br>17 項 SDGs 單題</div>
-            <div class="card-desc">Chinese-Learning-57</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-58.html" class="app-card theme-red">
-            <div class="card-icon">🌿</div>
-            <div class="card-title">第 6 站<br>17 項 SDGs 題組</div>
-            <div class="card-desc">Chinese-Learning-58</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+            // 計算統計數據
+            const totalLessons = ALL_CATEGORIES.reduce((acc, cat) => acc + cat.items.length, 0);
+            const completedCount = Object.values(progress).filter(Boolean).length;
+            const progressPercentage = Math.round((completedCount / totalLessons) * 100);
 
-        <!-- ================= 閱讀詩詞曲 ================= -->
-        <div class="divider">閱讀詩詞曲</div>
+            // 渲染：主控台 (現在包含登入後的內容與登入前的 Widget)
+            return (
+                <div className="flex flex-col items-center min-h-screen pb-20">
+                    {/* Header Area */}
+                    <header className="w-full max-w-4xl px-6 pt-10 pb-6 text-center relative">
+                        {/* 狀態列 (右上角) */}
+                        <div className="absolute top-4 right-4 flex gap-2">
+                            <StatusLight status={status} />
+                            {currentProfile && (
+                                <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-red-500 bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm transition-colors">
+                                    登出
+                                </button>
+                            )}
+                        </div>
 
-        <a href="Chinese-Learning-59.html" class="app-card theme-purple">
-            <div class="card-icon">⛅</div>
-            <div class="card-title">第 1 站<br>現代詩單題閱讀</div>
-            <div class="card-desc">Chinese-Learning-59</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-60.html" class="app-card theme-purple">
-            <div class="card-icon">🌧️</div>
-            <div class="card-title">第 2 站<br>現代詩題組閱讀</div>
-            <div class="card-desc">Chinese-Learning-60</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-61.html" class="app-card theme-purple">
-            <div class="card-icon">🌙</div>
-            <div class="card-title">第 3 站<br>詩詞曲單題閱讀</div>
-            <div class="card-desc">Chinese-Learning-61</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-62.html" class="app-card theme-purple">
-            <div class="card-icon">🏯</div>
-            <div class="card-title">第 4 站<br>詩詞曲題組閱讀</div>
-            <div class="card-desc">Chinese-Learning-62</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                        {/* Title (Always visible) */}
+                        <h1 className="text-4xl md:text-5xl font-serif font-black text-gray-800 mb-2 tracking-wide" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>
+                            📜 國文學習總部
+                        </h1>
 
-        <!-- ================= 閱讀文言文 ================= -->
-        <div class="divider">閱讀文言文</div>
+                        {/* Conditional Header Content: Login Widget OR Welcome+Progress */}
+                        {!currentProfile ? (
+                            <div className="mt-8 mb-8">
+                                <p className="text-[#5d4037] text-lg font-medium mb-6">品味文字的奧妙，穿梭古今的文學之旅</p>
+                                <UserLoginWidget onLogin={handleLogin} usersList={usersList} />
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-[#5d4037] text-lg font-medium mb-8">
+                                    歡迎回來，<span className="font-bold text-purple-700">{currentProfile.name}</span>！ 品味文字的奧妙
+                                </p>
 
-        <a href="Chinese-Learning-63.html" class="app-card theme-brown">
-            <div class="card-icon">📜</div>
-            <div class="card-title">第 1 站<br>文言文單題閱讀</div>
-            <div class="card-desc">Chinese-Learning-63</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-64.html" class="app-card theme-brown">
-            <div class="card-icon">🕯️</div>
-            <div class="card-title">第 2 站<br>文言文題組閱讀</div>
-            <div class="card-desc">Chinese-Learning-64</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                                {/* 進度條 */}
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8 max-w-lg mx-auto">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <span className="text-sm font-bold text-gray-500">目前修煉進度</span>
+                                        <span className="text-2xl font-black text-purple-700 font-mono">
+                                            {completedCount} <span className="text-sm text-gray-400">/ {totalLessons}</span>
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                                        <div 
+                                            className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-full transition-all duration-1000 ease-out"
+                                            style={{ width: `${progressPercentage}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
-        <!-- ================= 進階閱讀素養 ================= -->
-        <div class="divider">進階閱讀素養</div>
+                        <a href="https://nicktsai88.github.io/List/" className="inline-flex items-center gap-2 bg-gradient-to-br from-purple-700 to-indigo-800 text-white px-8 py-3 rounded-full font-bold hover:shadow-lg hover:-translate-y-1 transition-all border-2 border-white shadow-md">
+                            🎁 返回快樂學習百寶箱
+                        </a>
+                    </header>
 
-        <a href="Chinese-Learning-65.html" class="app-card theme-indigo">
-            <div class="card-icon">👓</div>
-            <div class="card-title">第 1 站<br>白話文雙文閱讀</div>
-            <div class="card-desc">Chinese-Learning-65</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-66.html" class="app-card theme-indigo">
-            <div class="card-icon">⚖️</div>
-            <div class="card-title">第 2 站<br>古今雙文閱讀</div>
-            <div class="card-desc">Chinese-Learning-66</div>
-            <div class="card-badge">進入學習</div>
-        </a>
-        <a href="Chinese-Learning-67.html" class="app-card theme-indigo">
-            <div class="card-icon">🎓</div>
-            <div class="card-title">第 3 站<br>文言文雙文閱讀</div>
-            <div class="card-desc">Chinese-Learning-67</div>
-            <div class="card-badge">進入學習</div>
-        </a>
+                    {/* Main Content (Only if logged in) */}
+                    {currentProfile && (
+                        <main className="w-full max-w-6xl px-4 animate-fade-in-up">
+                            {ALL_CATEGORIES.map((category, idx) => (
+                                <div key={idx} className="mb-8">
+                                    <div className="divider">{category.title}</div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                        {category.items.map((item) => (
+                                            <LessonCard 
+                                                key={item.id}
+                                                item={item}
+                                                theme={category.theme}
+                                                isCompleted={!!progress[item.id]}
+                                                onToggle={() => toggleProgress(item.id)}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </main>
+                    )}
 
-    </div>
+                    <footer className="text-center text-gray-400 text-sm mt-12 mb-8">
+                        國文學習 App &copy; {new Date().getFullYear()} All Rights Reserved.
+                    </footer>
+                </div>
+            );
+        };
 
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
