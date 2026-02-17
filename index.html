@@ -783,7 +783,8 @@
                     <div className="pb-20">
                         {RAW_DATA.map((section, idx) => (
                             <div key={idx} className="mb-12">
-                                <div className="section-divider">{section.name}</div>
+                                {/* 修正此處：將 section.name 改為 section.title */}
+                                <div className="section-divider">{section.title}</div>
                                 <div className="app-grid">
                                     {section.items.map((item) => {
                                         const isDone = !!localProgress[item.code];
