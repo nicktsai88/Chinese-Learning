@@ -3,73 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>國文學習 App - 雲端進化版</title>
-    
-    <!-- 字體 -->
+    <title>國文(主題探索)</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
     
-    <!-- Tailwind CSS (用於快速佈局) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM (UMD Global) -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    
-    <!-- Babel (解析 JSX) -->
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Import Map for Firebase (Only for Firebase modules) -->
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Import Map for Firebase -->
     <script type="importmap">
-    {
+      {
         "imports": {
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
         }
-    }
+      }
     </script>
 
     <style>
         :root {
-            /* 國文主題配色 */
-            --bg: #f9f7f2;
-            --text-main: #2c2c2c;
+            --bg: #fffaf5; /* 暖色調背景適合國文 */
+            --text-main: #4e342e;
             --card-bg: #ffffff;
-            --primary-amber: #ffab00;
         }
 
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: var(--bg);
-            background-image: radial-gradient(#e0e0e0 1px, transparent 1px);
+            background-image: radial-gradient(#d7ccc8 1px, transparent 1px);
             background-size: 20px 20px;
-            color: var(--text-main);
             margin: 0;
-            padding: 0;
+            padding: 20px;
             min-height: 100vh;
+            color: var(--text-main);
         }
 
-        /* 標題字體 */
-        .font-serif { font-family: 'Noto Serif TC', serif; }
+        h1, h2, .font-serif { font-family: 'Noto Serif TC', serif; }
 
-        /* 卡片基礎樣式 */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            max-width: 900px;
+        }
+
+        .header h1 {
+            font-family: 'Noto Serif TC', serif;
+            color: var(--text-main);
+            font-size: 3.5em; 
+            font-weight: 900; 
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px rgba(0,0,0,0.05);
+        }
+
+        .header p {
+            color: #795548;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        .home-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #8d6e63 0%, #a1887f 100%);
+            color: white;
+            padding: 15px 50px;
+            border-radius: 9999px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.3em;
+            box-shadow: 0 6px 15px rgba(141, 110, 99, 0.3);
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        .home-btn:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 8px 20px rgba(141, 110, 99, 0.4); 
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 1300px;
+            margin-bottom: 40px;
+        }
+
         .app-card {
             background: var(--card-bg);
             border-radius: 12px;
             padding: 20px;
+            text-decoration: none;
             color: #333;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             border-top: 6px solid #ccc;
-            border-left: 1px solid rgba(0,0,0,0.05);
-            border-right: 1px solid rgba(0,0,0,0.05);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            position: relative;
-            cursor: pointer;
-            text-decoration: none;
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(0,0,0,0.05);
+            min-height: 200px;
         }
 
         .app-card:hover {
@@ -77,334 +120,417 @@
             box-shadow: 0 12px 30px rgba(0,0,0,0.1);
         }
 
-        /* === 已完成特效 === */
+        /* Completed state styling is handled dynamically in React for glowing effect */
         .app-card.completed {
-            border: 4px solid var(--primary-amber) !important;
-            border-top: 6px solid var(--primary-amber) !important;
-            box-shadow: 0 0 20px rgba(255, 171, 0, 0.5) !important;
             transform: scale(1.02);
-            background-color: #fff8e1;
-            z-index: 10;
+            background-color: #ffffff; 
         }
 
-        .app-card.completed .card-badge {
-            background: var(--primary-amber) !important;
-            box-shadow: 0 0 8px rgba(255, 171, 0, 0.6);
-            color: #fff;
-        }
-
-        .app-card.completed .card-icon {
-            background: rgba(255, 171, 0, 0.1) !important;
-            color: #e65100 !important;
-        }
-
-        /* 圖示容器 */
-        .card-icon {
-            width: 60px;
-            height: 60px;
+        .card-icon-wrapper {
+            font-size: 2.2em;
+            margin-bottom: 12px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2em;
-            margin-bottom: 15px;
-            border: 1px solid transparent;
+            background: #f5f5f5;
         }
 
-        /* 分隔線 */
-        .divider {
+        .card-title {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.15em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            color: #444;
+            flex-grow: 1;
             display: flex;
             align-items: center;
-            margin: 40px 0 20px 0;
-            color: #555;
-            font-family: 'Noto Serif TC', serif;
-            font-size: 1.5em;
-            font-weight: bold;
+            justify-content: center;
         }
-        .divider::before, .divider::after {
-            content: "";
-            flex: 1;
-            border-bottom: 2px solid #ddd;
+
+        .card-desc {
+            font-size: 0.8em;
+            color: #888;
+            background: #f9f9f9;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-family: monospace;
+            margin-top: auto;
         }
-        .divider::before { margin-right: 15px; }
-        .divider::after { margin-left: 15px; }
 
-        /* 狀態燈號動畫 */
-        @keyframes pulse-dot {
-            0% { opacity: 0.6; transform: scale(0.9); }
-            50% { opacity: 1; transform: scale(1.1); }
-            100% { opacity: 0.6; transform: scale(0.9); }
-        }
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-        }
-        .status-loading { background-color: #fdd835; animation: pulse-dot 1.5s infinite; }
-        .status-success { background-color: #4caf50; }
-        .status-error { background-color: #ef5350; }
-        .status-offline { background-color: #9e9e9e; }
-
-        /* 主題色系定義 */
-        .theme-blue { --theme-c: #3949ab; --theme-bg: #e8eaf6; }
-        .theme-orange { --theme-c: #e65100; --theme-bg: #fff3e0; }
-        .theme-green { --theme-c: #2e7d32; --theme-bg: #e8f5e9; }
-        .theme-teal { --theme-c: #00695c; --theme-bg: #e0f2f1; }
-        .theme-purple { --theme-c: #6a1b9a; --theme-bg: #f3e5f5; }
-        .theme-red { --theme-c: #c62828; --theme-bg: #ffebee; }
-        .theme-brown { --theme-c: #8d6e63; --theme-bg: #efebe9; }
-        .theme-indigo { --theme-c: #283593; --theme-bg: #e8eaf6; }
-
-        .theme-item { border-top-color: var(--theme-c); }
-        .theme-item .card-icon { background: var(--theme-bg); color: var(--theme-c); }
-        .theme-item .card-title { color: var(--theme-c); }
-
-        /* 核取方塊樣式 */
-        .check-circle {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
+        .card-checkbox {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 26px;
+            height: 26px;
             border: 2px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
-            background: white;
+            z-index: 10;
         }
-        .app-card:hover .check-circle { border-color: #bbb; }
-        .app-card.completed .check-circle {
-            background: var(--primary-amber);
-            border-color: var(--primary-amber);
-            color: white;
+        
+        .card-checkbox:hover {
+            transform: scale(1.1);
         }
 
-        /* 滾動條美化 */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        .card-checkbox.checked {
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
+        .status-loading { background-color: #fdd835; box-shadow: 0 0 5px #fdd835; }
+        .status-success { background-color: #4caf50; box-shadow: 0 0 5px #4caf50; }
+        .status-error { background-color: #ef5350; box-shadow: 0 0 5px #ef5350; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+        .section-divider {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            margin: 60px 0 30px 0;
+            color: #5d4037;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.8em;
+            font-weight: 900;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.05);
         }
+        .section-divider::before, .section-divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 2px solid #d7ccc8;
+        }
+        .section-divider::before { margin-right: 20px; }
+        .section-divider::after { margin-left: 20px; }
+
+        .quick-user-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 2px solid #bcaaa4;
+            color: #5d4037;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1em;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .quick-user-btn:hover {
+            background: #efebe9;
+            border-color: #8d6e63;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
     </style>
 </head>
 <body>
+
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
         import { initializeApp } from "firebase/app";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "firebase/auth";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, updateDoc, arrayUnion } from "firebase/firestore";
+        import { getFirestore, doc, setDoc, updateDoc, getDoc, onSnapshot, arrayUnion } from "firebase/firestore";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "firebase/auth";
+
+        // ==========================================
+        // 1. Firebase Config
+        // ==========================================
         
-        // ★ 修正重點：因為使用 CDN UMD 版本，React 已經是全域變數，不需要 import，直接解構使用即可。
-        const { useState, useEffect, useMemo } = React;
-        // ReactDOM 也是全域變數
-
-        /* ================= 資料定義 ================= */
-        const ALL_CATEGORIES = [
-            {
-                title: "認識字形",
-                theme: "theme-blue",
-                items: [
-                    { id: "L1", title: "第 1 站", subtitle: "「相似詞語」的分辨", file: "Chinese-Learning-1.html", icon: "✍️" },
-                    { id: "L2", title: "第 2 站", subtitle: "「形近字」的分辨", file: "Chinese-Learning-2.html", icon: "👀" },
-                    { id: "L3", title: "第 3 站", subtitle: "「音近字」的分辨", file: "Chinese-Learning-3.html", icon: "🔍" },
-                    { id: "L4", title: "第 4 站", subtitle: "重要詞語辨正", file: "Chinese-Learning-4.html", icon: "✅" }
-                ]
-            },
-            {
-                title: "分辨字音",
-                theme: "theme-orange",
-                items: [
-                    { id: "L5", title: "第 1 站", subtitle: "相似字「字音」辨正", file: "Chinese-Learning-5.html", icon: "👂" },
-                    { id: "L6", title: "第 2 站", subtitle: "一字多音辨正", file: "Chinese-Learning-6.html", icon: "🗣️" },
-                    { id: "L7", title: "第 3 站", subtitle: "重要讀音辨正", file: "Chinese-Learning-7.html", icon: "🔊" }
-                ]
-            },
-            {
-                title: "欣賞造字法則",
-                theme: "theme-green",
-                items: [
-                    { id: "L8", title: "第 1 站", subtitle: "造字法則", file: "Chinese-Learning-8.html", icon: "🧱" },
-                    { id: "L9", title: "第 2 站", subtitle: "漢字形體的演變", file: "Chinese-Learning-9.html", icon: "📜" }
-                ]
-            },
-            {
-                title: "判別字義",
-                theme: "theme-teal",
-                items: [
-                    { id: "L10", title: "第 1 站", subtitle: "量詞", file: "Chinese-Learning-10.html", icon: "📏" },
-                    { id: "L11", title: "第 2 站", subtitle: "實數、虛數", file: "Chinese-Learning-11.html", icon: "🔢" },
-                    { id: "L12", title: "第 3 站", subtitle: "重要字義、一字多義", file: "Chinese-Learning-12.html", icon: "📖" },
-                    { id: "L13", title: "第 4 站", subtitle: "其他特殊字義", file: "Chinese-Learning-13.html", icon: "💡" }
-                ]
-            },
-            {
-                title: "理解詞語",
-                theme: "theme-purple",
-                items: [
-                    { id: "L14", title: "第 1 站", subtitle: "狀聲詞", file: "Chinese-Learning-14.html", icon: "🔔" },
-                    { id: "L15", title: "第 2 站", subtitle: "敬詞、謙詞", file: "Chinese-Learning-15.html", icon: "🙏" },
-                    { id: "L16", title: "第 3 站", subtitle: "慣用語", file: "Chinese-Learning-16.html", icon: "💬" },
-                    { id: "L17", title: "第 4 站", subtitle: "一詞多義", file: "Chinese-Learning-17.html", icon: "🔄" },
-                    { id: "L18", title: "第 5 站", subtitle: "容易混淆的詞語", file: "Chinese-Learning-18.html", icon: "😵" },
-                    { id: "L19", title: "第 6 站", subtitle: "偏義複詞", file: "Chinese-Learning-19.html", icon: "⚖️" },
-                    { id: "L20", title: "第 7 站", subtitle: "一般常用詞語", file: "Chinese-Learning-20.html", icon: "📝" }
-                ]
-            },
-            {
-                title: "活用成語",
-                theme: "theme-orange",
-                items: [
-                    { id: "L21", title: "第 1 站", subtitle: "容易混淆的成語", file: "Chinese-Learning-21.html", icon: "🐉" },
-                    { id: "L22", title: "第 2 站", subtitle: "成語中的名人", file: "Chinese-Learning-22.html", icon: "🧑‍🏫" },
-                    { id: "L23", title: "第 3 站", subtitle: "貶義成語", file: "Chinese-Learning-23.html", icon: "📉" },
-                    { id: "L24", title: "第 4 站", subtitle: "義近成語", file: "Chinese-Learning-24.html", icon: "🤝" },
-                    { id: "L25", title: "第 5 站", subtitle: "成語的特殊結構", file: "Chinese-Learning-25.html", icon: "🏗️" }
-                ]
-            },
-            {
-                title: "辨識文法",
-                theme: "theme-blue",
-                items: [
-                    { id: "L26", title: "第 1 站", subtitle: "詞性轉換（轉品）", file: "Chinese-Learning-26.html", icon: "🔄" },
-                    { id: "L27", title: "第 2 站", subtitle: "句子的種類", file: "Chinese-Learning-27.html", icon: "📝" },
-                    { id: "L28", title: "第 3 站", subtitle: "主語判斷", file: "Chinese-Learning-28.html", icon: "🎯" }
-                ]
-            },
-            {
-                title: "探索應用文",
-                theme: "theme-red",
-                items: [
-                    { id: "L29", title: "第 1 站", subtitle: "書信、柬帖", file: "Chinese-Learning-29.html", icon: "✉️" },
-                    { id: "L30", title: "第 2 站", subtitle: "啟事、便條", file: "Chinese-Learning-30.html", icon: "📌" },
-                    { id: "L31", title: "第 3 站", subtitle: "對聯、題辭", file: "Chinese-Learning-31.html", icon: "🧧" }
-                ]
-            },
-            {
-                title: "貫通國學常識",
-                theme: "theme-brown",
-                items: [
-                    { id: "L32", title: "第 1 站", subtitle: "季節、節慶的比較", file: "Chinese-Learning-32.html", icon: "🏮" },
-                    { id: "L33", title: "第 2 站", subtitle: "年齡、天干地支", file: "Chinese-Learning-33.html", icon: "⏳" },
-                    { id: "L34", title: "第 3 站", subtitle: "各代文學主流", file: "Chinese-Learning-34.html", icon: "📚" },
-                    { id: "L35", title: "第 4 站", subtitle: "詩詞曲格律比較", file: "Chinese-Learning-35.html", icon: "🎵" }
-                ]
-            },
-            {
-                title: "品賞寫作技巧",
-                theme: "theme-teal",
-                items: [
-                    { id: "L36", title: "第 1 站", subtitle: "善用修辭一：生動", file: "Chinese-Learning-36.html", icon: "✨" },
-                    { id: "L37", title: "第 2 站", subtitle: "善用修辭二：優美", file: "Chinese-Learning-37.html", icon: "🌸" },
-                    { id: "L38", title: "第 3 站", subtitle: "標點符號的使用", file: "Chinese-Learning-38.html", icon: "，" },
-                    { id: "L39", title: "第 4 站", subtitle: "冗言贅字判斷", file: "Chinese-Learning-39.html", icon: "✂️" },
-                    { id: "L40", title: "第 5 站", subtitle: "語病判斷", file: "Chinese-Learning-40.html", icon: "🩺" },
-                    { id: "L41", title: "第 6 站", subtitle: "寫作技巧判斷", file: "Chinese-Learning-41.html", icon: "🖋️" }
-                ]
-            },
-            {
-                title: "領會句義",
-                theme: "theme-green",
-                items: [
-                    { id: "L42", title: "第 1 站", subtitle: "句式邏輯", file: "Chinese-Learning-42.html", icon: "🧠" },
-                    { id: "L43", title: "第 2 站", subtitle: "雙句句義比較", file: "Chinese-Learning-43.html", icon: "⚖️" },
-                    { id: "L44", title: "第 3 站", subtitle: "俗語、諺語", file: "Chinese-Learning-44.html", icon: "🗣️" },
-                    { id: "L45", title: "第 4 站", subtitle: "語氣判斷", file: "Chinese-Learning-45.html", icon: "🤔" }
-                ]
-            },
-            {
-                title: "填空與重組",
-                theme: "theme-orange",
-                items: [
-                    { id: "L46", title: "第 1 站", subtitle: "白話詩文填空", file: "Chinese-Learning-46.html", icon: "✏️" },
-                    { id: "L47", title: "第 2 站", subtitle: "文言詩文填空", file: "Chinese-Learning-47.html", icon: "🖌️" },
-                    { id: "L48", title: "第 3 站", subtitle: "白話詩文重組", file: "Chinese-Learning-48.html", icon: "🧩" },
-                    { id: "L49", title: "第 4 站", subtitle: "文言詩文重組", file: "Chinese-Learning-49.html", icon: "📜" }
-                ]
-            },
-            {
-                title: "閱讀圖文表",
-                theme: "theme-indigo",
-                items: [
-                    { id: "L50", title: "第 1 站", subtitle: "文宣廣告閱讀", file: "Chinese-Learning-50.html", icon: "📢" },
-                    { id: "L51", title: "第 2 站", subtitle: "圖文表單題", file: "Chinese-Learning-51.html", icon: "📊" },
-                    { id: "L52", title: "第 3 站", subtitle: "圖文表題組", file: "Chinese-Learning-52.html", icon: "📈" }
-                ]
-            },
-            {
-                title: "閱讀白話文",
-                theme: "theme-red",
-                items: [
-                    { id: "L53", title: "第 1 站", subtitle: "白話文單題", file: "Chinese-Learning-53.html", icon: "📖" },
-                    { id: "L54", title: "第 2 站", subtitle: "白話文題組", file: "Chinese-Learning-54.html", icon: "📚" },
-                    { id: "L55", title: "第 3 站", subtitle: "核心議題單題", file: "Chinese-Learning-55.html", icon: "🌍" },
-                    { id: "L56", title: "第 4 站", subtitle: "核心議題題組", file: "Chinese-Learning-56.html", icon: "🌐" },
-                    { id: "L57", title: "第 5 站", subtitle: "17 項 SDGs 單題", file: "Chinese-Learning-57.html", icon: "🌱" },
-                    { id: "L58", title: "第 6 站", subtitle: "17 項 SDGs 題組", file: "Chinese-Learning-58.html", icon: "🌿" }
-                ]
-            },
-            {
-                title: "閱讀詩詞曲",
-                theme: "theme-purple",
-                items: [
-                    { id: "L59", title: "第 1 站", subtitle: "現代詩單題", file: "Chinese-Learning-59.html", icon: "⛅" },
-                    { id: "L60", title: "第 2 站", subtitle: "現代詩題組", file: "Chinese-Learning-60.html", icon: "🌧️" },
-                    { id: "L61", title: "第 3 站", subtitle: "詩詞曲單題", file: "Chinese-Learning-61.html", icon: "🌙" },
-                    { id: "L62", title: "第 4 站", subtitle: "詩詞曲題組", file: "Chinese-Learning-62.html", icon: "🏯" }
-                ]
-            },
-            {
-                title: "閱讀文言文",
-                theme: "theme-brown",
-                items: [
-                    { id: "L63", title: "第 1 站", subtitle: "文言文單題", file: "Chinese-Learning-63.html", icon: "📜" },
-                    { id: "L64", title: "第 2 站", subtitle: "文言文題組", file: "Chinese-Learning-64.html", icon: "🕯️" }
-                ]
-            },
-            {
-                title: "進階閱讀素養",
-                theme: "theme-indigo",
-                items: [
-                    { id: "L65", title: "第 1 站", subtitle: "白話文雙文", file: "Chinese-Learning-65.html", icon: "👓" },
-                    { id: "L66", title: "第 2 站", subtitle: "古今雙文", file: "Chinese-Learning-66.html", icon: "⚖️" },
-                    { id: "L67", title: "第 3 站", subtitle: "文言文雙文", file: "Chinese-Learning-67.html", icon: "🎓" }
-                ]
-            }
-        ];
-
-        /* ================= Firebase 初始化 ================= */
-        // ★ 修正重點：提供預設物件，避免本地端執行時找不到 __firebase_config 而當機
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-          apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs",
-          authDomain: "chinese-learning-47f4d.firebaseapp.com",
-          projectId: "chinese-learning-47f4d",
-          storageBucket: "chinese-learning-47f4d.firebasestorage.app",
-          messagingSenderId: "76289812052",
-          appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs",
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
         };
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // 資料庫路徑 helper
-        const getPublicRef = (col) => collection(db, 'artifacts', appId, 'public', 'data', col);
-        const getUserRef = (uid, col) => collection(db, 'artifacts', appId, 'users', uid, col);
+        const COLLECTION_NAME = 'Chinese-Learning'; 
+        const DOC_GLOBAL = 'global';
 
-        /* ================= Components ================= */
+        let app, db, auth;
 
-        // 狀態燈號
+        try {
+            if (firebaseConfig.apiKey) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            }
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+        }
+
+        // ==========================================
+        // 2. Data Structure (17 Categories)
+        // ==========================================
+        const generateRawData = () => {
+            const sections = [
+                { 
+                    name: "1.認識字形", 
+                    color: "#e53935", // Red
+                    lightColor: "#ffebee", 
+                    icon: "✍️", 
+                    titles: [
+                        "第 1 站：「相似詞語」的分辨",
+                        "第 2 站：「形近字」的分辨",
+                        "第 3 站：「音近字」的分辨",
+                        "第 4 站：重要詞語辨正"
+                    ] 
+                },
+                { 
+                    name: "2.分辨字音", 
+                    color: "#fb8c00", // Orange
+                    lightColor: "#fff3e0", 
+                    icon: "🗣️", 
+                    titles: [
+                        "第 1 站：相似字「字音」辨正",
+                        "第 2 站：一字多音辨正",
+                        "第 3 站：重要讀音辨正"
+                    ] 
+                },
+                { 
+                    name: "3.欣賞造字法則", 
+                    color: "#fdd835", // Yellow/Amber
+                    lightColor: "#fffde7", 
+                    icon: "🀄", 
+                    titles: [
+                        "第 1 站：造字法則",
+                        "第 2 站：漢字形體的演變"
+                    ] 
+                },
+                { 
+                    name: "4.判別字義", 
+                    color: "#afb42b", // Lime
+                    lightColor: "#f9fbe7", 
+                    icon: "📖", 
+                    titles: [
+                        "第 1 站：量詞",
+                        "第 2 站：實數、虛數",
+                        "第 3 站：重要字義、一字多義",
+                        "第 4 站：其他特殊字義"
+                    ] 
+                },
+                { 
+                    name: "5.理解詞語", 
+                    color: "#43a047", // Green
+                    lightColor: "#e8f5e9", 
+                    icon: "💡", 
+                    titles: [
+                        "第 1 站：狀聲詞",
+                        "第 2 站：敬詞、謙詞",
+                        "第 3 站：慣用語",
+                        "第 4 站：一詞多義",
+                        "第 5 站：容易混淆的詞語",
+                        "第 6 站：偏義複詞",
+                        "第 7 站：一般常用詞語"
+                    ] 
+                },
+                { 
+                    name: "6.活用成語", 
+                    color: "#00897b", // Teal
+                    lightColor: "#e0f2f1", 
+                    icon: "🦁", 
+                    titles: [
+                        "第 1 站：容易混淆的成語",
+                        "第 2 站：成語中的名人",
+                        "第 3 站：貶義成語",
+                        "第 4 站：義近成語",
+                        "第 5 站：成語的特殊結構"
+                    ] 
+                },
+                { 
+                    name: "7.辨識文法", 
+                    color: "#00acc1", // Cyan
+                    lightColor: "#e0f7fa", 
+                    icon: "⚖️", 
+                    titles: [
+                        "第 1 站：詞性轉換（轉品）",
+                        "第 2 站：句子的種類",
+                        "第 3 站：主語判斷"
+                    ] 
+                },
+                { 
+                    name: "8.探索應用文", 
+                    color: "#039be5", // Light Blue
+                    lightColor: "#e1f5fe", 
+                    icon: "✉️", 
+                    titles: [
+                        "第 1 站：書信、柬帖",
+                        "第 2 站：啟事、便條",
+                        "第 3 站：對聯、題辭"
+                    ] 
+                },
+                { 
+                    name: "9.貫通國學常識", 
+                    color: "#3949ab", // Indigo
+                    lightColor: "#e8eaf6", 
+                    icon: "⛩️", 
+                    titles: [
+                        "第 1 站：季節、節慶的比較",
+                        "第 2 站：年齡、天干地支的比較",
+                        "第 3 站：各代文學主流",
+                        "第 4 站：詩詞曲格律比較"
+                    ] 
+                },
+                { 
+                    name: "10.品賞寫作技巧", 
+                    color: "#5e35b1", // Deep Purple
+                    lightColor: "#ede7f6", 
+                    icon: "✒️", 
+                    titles: [
+                        "第 1 站：善用修辭一：讓語意表達更生動的修辭",
+                        "第 2 站：善用修辭二：讓語句形式更優美的修辭",
+                        "第 3 站：標點符號的使用",
+                        "第 4 站：冗言贅字判斷",
+                        "第 5 站：語病判斷",
+                        "第 6 站：寫作技巧判斷"
+                    ] 
+                },
+                { 
+                    name: "11.領會句義", 
+                    color: "#8e24aa", // Purple
+                    lightColor: "#f3e5f5", 
+                    icon: "🤔", 
+                    titles: [
+                        "第 1 站：句式邏輯",
+                        "第 2 站：雙句句義比較",
+                        "第 3 站：俗語、諺語",
+                        "第 4 站：語氣判斷"
+                    ] 
+                },
+                { 
+                    name: "12.填空與重組", 
+                    color: "#d81b60", // Pink
+                    lightColor: "#fce4ec", 
+                    icon: "🧩", 
+                    titles: [
+                        "第 1 站：白話詩文填空",
+                        "第 2 站：文言詩文填空",
+                        "第 3 站：白話詩文重組",
+                        "第 4 站：文言詩文重組"
+                    ] 
+                },
+                { 
+                    name: "13.閱讀圖文表", 
+                    color: "#8d6e63", // Brown
+                    lightColor: "#efebe9", 
+                    icon: "📊", 
+                    titles: [
+                        "第 1 站：文宣廣告閱讀測驗",
+                        "第 2 站：圖文表單題閱讀測驗",
+                        "第 3 站：圖文表題組閱讀測驗"
+                    ] 
+                },
+                { 
+                    name: "14.閱讀白話文", 
+                    color: "#546e7a", // Blue Grey
+                    lightColor: "#eceff1", 
+                    icon: "📃", 
+                    titles: [
+                        "第 1 站：白話文單題閱讀測驗",
+                        "第 2 站：白話文題組閱讀測驗",
+                        "第 3 站：核心議題單題閱讀測驗",
+                        "第 4 站：核心議題題組閱讀測驗",
+                        "第 5 站：17 項 SDGs 單題閱讀測驗",
+                        "第 6 站：17 項 SDGs 題組閱讀測驗"
+                    ] 
+                },
+                { 
+                    name: "15.閱讀詩詞曲", 
+                    color: "#c2185b", // Pink Accent
+                    lightColor: "#f8bbd0", 
+                    icon: "🌸", 
+                    titles: [
+                        "第 1 站：現代詩單題閱讀測驗",
+                        "第 2 站：現代詩題組閱讀測驗",
+                        "第 3 站：詩詞曲單題閱讀測驗",
+                        "第 4 站：詩詞曲題組閱讀測驗"
+                    ] 
+                },
+                { 
+                    name: "16.閱讀文言文", 
+                    color: "#37474f", // Charcoal
+                    lightColor: "#cfd8dc", 
+                    icon: "📜", 
+                    titles: [
+                        "第 1 站：文言文單題閱讀測驗",
+                        "第 2 站：文言文題組閱讀測驗"
+                    ] 
+                },
+                { 
+                    name: "17.進階閱讀素養", 
+                    color: "#263238", // Black/Dark Slate
+                    lightColor: "#b0bec5", 
+                    icon: "🚀", 
+                    titles: [
+                        "第 1 站：白話文雙文閱讀測驗",
+                        "第 2 站：文言文、白話文雙文閱讀測驗",
+                        "第 3 站：文言文雙文閱讀測驗"
+                    ] 
+                }
+            ];
+
+            const result = [];
+            let currentId = 1;
+
+            sections.forEach(sec => {
+                const sectionItems = [];
+                
+                sec.titles.forEach((title, index) => {
+                    sectionItems.push({
+                        id: currentId,
+                        code: `Chinese-Learning-${currentId}`,
+                        title: title,
+                        href: `Chinese-Learning-${currentId}.html`
+                    });
+                    currentId++;
+                });
+
+                result.push({
+                    title: sec.name,
+                    color: sec.color,
+                    lightColor: sec.lightColor,
+                    icon: sec.icon,
+                    items: sectionItems
+                });
+            });
+
+            return result;
+        };
+
+        const RAW_DATA = generateRawData();
+        const TOTAL_ITEMS = 67; 
+
+        // ==========================================
+        // 3. React Components
+        // ==========================================
+
+        const { useState, useEffect, useMemo } = React;
+
         const StatusLight = ({ status }) => {
             let dotClass = 'status-loading';
             let text = '連線中...';
@@ -419,343 +545,306 @@
                 dotClass = 'status-loading';
                 text = '讀取資料中...';
             } else {
-                dotClass = 'status-offline'; 
+                dotClass = ''; 
                 text = '離線模式';
             }
 
             return (
-                <div className="flex items-center text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100 backdrop-blur-sm bg-opacity-90">
+                <div className="flex items-center text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm border border-gray-100">
                     <span className={`status-dot ${dotClass}`}></span>
                     {text}
                 </div>
             );
         };
 
-        // 嵌入式登入組件 (取代全頁 LoginScreen)
-        const UserLoginWidget = ({ onLogin, usersList }) => {
-            const [newUsername, setNewUsername] = useState("");
-            const [isCreating, setIsCreating] = useState(false);
-
-            const handleCreate = async () => {
-                if (!newUsername.trim()) return;
-                setIsCreating(true);
-                await onLogin(newUsername.trim(), true);
-                setIsCreating(false);
-            };
-
-            return (
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-lg w-full mx-auto text-left relative z-10">
-                    <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-                        <span className="text-2xl">👋</span> 誰要開始修煉？
-                    </h2>
-                    
-                    {/* 現有使用者列表 (Quick Login) */}
-                    <div className="space-y-2 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                        {usersList.length === 0 ? (
-                            <p className="text-center text-gray-400 py-4 text-sm bg-gray-50 rounded-lg">
-                                目前尚無挑戰紀錄，成為第一位挑戰者吧！
-                            </p>
-                        ) : (
-                            usersList.map((user) => (
-                                <button
-                                    key={user.uid}
-                                    onClick={() => onLogin(user, false)}
-                                    className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-purple-50 border border-transparent hover:border-purple-200 transition-all text-left group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm">
-                                            {user.name.charAt(0)}
-                                        </div>
-                                        <span className="font-bold text-gray-700">{user.name}</span>
-                                    </div>
-                                    <span className="text-xs text-gray-400 group-hover:text-purple-600">進入 &rarr;</span>
-                                </button>
-                            ))
-                        )}
-                    </div>
-
-                    {/* 建立新使用者 */}
-                    <div className="pt-4 border-t border-gray-100">
-                        <label className="text-xs text-gray-400 mb-2 block">或建立新挑戰者</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newUsername}
-                                onChange={(e) => setNewUsername(e.target.value)}
-                                placeholder="輸入您的名字"
-                                className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                                onKeyPress={(e) => e.key === 'Enter' && handleCreate()}
-                            />
-                            <button
-                                onClick={handleCreate}
-                                disabled={!newUsername.trim() || isCreating}
-                                className="px-4 py-2 bg-purple-700 text-white text-sm rounded-lg font-bold hover:bg-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                            >
-                                {isCreating ? '建立中...' : '開始'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        // 課程卡片組件
-        const LessonCard = ({ item, theme, isCompleted, onToggle }) => {
-            return (
-                <div 
-                    onClick={(e) => {
-                        // 防止點擊連結時觸發 Toggle (如果未來把 div 換回 a tag)
-                        // 但現在我們是用 div wrap，點擊整張卡片都 toggle 比較直覺
-                        onToggle();
-                    }}
-                    className={`app-card ${theme} theme-item ${isCompleted ? 'completed' : ''} group select-none`}
-                >
-                    {/* 核取方塊 (視覺輔助) */}
-                    <div className="absolute top-3 right-3 z-20">
-                        <div className="check-circle">
-                            {isCompleted && <span className="text-sm font-bold">✓</span>}
-                        </div>
-                    </div>
-
-                    <div className="card-icon group-hover:scale-110 transition-transform duration-300">
-                        {item.icon}
-                    </div>
-                    
-                    <div className="card-title text-center text-lg mb-2">
-                        {item.title}<br/>
-                        <span className="text-base font-normal opacity-90">{item.subtitle}</span>
-                    </div>
-                    
-                    <div className="card-desc text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded mb-4 font-mono">
-                        {item.file}
-                    </div>
-
-                    <div className={`card-badge rounded-full px-3 py-1 text-xs font-bold tracking-wider text-white mt-auto ${isCompleted ? '' : 'bg-green-600'}`}>
-                        {isCompleted ? '已完成' : '進入學習'}
-                    </div>
-
-                    {/* 隱藏的實際連結，點擊卡片時可以選擇是否要跳轉，或者純紀錄進度 */}
-                    {/* 這裡設計為：點擊卡片切換狀態，並非直接跳轉，讓使用者作為 Checkbox List 使用 */}
-                    {/* 若需要跳轉，可以把 onClick 改成 window.location.href，但題目要求 "手動核取方塊" */}
-                </div>
-            );
-        };
-
-        // 主程式
         const App = () => {
-            const [user, setUser] = useState(null); // Firebase Auth User
-            const [currentProfile, setCurrentProfile] = useState(null); // App 內選擇的身分 { name, uid }
-            const [usersList, setUsersList] = useState([]); // 所有使用者列表
-            const [progress, setProgress] = useState({}); // 個人進度 { lessonId: true }
-            const [status, setStatus] = useState('loading'); // 連線狀態
+            // UI States
+            const [currentUser, setCurrentUser] = useState(null); 
+            const [allUsers, setAllUsers] = useState([]);
+            const [localProgress, setLocalProgress] = useState({}); 
+            const [loginName, setLoginName] = useState("");
+            const [showLogin, setShowLogin] = useState(false);
+            
+            // System States
+            const [isAuthReady, setIsAuthReady] = useState(false);
+            const [syncStatus, setSyncStatus] = useState("loading"); 
 
-            // 1. 初始化 Auth & 監聽全域使用者列表
+            const completedCount = useMemo(() => {
+                return Object.values(localProgress).filter(v => v === true).length;
+            }, [localProgress]);
+
+            // 1. Init Auth
             useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (err) {
-                        console.error("Auth Error:", err);
-                        setStatus('error');
-                    }
-                };
-                initAuth();
+                if (!firebaseConfig.apiKey) {
+                    setSyncStatus("offline");
+                    const saved = localStorage.getItem('cl_local_progress'); // key updated
+                    if (saved) setLocalProgress(JSON.parse(saved));
+                    return;
+                }
 
-                const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
-                    if (u) {
-                        setUser(u);
-                        // 監聽公共使用者列表
-                        const listRef = doc(getPublicRef('user_directory'), 'all_users');
-                        const unsubList = onSnapshot(listRef, (docSnap) => {
-                            if (docSnap.exists()) {
-                                setUsersList(docSnap.data().list || []);
-                            } else {
-                                // 如果文件不存在，設為空陣列 (第一次使用)
-                                setUsersList([]);
-                            }
-                            setStatus('success');
-                        }, (err) => {
-                            console.error("List Fetch Error:", err);
-                            setStatus('error');
-                        });
-                        return () => unsubList();
+                const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        console.log("Firebase Auth Ready:", user.uid);
+                        setIsAuthReady(true);
+                    } else {
+                        console.log("Signing in anonymously...");
+                        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                        if (initialAuthToken) {
+                            signInWithCustomToken(auth, initialAuthToken).catch(e => console.error("Token login failed", e));
+                        } else {
+                            signInAnonymously(auth).catch(e => console.error("Anon login failed", e));
+                        }
                     }
                 });
 
                 return () => unsubscribeAuth();
             }, []);
 
-            // 2. 監聽個人進度 (當 currentProfile 改變時)
+            // 2. Fetch Users
             useEffect(() => {
-                if (!user || !currentProfile) return;
+                if (!isAuthReady || !db) return;
 
-                setStatus('loading');
-                const progressRef = doc(getUserRef(currentProfile.uid, 'user_progress'), 'main');
-                
-                const unsubProgress = onSnapshot(progressRef, (docSnap) => {
+                setSyncStatus("loading");
+                const unsubGlobal = onSnapshot(doc(db, COLLECTION_NAME, DOC_GLOBAL), (docSnap) => {
                     if (docSnap.exists()) {
-                        setProgress(docSnap.data().completed || {});
+                        setAllUsers(docSnap.data().users || []);
                     } else {
-                        setProgress({});
+                        setDoc(doc(db, COLLECTION_NAME, DOC_GLOBAL), { users: [] }, { merge: true });
+                        setAllUsers([]);
                     }
-                    setStatus('success');
-                }, (err) => {
-                    console.error("Progress Sync Error:", err);
-                    setStatus('error');
+                    if (!currentUser) setSyncStatus("success");
+                }, (error) => {
+                    console.error("Fetch users error:", error);
+                    setSyncStatus("error");
                 });
 
-                return () => unsubProgress();
-            }, [user, currentProfile]);
+                return () => unsubGlobal();
+            }, [isAuthReady, currentUser]);
 
-            // 處理登入 / 建立新用戶
-            const handleLogin = async (userDataOrName, isNew) => {
-                if (!user) return;
+            // 3. Fetch User Progress
+            useEffect(() => {
+                if (!currentUser || !isAuthReady || !db) return;
 
-                if (isNew) {
-                    const newProfile = {
-                        name: userDataOrName,
-                        uid: crypto.randomUUID(), // 生成一個虛擬 ID 來區分不同使用者 (都在同一個 Auth 帳號下管理)
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    // 更新全域列表
-                    const listRef = doc(getPublicRef('user_directory'), 'all_users');
-                    try {
-                        // 檢查文件是否存在，若無則建立
-                        const docSnap = await getDoc(listRef);
-                        if (!docSnap.exists()) {
-                            await setDoc(listRef, { list: [newProfile] });
-                        } else {
-                            await updateDoc(listRef, {
-                                list: arrayUnion(newProfile)
+                setSyncStatus('loading');
+                const unsubUser = onSnapshot(doc(db, COLLECTION_NAME, currentUser), (docSnap) => {
+                    if (docSnap.exists()) {
+                        setLocalProgress(docSnap.data().progress || {});
+                    } else {
+                        setLocalProgress({});
+                    }
+                    setSyncStatus('success');
+                }, (err) => {
+                    console.error("Sync progress error:", err);
+                    setSyncStatus('error');
+                });
+
+                return () => unsubUser();
+            }, [currentUser, isAuthReady]);
+
+            const handleLogin = async (name) => {
+                if (!name.trim()) return;
+                const uname = name.trim();
+                
+                if (isAuthReady && db) {
+                    if (!allUsers.includes(uname)) {
+                        try {
+                            await updateDoc(doc(db, COLLECTION_NAME, DOC_GLOBAL), {
+                                users: arrayUnion(uname)
                             });
+                        } catch (e) {
+                            await setDoc(doc(db, COLLECTION_NAME, DOC_GLOBAL), {
+                                users: arrayUnion(uname)
+                            }, { merge: true });
                         }
-                        setCurrentProfile(newProfile);
-                    } catch (e) {
-                        console.error("Create User Error:", e);
-                        alert("建立失敗，請稍後再試");
                     }
                 } else {
-                    // 選擇既有用戶
-                    setCurrentProfile(userDataOrName);
+                    console.log("Offline login, local only.");
                 }
-            };
-
-            const handleLogout = () => {
-                setCurrentProfile(null);
-                setProgress({});
-            };
-
-            // 切換完成狀態
-            const toggleProgress = async (lessonId) => {
-                if (!currentProfile) return;
                 
-                const newStatus = !progress[lessonId];
-                // 樂觀更新 (UI First)
-                const newProgress = { ...progress, [lessonId]: newStatus };
-                setProgress(newProgress);
+                setCurrentUser(uname);
+                setShowLogin(false);
+                setLoginName("");
+            };
 
-                // 寫入 Firestore
-                try {
-                    const progressRef = doc(getUserRef(currentProfile.uid, 'user_progress'), 'main');
-                    await setDoc(progressRef, { completed: newProgress }, { merge: true });
-                } catch (e) {
-                    console.error("Save Progress Error:", e);
-                    setStatus('error');
-                    // 回滾
-                    setProgress({ ...progress, [lessonId]: !newStatus });
+            const toggleProgress = async (code) => {
+                const newVal = !localProgress[code];
+                const newProgress = { ...localProgress, [code]: newVal };
+                
+                setLocalProgress(newProgress);
+
+                if (currentUser && isAuthReady && db) {
+                    try {
+                        setSyncStatus('loading');
+                        await setDoc(doc(db, COLLECTION_NAME, currentUser), {
+                            progress: newProgress,
+                            lastUpdated: new Date()
+                        }, { merge: true });
+                        setSyncStatus('success');
+                    } catch (e) {
+                        console.error("Save failed:", e);
+                        setSyncStatus('error');
+                    }
+                } else {
+                    localStorage.setItem('cl_local_progress', JSON.stringify(newProgress)); // key updated
                 }
             };
 
-            // 計算統計數據
-            const totalLessons = ALL_CATEGORIES.reduce((acc, cat) => acc + cat.items.length, 0);
-            const completedCount = Object.values(progress).filter(Boolean).length;
-            const progressPercentage = Math.round((completedCount / totalLessons) * 100);
-
-            // 渲染：主控台 (現在包含登入後的內容與登入前的 Widget)
             return (
-                <div className="flex flex-col items-center min-h-screen pb-20">
-                    {/* Header Area */}
-                    <header className="w-full max-w-4xl px-6 pt-10 pb-6 text-center relative">
-                        {/* 狀態列 (右上角) */}
-                        <div className="absolute top-4 right-4 flex gap-2">
-                            <StatusLight status={status} />
-                            {currentProfile && (
-                                <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-red-500 bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm transition-colors">
-                                    登出
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Title (Always visible) */}
-                        <h1 className="text-4xl md:text-5xl font-serif font-black text-gray-800 mb-2 tracking-wide" style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.1)' }}>
-                            📜 國文學習總部
-                        </h1>
-
-                        {/* Conditional Header Content: Login Widget OR Welcome+Progress */}
-                        {!currentProfile ? (
-                            <div className="mt-8 mb-8">
-                                <p className="text-[#5d4037] text-lg font-medium mb-6">品味文字的奧妙，穿梭古今的文學之旅</p>
-                                <UserLoginWidget onLogin={handleLogin} usersList={usersList} />
-                            </div>
-                        ) : (
-                            <>
-                                <p className="text-[#5d4037] text-lg font-medium mb-8">
-                                    歡迎回來，<span className="font-bold text-purple-700">{currentProfile.name}</span>！ 品味文字的奧妙
-                                </p>
-
-                                {/* 進度條 */}
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8 max-w-lg mx-auto">
-                                    <div className="flex justify-between items-end mb-2">
-                                        <span className="text-sm font-bold text-gray-500">目前修煉進度</span>
-                                        <span className="text-2xl font-black text-purple-700 font-mono">
-                                            {completedCount} <span className="text-sm text-gray-400">/ {totalLessons}</span>
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-                                        <div 
-                                            className="bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-full transition-all duration-1000 ease-out"
-                                            style={{ width: `${progressPercentage}%` }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        <a href="https://nicktsai88.github.io/List/" className="inline-flex items-center gap-2 bg-gradient-to-br from-purple-700 to-indigo-800 text-white px-8 py-3 rounded-full font-bold hover:shadow-lg hover:-translate-y-1 transition-all border-2 border-white shadow-md">
-                            🎁 返回快樂學習百寶箱
-                        </a>
-                    </header>
-
-                    {/* Main Content (Only if logged in) */}
-                    {currentProfile && (
-                        <main className="w-full max-w-6xl px-4 animate-fade-in-up">
-                            {ALL_CATEGORIES.map((category, idx) => (
-                                <div key={idx} className="mb-8">
-                                    <div className="divider">{category.title}</div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                        {category.items.map((item) => (
-                                            <LessonCard 
-                                                key={item.id}
-                                                item={item}
-                                                theme={category.theme}
-                                                isCompleted={!!progress[item.id]}
-                                                onToggle={() => toggleProgress(item.id)}
-                                            />
+                <div className="max-w-[1300px] mx-auto relative">
+                    
+                    {/* Header */}
+                    <div className="header mx-auto">
+                        <h1>國文(主題探索)</h1>
+                        <div className="flex flex-col items-center gap-4">
+                            <p className="mb-0 text-xl font-medium">國中國文・主題式素養探索</p>
+                            
+                            {!currentUser && allUsers.length > 0 && (
+                                <div className="w-full max-w-3xl my-2 p-4 bg-white/50 rounded-2xl border border-gray-200">
+                                    <p className="text-center text-[#5d4037] mb-3 font-bold text-sm opacity-80">
+                                        ▼ 點擊下方名字快速登入 ▼
+                                    </p>
+                                    <div className="flex flex-wrap justify-center gap-3">
+                                        {allUsers.map(u => (
+                                            <button 
+                                                key={u} 
+                                                onClick={() => handleLogin(u)} 
+                                                className="quick-user-btn"
+                                            >
+                                                👤 {u}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
-                            ))}
-                        </main>
+                            )}
+
+                            <div className="flex items-center gap-4 mt-2">
+                                <div className="text-lg font-bold text-[#3e2723] bg-white px-4 py-1 rounded-full shadow-sm border border-gray-200">
+                                    目前進度：{completedCount} / {TOTAL_ITEMS}
+                                </div>
+                                <StatusLight status={syncStatus} />
+                            </div>
+
+                            <div className="mt-2 flex items-center gap-3">
+                                {currentUser ? (
+                                    <div className="flex items-center gap-2 animate-fade-in">
+                                        <span className="text-base text-gray-600 font-medium">挑戰者：</span>
+                                        <span className="font-bold text-lg text-[#5d4037] bg-[#efebe9] px-4 py-1 rounded-full shadow-sm">{currentUser}</span>
+                                        <button 
+                                            onClick={() => { setCurrentUser(null); setLocalProgress({}); }}
+                                            className="text-sm text-gray-400 hover:text-gray-600 underline ml-2 font-medium"
+                                        >
+                                            登出
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => setShowLogin(true)}
+                                        className="text-lg bg-white border-2 border-[#8d6e63] text-[#5d4037] px-6 py-2 rounded-full hover:bg-[#efebe9] transition shadow-sm font-bold flex items-center gap-2"
+                                    >
+                                        <span>👤</span> 登入紀錄進度
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="mt-8">
+                            <a href="https://nicktsai88.github.io/List/" className="home-btn">
+                                🎁 返回快樂學習百寶箱
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Login Modal */}
+                    {showLogin && (
+                        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowLogin(false)}>
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm mx-4 animate-fade-in" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-bold text-center mb-4 text-[#4e342e] font-serif">登入 / 建立使用者</h3>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={loginName}
+                                        onChange={(e) => setLoginName(e.target.value)}
+                                        placeholder="輸入新名字..." 
+                                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#8d6e63]"
+                                        onKeyDown={(e) => e.key === 'Enter' && handleLogin(loginName)}
+                                    />
+                                    <button 
+                                        onClick={() => handleLogin(loginName)}
+                                        className="bg-[#8d6e63] text-white px-4 py-2 rounded-lg font-bold hover:bg-[#6d4c41] transition"
+                                    >
+                                        加入
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
-                    <footer className="text-center text-gray-400 text-sm mt-12 mb-8">
-                        國文學習 App &copy; {new Date().getFullYear()} All Rights Reserved.
-                    </footer>
+                    {/* Content Grid */}
+                    <div className="pb-20">
+                        {RAW_DATA.map((section, idx) => (
+                            <div key={idx} className="mb-12">
+                                <div className="section-divider">{section.name}</div>
+                                <div className="app-grid">
+                                    {section.items.map((item) => {
+                                        const isDone = !!localProgress[item.code];
+                                        return (
+                                            <a 
+                                                key={item.code}
+                                                href={item.href}
+                                                target="_blank"
+                                                className={`app-card ${isDone ? 'completed' : ''} group`}
+                                                style={{
+                                                    // Dynamic Style Logic
+                                                    borderTopColor: section.color, // Always colored top
+                                                    border: isDone ? `4px solid ${section.color}` : `1px solid rgba(0,0,0,0.05)`, // Fluorescent border when done
+                                                    borderTop: isDone ? `4px solid ${section.color}` : `6px solid ${section.color}`,
+                                                    // Stronger Glow effect (Double layer shadow for neon look)
+                                                    boxShadow: isDone ? `0 0 20px ${section.color}, 0 0 45px ${section.color}99` : undefined,
+                                                    zIndex: isDone ? 10 : 1 // Ensure glowing card stays on top
+                                                }}
+                                            >
+                                                <div 
+                                                    className={`card-checkbox ${isDone ? 'checked' : ''}`} 
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        toggleProgress(item.code);
+                                                    }}
+                                                    title={isDone ? "標記為未完成" : "標記為已完成"}
+                                                    style={{
+                                                        // Checkbox also follows theme color when checked
+                                                        backgroundColor: isDone ? section.color : 'white',
+                                                        borderColor: isDone ? section.color : '#ddd'
+                                                    }}
+                                                >
+                                                    {isDone && <span>✓</span>}
+                                                </div>
+
+                                                <div 
+                                                    className="card-icon-wrapper"
+                                                    style={{ 
+                                                        color: section.color, 
+                                                        backgroundColor: section.lightColor 
+                                                    }}
+                                                >
+                                                    {section.icon}
+                                                </div>
+                                                
+                                                <div className="card-title" style={{ color: section.color }}>
+                                                    {item.title}
+                                                </div>
+                                                
+                                                <div className="card-desc">
+                                                    {item.code}
+                                                </div>
+                                            </a>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
                 </div>
             );
         };
