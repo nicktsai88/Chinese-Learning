@@ -35,6 +35,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // ==========================================
+        //  Firebase Configuration & Constants
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
             authDomain: "chinese-learning-47f4d.firebaseapp.com",
@@ -45,16 +48,23 @@
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const ORIGINAL_PREFIX = 'Chinese-Learning-29'; 
         const COLLECTION_NAME = 'Chinese-Learning-29'; 
+        const DOC_GLOBAL = 'Global_Users';      
         
         let app, auth, db;
         let isFirebaseInitialized = false;
         let currentUser = null;
         let username = '';
-        let userData = { favorites: [], mistakes: [] };
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [] };
         let connectionStatus = 'loading';
         let recentUsers = [];
+        let unsubscribeUser = null;
+        let unsubscribeGlobal = null;
         
+        // ==========================================
+        //  Audio System
+        // ==========================================
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
         const playTone = (freq, type, duration) => {
@@ -75,6 +85,9 @@
         const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
         const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
 
+        // ==========================================
+        //  Firebase Initialization
+        // ==========================================
         try {
             const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
             if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
@@ -94,136 +107,138 @@
             } catch (error) { connectionStatus = 'error'; }
         };
 
+        // ==========================================
+        //  Course Content (Learn Data)
+        // ==========================================
         const learnData = [
             {
                 id: 'sec1', title: '第一部分（書信基礎與稱謂用語） ✉️', theme: 'orange',
                 content: `
                 <div class="space-y-8 text-lg md:text-xl text-gray-800">
-                    
-                    <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-8 rounded-2xl border-l-8 border-orange-500 shadow-lg">
-                        <img src="Chinese-Learning-29/p10.jpg" alt="單元裝飾圖片" class="w-full max-w-2xl mx-auto h-auto rounded-2xl shadow-sm mb-6" onerror="this.style.display='none'">
+                    <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-10 rounded-3xl border-l-8 border-orange-500 shadow-lg">
+                        <img src="Chinese-Learning-29/p10.jpg" alt="單元裝飾圖片" class="w-full max-w-4xl mx-auto h-auto rounded-2xl shadow-md mb-8" onerror="this.style.display='none'">
                         
-                        <div class="text-center font-black text-2xl md:text-3xl text-orange-950 mb-6 border-b-2 border-orange-200 pb-2">🎯 單元捌 探索應用文</div>
+                        <div class="text-center font-black text-3xl md:text-4xl text-orange-950 mb-8 border-b-2 border-orange-200 pb-4">🎯 單元捌 探索應用文</div>
                         
-                        <div class="bg-white p-4 rounded-xl shadow-sm border border-orange-100 mb-6 text-orange-900 text-base md:text-lg">
-                            <p class="font-bold text-rose-600 mb-2">命題排行格: No.11</p>
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-8 text-orange-900 text-lg md:text-xl leading-relaxed">
+                            <p class="font-bold text-rose-600 mb-3 text-xl">命題排行格: No.11</p>
                             <p><strong>學習小站：</strong>1.書信、柬帖 2.啟事、便條 3.對聯、題辭</p>
                             <p><strong>跨單元題：</strong>練習可搭配演練 P265~267第1~2、P312~313第10~11</p>
-                            <p class="text-sm mt-2 text-slate-500">標示表會考、命題率 基測考過的重點 100% LINK P.65敬詞、謙詞</p>
+                            <p class="text-base mt-3 text-slate-500 bg-orange-50 p-3 rounded-lg">標示表會考、命題率 基測考過的重點 100% LINK P.65敬詞、謙詞</p>
                         </div>
 
-                        <h3 class="font-bold text-xl md:text-2xl text-orange-800 mb-4">第1站 書信、柬帖 - 書信</h3>
+                        <h3 class="font-bold text-2xl md:text-3xl text-orange-800 mb-6 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3">📍</span>第1站 書信、柬帖 - 書信</h3>
                         
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow mb-6">
-                            <h4 class="font-bold text-orange-800 text-xl mb-3 border-b border-orange-100 pb-2">一、書信用語簡表</h4>
-                            <div class="overflow-x-auto">
-                                <table class="knowledge-table w-full text-sm md:text-base">
+                        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow mb-8">
+                            <h4 class="font-bold text-orange-800 text-2xl mb-4 border-b-2 border-orange-100 pb-3">一、書信用語簡表</h4>
+                            <div class="overflow-x-auto rounded-xl border border-orange-200">
+                                <table class="knowledge-table w-full text-base md:text-lg m-0 border-none">
                                     <thead>
-                                        <tr>
-                                            <th>對象</th>
-                                            <th>1. 稱謂</th>
-                                            <th>2. 提稱語</th>
-                                            <th>3. 申悃語(可略)</th>
-                                            <th>4.問候語</th>
-                                            <th>5.自稱</th>
-                                            <th>6. 未啟詞</th>
-                                            <th>7. 啟封詞</th>
+                                        <tr class="text-lg">
+                                            <th class="p-4 border-orange-200">對象</th>
+                                            <th class="p-4 border-orange-200">1. 稱謂</th>
+                                            <th class="p-4 border-orange-200">2. 提稱語</th>
+                                            <th class="p-4 border-orange-200">3. 申悃語(可略)</th>
+                                            <th class="p-4 border-orange-200">4.問候語</th>
+                                            <th class="p-4 border-orange-200">5.自稱</th>
+                                            <th class="p-4 border-orange-200">6. 未啟詞</th>
+                                            <th class="p-4 border-orange-200">7. 啟封詞</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="font-bold text-orange-800">親屬長輩<br>(祖父母/父母)</td>
-                                            <td>祖父母大人<br>父母親大人<br>(不加姓名)</td>
-                                            <td>膝前、膝下<br>(用於直系)</td>
-                                            <td rowspan="2">肅此、謹此、敬此</td>
-                                            <td>敬請鈞安<br>請金安*<br>恭請崇安<br>敬請福安</td>
-                                            <td>孫、孫女<br>兒、女兒</td>
-                                            <td rowspan="2">叩上、叩稟<br>謹上、敬稟<br>謹叩、敬上</td>
-                                            <td rowspan="2">鈞啟、賜啟<br>安啟、福啟<br><span class="text-xs text-rose-600 block mt-2">1.啟封詞不可用「敬啟」或「恭啟」。<br>2.明信片沒有啟封詞,只能用「收」。</span></td>
+                                    <tbody class="divide-y divide-orange-100">
+                                        <tr class="hover:bg-orange-50/50 transition-colors">
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">親屬長輩<br><span class="text-sm text-orange-600 font-normal">(祖父母/父母)</span></td>
+                                            <td class="p-4 border-r border-orange-100">祖父母大人<br>父母親大人<br><span class="text-sm text-slate-500">(不加姓名)</span></td>
+                                            <td class="p-4 border-r border-orange-100 text-rose-700 font-bold">膝前、膝下<br><span class="text-sm text-slate-500 font-normal">(用於直系)</span></td>
+                                            <td class="p-4 border-r border-orange-100" rowspan="2">肅此、謹此<br>敬此</td>
+                                            <td class="p-4 border-r border-orange-100">敬請鈞安<br><span class="text-rose-600 font-bold">請金安*</span><br>恭請崇安<br>敬請福安</td>
+                                            <td class="p-4 border-r border-orange-100">孫、孫女<br>兒、女兒</td>
+                                            <td class="p-4 border-r border-orange-100" rowspan="2">叩上、叩稟<br>謹上、敬稟<br>謹叩、敬上</td>
+                                            <td class="p-4" rowspan="2">鈞啟、賜啟<br>安啟、福啟<br><div class="bg-rose-50 border border-rose-100 p-2 rounded-lg mt-3 text-sm text-rose-700 font-medium leading-normal">1.啟封詞不可用「敬啟」或「恭啟」。<br>2.明信片沒有啟封詞,只能用「收」。</div></td>
                                         </tr>
-                                        <tr>
-                                            <td class="font-bold text-orange-800">親屬其他長輩</td>
-                                            <td>伯父母<br>叔父母<br>舅</td>
-                                            <td>尊鑒、鈞鑒<br>尊前、尊鑒<br>崇鑒、賜鑒</td>
-                                            <td>福安、鈞安、尊安<br><span class="text-xs text-slate-500">(臺安、近祺等,須換行頂格書寫)</span></td>
-                                            <td>姪、姪女<br>甥、甥女<br>晚</td>
+                                        <tr class="hover:bg-orange-50/50 transition-colors">
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">親屬其他長輩</td>
+                                            <td class="p-4 border-r border-orange-100">伯父母<br>叔父母<br>舅</td>
+                                            <td class="p-4 border-r border-orange-100">尊鑒、鈞鑒<br>尊前、尊鑒<br>崇鑒、賜鑒</td>
+                                            <td class="p-4 border-r border-orange-100">福安、鈞安、尊安<br><span class="text-sm text-slate-500">(臺安、近祺等,須換行頂格書寫)</span></td>
+                                            <td class="p-4 border-r border-orange-100">姪、姪女<br>甥、甥女<br>晚</td>
                                         </tr>
-                                        <tr>
-                                            <td class="font-bold text-orange-800">師長</td>
-                                            <td>○○吾師<br>(加字號或名)</td>
-                                            <td>道鑒、函丈<br>講座、壇席<br>尊鑒、鈞鑒</td>
-                                            <td>肅此、謹此、敬此</td>
-                                            <td>敬請教安<br>敬請道安</td>
-                                            <td>受業、學生</td>
-                                            <td>敬上、謹上</td>
-                                            <td>鈞啟、道啟</td>
+                                        <tr class="hover:bg-orange-50/50 transition-colors">
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">師長</td>
+                                            <td class="p-4 border-r border-orange-100">○○吾師<br><span class="text-sm text-slate-500">(加字號或名)</span></td>
+                                            <td class="p-4 border-r border-orange-100 font-bold text-amber-700">道鑒、函丈<br>講座、壇席<br>尊鑒、鈞鑒</td>
+                                            <td class="p-4 border-r border-orange-100">肅此、謹此、敬此</td>
+                                            <td class="p-4 border-r border-orange-100">敬請教安<br>敬請道安</td>
+                                            <td class="p-4 border-r border-orange-100">受業、學生</td>
+                                            <td class="p-4 border-r border-orange-100">敬上、謹上</td>
+                                            <td class="p-4">鈞啟、道啟</td>
                                         </tr>
-                                        <tr>
-                                            <td class="font-bold text-orange-800">平輩</td>
-                                            <td>○○吾兄(姐)<br>○○仁兄<br>(加字號或名)<br>○○先生<br>○○女士</td>
-                                            <td>惠鑒、臺鑒<br>大鑒、足下<br>左右、硯右</td>
-                                            <td>專此、特此</td>
-                                            <td>敬請臺安<br>敬請大安<br>順頌時綏<br>近祺</td>
-                                            <td>弟、妹<br>同學、愚兄<br>學弟、學妹</td>
-                                            <td>敬啟、謹啟<br>拜啟、頓首</td>
-                                            <td>惠啟、臺啟<br>大啟</td>
+                                        <tr class="hover:bg-orange-50/50 transition-colors">
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">平輩</td>
+                                            <td class="p-4 border-r border-orange-100">○○吾兄(姐)<br>○○仁兄<br>○○先生<br>○○女士</td>
+                                            <td class="p-4 border-r border-orange-100 font-bold text-emerald-700">惠鑒、臺鑒<br>大鑒、足下<br>左右、硯右</td>
+                                            <td class="p-4 border-r border-orange-100">專此、特此</td>
+                                            <td class="p-4 border-r border-orange-100">敬請臺安<br>敬請大安<br>順頌時綏<br>近祺</td>
+                                            <td class="p-4 border-r border-orange-100">弟、妹<br>同學、愚兄<br>學弟、學妹</td>
+                                            <td class="p-4 border-r border-orange-100">敬啟、謹啟<br>拜啟、頓首</td>
+                                            <td class="p-4">惠啟、臺啟<br>大啟</td>
                                         </tr>
-                                        <tr>
-                                            <td class="font-bold text-orange-800">晚輩</td>
-                                            <td>○○吾兒<br>○○吾女<br>(加名)</td>
-                                            <td>知之、知悉<br>(用於子姪)<br>如晤、如握<br>(用於一般人)</td>
-                                            <td>匆此、草此</td>
-                                            <td>順問<br>近祺<br>近好<br>即問<br>近佳<br>即頌</td>
-                                            <td>父、母<br>伯父、伯母</td>
-                                            <td>手示、手書<br>手諭、手字</td>
-                                            <td>啟<br>收</td>
+                                        <tr class="hover:bg-orange-50/50 transition-colors">
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">晚輩</td>
+                                            <td class="p-4 border-r border-orange-100">○○吾兒<br>○○吾女<br><span class="text-sm text-slate-500">(加名)</span></td>
+                                            <td class="p-4 border-r border-orange-100 font-bold text-sky-700">知之、知悉<br><span class="text-sm text-slate-500 font-normal">(用於子姪)</span><br>如晤、如握<br><span class="text-sm text-slate-500 font-normal">(用於一般)</span></td>
+                                            <td class="p-4 border-r border-orange-100">匆此、草此</td>
+                                            <td class="p-4 border-r border-orange-100">順問 近祺<br>近好 即問<br>近佳 即頌</td>
+                                            <td class="p-4 border-r border-orange-100">父、母<br>伯父、伯母</td>
+                                            <td class="p-4 border-r border-orange-100">手示、手書<br>手諭、手字</td>
+                                            <td class="p-4">啟<br>收</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow mb-6">
-                            <h4 class="font-bold text-orange-800 text-xl mb-3 border-b border-orange-100 pb-2">二、稱謂用語</h4>
-                            <div class="overflow-x-auto">
-                                <table class="knowledge-table w-full text-sm md:text-base">
-                                    <thead>
+                        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow mb-8">
+                            <h4 class="font-bold text-orange-800 text-2xl mb-4 border-b-2 border-orange-100 pb-3">二、稱謂用語</h4>
+                            <div class="overflow-x-auto rounded-xl border border-orange-200">
+                                <table class="knowledge-table w-full text-base md:text-lg m-0 border-none">
+                                    <thead class="bg-amber-100/50">
                                         <tr>
-                                            <th rowspan="2" class="align-middle">對象</th>
-                                            <th colspan="2" class="text-center">對人自稱</th>
-                                            <th colspan="2" class="text-center">稱呼別人</th>
+                                            <th rowspan="2" class="p-4 align-middle border-orange-200 text-lg">對象</th>
+                                            <th colspan="2" class="p-4 text-center border-orange-200 border-l text-lg bg-orange-100">對人自稱 (謙稱)</th>
+                                            <th colspan="2" class="p-4 text-center border-orange-200 border-l text-lg bg-emerald-100">稱呼別人 (尊稱)</th>
                                         </tr>
                                         <tr>
-                                            <th>用字</th>
-                                            <th>舉例</th>
-                                            <th>用字</th>
-                                            <th>舉例</th>
+                                            <th class="p-3 border-orange-200 border-l bg-orange-50 text-orange-800">用字</th>
+                                            <th class="p-3 border-orange-200 bg-orange-50 text-orange-800">舉例</th>
+                                            <th class="p-3 border-orange-200 border-l bg-emerald-50 text-emerald-800">用字</th>
+                                            <th class="p-3 border-orange-200 bg-emerald-50 text-emerald-800">舉例</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr><td>1. 父子</td><td>愚</td><td>愚父子</td><td>賢</td><td>賢喬梓+</td></tr>
-                                        <tr><td>2. 夫婦</td><td>愚</td><td>愚夫婦</td><td>賢</td><td>賢伉儷+</td></tr>
-                                        <tr><td>3. 兄弟</td><td>愚</td><td>愚兄弟</td><td>賢</td><td>賢昆仲+(賢昆玉)</td></tr>
-                                        <tr><td>4. 妻</td><td>內</td><td>內人、內子、賤內</td><td>尊</td><td>尊嫂、尊夫人</td></tr>
-                                        <tr><td>5. 夫</td><td>外</td><td>外子</td><td>尊</td><td>尊夫</td></tr>
-                                        <tr><td>6. 子輩</td><td>小</td><td>小兒(小犬*)、小女+</td><td>令</td><td>令郎(令公子)、令媛*(令嬡、令千金)</td></tr>
-                                        <tr><td>7. 師友</td><td>敝</td><td>敝業師、敝友</td><td>令</td><td>令師、令友</td></tr>
-                                        <tr><td>8. 家中尊長</td><td>家</td><td>家嚴、家慈、家兄、家姐</td><td>令</td><td>令尊、令堂、令兄、令姐</td></tr>
-                                        <tr><td>9. 已死尊長</td><td>先</td><td>先父(先考)、先母(先妣)</td><td>令</td><td>令先君、令先堂</td></tr>
-                                        <tr><td>10. 家中卑幼</td><td>舍</td><td>舍弟、舍妹</td><td>令</td><td>令弟*(賢弟)、令妹(賢妹)</td></tr>
-                                        <tr><td>11. 已死卑幼</td><td>亡</td><td>亡弟、亡妹</td><td>令</td><td>令亡弟、令亡妹</td></tr>
-                                        <tr><td>12. 居處、店號</td><td>敝/寒/小</td><td>敝縣、寒舍、小號</td><td>貴/寶</td><td>貴縣、貴府、寶號</td></tr>
+                                    <tbody class="divide-y divide-orange-100">
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">1. 父子</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">愚</td><td class="p-3 text-slate-600">愚父子</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">賢</td><td class="p-3 font-bold text-emerald-800">賢喬梓+</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">2. 夫婦</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">愚</td><td class="p-3 text-slate-600">愚夫婦</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">賢</td><td class="p-3 font-bold text-emerald-800">賢伉儷+</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">3. 兄弟</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">愚</td><td class="p-3 text-slate-600">愚兄弟</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">賢</td><td class="p-3 font-bold text-emerald-800">賢昆仲+ <span class="text-sm font-normal text-slate-500">(賢昆玉)</span></td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">4. 妻</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">內</td><td class="p-3 text-slate-600">內人、內子、<span class="text-orange-800 font-bold">賤內</span></td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">尊</td><td class="p-3 font-bold text-emerald-800">尊嫂、尊夫人</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">5. 夫</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">外</td><td class="p-3 font-bold text-orange-800">外子</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">尊</td><td class="p-3 font-bold text-emerald-800">尊夫</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">6. 子輩</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">小</td><td class="p-3 text-slate-600">小兒(<span class="text-orange-800 font-bold">小犬*</span>)、小女+</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">令</td><td class="p-3 font-bold text-emerald-800">令郎 <span class="text-sm font-normal text-slate-500">(令公子)</span>、令媛* <span class="text-sm font-normal text-slate-500">(令嬡、令千金)</span></td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">7. 師友</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">敝</td><td class="p-3 text-slate-600">敝業師、敝友</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">令</td><td class="p-3 font-bold text-emerald-800">令師、令友</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">8. 家中尊長</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">家</td><td class="p-3 font-bold text-orange-800">家嚴、家慈、家兄、家姐</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">令</td><td class="p-3 font-bold text-emerald-800">令尊、令堂、令兄、令姐</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">9. 已死尊長</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">先</td><td class="p-3 font-bold text-orange-800">先父<span class="text-sm font-normal text-slate-500">(先考)</span>、先母<span class="text-sm font-normal text-slate-500">(先妣)</span></td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">令</td><td class="p-3 font-bold text-emerald-800">令先君、令先堂</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">10. 家中卑幼</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">舍</td><td class="p-3 font-bold text-orange-800">舍弟、舍妹</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">令</td><td class="p-3 font-bold text-emerald-800">令弟* <span class="text-sm font-normal text-slate-500">(賢弟)</span>、令妹 <span class="text-sm font-normal text-slate-500">(賢妹)</span></td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">11. 已死卑幼</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">亡</td><td class="p-3 text-slate-600">亡弟、亡妹</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">令</td><td class="p-3 text-slate-600">令亡弟、令亡妹</td></tr>
+                                        <tr class="hover:bg-amber-50 transition-colors"><td class="p-3 font-bold text-slate-700">12. 居處、店號</td><td class="p-3 text-center font-bold text-orange-600 border-l border-orange-100">敝/寒/小</td><td class="p-3 font-bold text-orange-800">敝縣、寒舍、小號</td><td class="p-3 text-center font-bold text-emerald-600 border-l border-orange-100">貴/寶</td><td class="p-3 font-bold text-emerald-800">貴縣、貴府、寶號</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <div class="bg-rose-50 p-5 rounded-xl shadow-sm border border-rose-200 hover:shadow-md transition-shadow">
-                            <h4 class="font-bold text-rose-800 text-xl mb-3 border-b border-rose-200 pb-2">⚠️ 迷思澄清</h4>
-                            <ul class="list-decimal pl-5 space-y-2 text-rose-900 font-medium">
-                                <li>學生稱女老師的丈夫為「師丈」，學生稱男老師的妻子為「師母」。</li>
-                                <li>妻子對人稱丈夫的父母為「公、婆」，丈夫對人稱妻子的父母為「岳父、岳母」。</li>
-                                <li>「賢內助」是對妻子的美稱。</li>
+                        <div class="bg-rose-50 p-6 md:p-8 rounded-2xl shadow-sm border border-rose-200 hover:shadow-md transition-shadow">
+                            <h4 class="font-black text-rose-800 text-2xl mb-4 border-b-2 border-rose-200 pb-3 flex items-center"><span class="text-3xl mr-2">⚠️</span> 迷思澄清</h4>
+                            <ul class="list-decimal pl-6 space-y-4 text-rose-950 font-bold text-lg md:text-xl">
+                                <li class="bg-white/50 p-3 rounded-xl border border-rose-100">學生稱女老師的丈夫為「師丈」，學生稱男老師的妻子為「師母」。</li>
+                                <li class="bg-white/50 p-3 rounded-xl border border-rose-100">妻子對人稱丈夫的父母為「公、婆」，丈夫對人稱妻子的父母為「岳父、岳母」。</li>
+                                <li class="bg-white/50 p-3 rounded-xl border border-rose-100">「賢內助」是對妻子的美稱，<span class="text-rose-600">不可用來自稱</span>。</li>
                             </ul>
                         </div>
                     </div>
@@ -232,77 +247,85 @@
             {
                 id: 'sec2', title: '第二部分（書信格式與信封） 📝', theme: 'amber',
                 content: `
-                <div class="space-y-6 text-lg md:text-xl text-gray-800">
-                    <div class="bg-gradient-to-b from-amber-50 to-white p-6 md:p-8 rounded-2xl border-t-8 border-amber-500 shadow-lg">
-                        <div class="text-center font-black text-2xl md:text-3xl text-amber-950 mb-6 border-b-2 border-amber-200 pb-2">🎯 題辭解釋：第二部分（書信格式與信封）</div>
+                <div class="space-y-8 text-lg md:text-xl text-gray-800">
+                    <div class="bg-gradient-to-b from-amber-50 to-white p-6 md:p-10 rounded-3xl border-t-8 border-amber-500 shadow-lg">
+                        <div class="text-center font-black text-3xl md:text-4xl text-amber-950 mb-8 border-b-2 border-amber-200 pb-4">🎯 第二部分：書信格式與信封</div>
                         
-                        <div class="bg-white p-5 rounded-xl shadow-sm border border-amber-100 mb-6">
-                            <h4 class="font-bold text-amber-800 text-xl mb-3 border-b border-amber-100 pb-2">三、書信繕寫時的注意事項</h4>
-                            <ul class="list-decimal pl-5 space-y-3 text-amber-900">
-                                <li><strong>開頭的稱謂：</strong>在信的第一行頂格書寫。</li>
+                        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-amber-100 mb-10">
+                            <h4 class="font-bold text-amber-800 text-2xl mb-5 border-b-2 border-amber-100 pb-3 flex items-center"><span class="text-2xl mr-2">✍️</span>三、書信繕寫時的注意事項</h4>
+                            <ul class="list-decimal pl-6 space-y-4 text-amber-950 font-medium text-lg md:text-xl">
+                                <li><strong>開頭的稱謂：</strong>在信的第一行<span class="text-rose-600 font-bold">頂格書寫</span>。</li>
                                 <li><strong>信中使用抬頭表示尊敬對方及長輩，有以下兩種方式：</strong>
-                                    <ul class="list-disc pl-6 mt-2 text-base text-slate-700">
-                                        <li>(1) 平抬：須換行頂格書寫。</li>
-                                        <li>(2) 挪抬：在稱呼前空一格。（例如：「 吾師」）。</li>
+                                    <ul class="list-disc pl-8 mt-3 space-y-2 text-base md:text-lg text-slate-700 bg-amber-50/50 p-4 rounded-xl border border-amber-50">
+                                        <li><strong class="text-amber-800">(1) 平抬：</strong>須換行頂格書寫。</li>
+                                        <li><strong class="text-amber-800">(2) 挪抬：</strong>在稱呼前空一格。（例如：「 吾師」）。</li>
                                     </ul>
                                 </li>
-                                <li>凡遇到人名、字號，應在同一行書寫，不宜分開。</li>
+                                <li>凡遇到人名、字號，應在<span class="text-rose-600 font-bold">同一行書寫</span>，不宜分開拆行。</li>
                             </ul>
                         </div>
 
-                        <div class="flex flex-col gap-8 text-amber-950 mb-6">
-                            <div class="bg-amber-50/50 p-6 md:p-8 rounded-xl shadow-sm border border-amber-100">
-                                <h5 class="font-bold text-center text-xl md:text-2xl mb-4">1. 直式信封 (一般)</h5>
-                                <img src="Chinese-Learning-29/p1.jpg" alt="直式信封一般" class="w-full max-w-3xl mx-auto rounded-xl shadow-md border border-slate-200" onerror="this.style.display='none'">
-                                <div class="text-base md:text-lg mt-5 space-y-2 text-slate-700 max-w-3xl mx-auto">
-                                    <p>• 受信人姓名：位置最高</p>
-                                    <p>• 郵差或送信人對收信人的稱呼 (如：先生)</p>
-                                    <p>• 啟封詞 (如：鈞啟)</p>
-                                    <p class="text-rose-600 font-bold">• 寄信人地址不可高於受信人地址</p>
-                                    <p>• 緘封詞 (如：緘)</p>
+                        <!-- 直式信封區域 改為上下堆疊，放大圖片 -->
+                        <div class="flex flex-col gap-10 text-amber-950 mb-12">
+                            <div class="bg-amber-50/70 p-6 md:p-10 rounded-3xl shadow-sm border border-amber-200 hover:shadow-md transition-shadow">
+                                <h5 class="font-black text-center text-2xl md:text-3xl mb-6 text-amber-900 border-b border-amber-200 pb-3 inline-block mx-auto w-full">1. 直式信封 (一般)</h5>
+                                <img src="Chinese-Learning-29/p1.jpg" alt="直式信封一般" class="w-full max-w-4xl mx-auto rounded-xl shadow-lg border border-slate-300" onerror="this.style.display='none'">
+                                <div class="text-lg md:text-xl mt-8 space-y-3 text-slate-800 max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-inner border border-slate-100">
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>受信人姓名：位置最高</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>郵差或送信人對收信人的稱呼 (如：先生)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>啟封詞 (如：鈞啟)</p>
+                                    <p class="flex items-center text-rose-600 font-bold"><span class="w-2 h-2 bg-rose-500 rounded-full mr-3"></span>寄信人地址不可高於受信人地址</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>緘封詞 (如：緘)</p>
                                 </div>
                             </div>
-                            <div class="bg-amber-50/50 p-6 md:p-8 rounded-xl shadow-sm border border-amber-100">
-                                <h5 class="font-bold text-center text-xl md:text-2xl mb-4">2. 直式信封 (有官銜或職稱)</h5>
-                                <img src="Chinese-Learning-29/p2.jpg" alt="直式信封有官銜" class="w-full max-w-3xl mx-auto rounded-xl shadow-md border border-slate-200" onerror="this.style.display='none'">
-                                <div class="text-base md:text-lg mt-5 space-y-2 text-slate-700 max-w-3xl mx-auto">
-                                    <p>• 受信人姓氏 (如：王)</p>
-                                    <p class="text-rose-600 font-bold">• 職稱不能縮小 (如：校長)</p>
-                                    <p class="text-rose-600 font-bold">• 「名字」應縮小靠右 (如：乙誠)</p>
-                                    <p>• 啟封詞 (如：鈞啟)</p>
+                            
+                            <div class="bg-amber-50/70 p-6 md:p-10 rounded-3xl shadow-sm border border-amber-200 hover:shadow-md transition-shadow">
+                                <h5 class="font-black text-center text-2xl md:text-3xl mb-6 text-amber-900 border-b border-amber-200 pb-3 inline-block mx-auto w-full">2. 直式信封 (有官銜或職稱)</h5>
+                                <img src="Chinese-Learning-29/p2.jpg" alt="直式信封有官銜" class="w-full max-w-4xl mx-auto rounded-xl shadow-lg border border-slate-300" onerror="this.style.display='none'">
+                                <div class="text-lg md:text-xl mt-8 space-y-3 text-slate-800 max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-inner border border-slate-100">
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>受信人姓氏 (如：王)</p>
+                                    <p class="flex items-center text-rose-600 font-bold"><span class="w-2 h-2 bg-rose-500 rounded-full mr-3"></span>職稱不能縮小 (如：校長)</p>
+                                    <p class="flex items-center text-rose-600 font-bold"><span class="w-2 h-2 bg-rose-500 rounded-full mr-3"></span>「名字」應縮小靠右 (如：乙誠)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>啟封詞 (如：鈞啟)</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-amber-100 mb-6">
-                            <h5 class="font-bold text-amber-800 text-xl md:text-2xl mb-4">3. 橫式信封</h5>
-                            <img src="Chinese-Learning-29/p3.jpg" alt="橫式信封" class="w-full max-w-4xl mx-auto rounded-xl shadow-md border border-slate-200" onerror="this.style.display='none'">
-                            <div class="text-base md:text-lg mt-5 text-slate-700 text-center max-w-4xl mx-auto">
-                                <p>左上：寄信人姓名、地址、緘封詞。<br>右下：受信人姓名、地址、郵差對收信人稱呼、啟封詞。</p>
+                        <!-- 橫式信封 -->
+                        <div class="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-amber-200 mb-12">
+                            <h5 class="font-black text-amber-900 text-2xl md:text-3xl mb-6 text-center border-b border-amber-100 pb-3">3. 橫式信封</h5>
+                            <img src="Chinese-Learning-29/p3.jpg" alt="橫式信封" class="w-full max-w-5xl mx-auto rounded-xl shadow-lg border border-slate-300" onerror="this.style.display='none'">
+                            <div class="text-lg md:text-xl mt-8 text-slate-800 text-center max-w-4xl mx-auto bg-slate-50 p-6 rounded-2xl border border-slate-200 font-medium">
+                                <p class="mb-2"><strong>左上：</strong>寄信人姓名、地址、緘封詞。</p>
+                                <p><strong>右下：</strong>受信人姓名、地址、郵差對收信人稱呼、啟封詞。</p>
                             </div>
                         </div>
 
-                        <div class="flex flex-col gap-8 text-amber-950">
-                            <div class="bg-amber-50/50 p-6 md:p-8 rounded-xl shadow-sm border border-amber-100">
-                                <h5 class="font-bold text-center text-xl md:text-2xl mb-4">4. 直式書信</h5>
-                                <img src="Chinese-Learning-29/p4.jpg" alt="直式書信" class="w-full max-w-3xl mx-auto rounded-xl shadow-md border border-slate-200" onerror="this.style.display='none'">
-                                <div class="text-base md:text-lg mt-5 space-y-2 text-slate-700 max-w-3xl mx-auto">
-                                    <p>• 稱謂＋提稱語 (如：父親大人膝下)</p>
-                                    <p>• 申悃語＋問候語 (如：敬請 福安)</p>
-                                    <p>• 自稱＋署名＋末啟詞＋日期 (如：兒 曉華 叩上)</p>
-                                    <p class="text-rose-600 font-bold mt-3">※問候語：長輩用鈞安，老師用教安/道安，平輩用大安/時綏。</p>
-                                    <p class="text-rose-600 font-bold">※末啟詞：長輩用敬上/謹上，平輩用敬啟/謹啟。</p>
+                        <!-- 直式與橫式書信 改為上下堆疊 -->
+                        <div class="flex flex-col gap-10 text-amber-950">
+                            <div class="bg-amber-50/70 p-6 md:p-10 rounded-3xl shadow-sm border border-amber-200 hover:shadow-md transition-shadow">
+                                <h5 class="font-black text-center text-2xl md:text-3xl mb-6 text-amber-900 border-b border-amber-200 pb-3 inline-block mx-auto w-full">4. 直式書信</h5>
+                                <img src="Chinese-Learning-29/p4.jpg" alt="直式書信" class="w-full max-w-4xl mx-auto rounded-xl shadow-lg border border-slate-300" onerror="this.style.display='none'">
+                                <div class="text-lg md:text-xl mt-8 space-y-3 text-slate-800 max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-inner border border-slate-100">
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>稱謂 ＋ 提稱語 (如：父親大人膝下)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>申悃語 ＋ 問候語 (如：敬請 福安)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>自稱 ＋ 署名 ＋ 末啟詞 ＋ 日期 (如：兒 曉華 叩上)</p>
+                                    <div class="mt-4 pt-4 border-t border-slate-200 space-y-2">
+                                        <p class="text-rose-600 font-bold">※問候語：長輩用鈞安，老師用教安/道安，平輩用大安/時綏。</p>
+                                        <p class="text-rose-600 font-bold">※末啟詞：長輩用敬上/謹上，平輩用敬啟/謹啟。</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="bg-amber-50/50 p-6 md:p-8 rounded-xl shadow-sm border border-amber-100">
-                                <h5 class="font-bold text-center text-xl md:text-2xl mb-4">5. 橫式書信</h5>
-                                <img src="Chinese-Learning-29/p5.jpg" alt="橫式書信" class="w-full max-w-3xl mx-auto rounded-xl shadow-md border border-slate-200" onerror="this.style.display='none'">
-                                <div class="text-base md:text-lg mt-5 space-y-2 text-slate-700 max-w-3xl mx-auto">
-                                    <p>• 稱謂 (如：親愛的媽媽)</p>
-                                    <p>• 開頭應酬語 ➔ 正文 ➔ 結尾應酬語</p>
-                                    <p>• 問候語 (如：敬祝 平安健康)</p>
-                                    <p>• 自稱＋署名＋末啟詞 (如：女兒 薇薇 叩上)</p>
-                                    <p>• 日期 (如：民國一一四年十月二日)</p>
+                            
+                            <div class="bg-amber-50/70 p-6 md:p-10 rounded-3xl shadow-sm border border-amber-200 hover:shadow-md transition-shadow">
+                                <h5 class="font-black text-center text-2xl md:text-3xl mb-6 text-amber-900 border-b border-amber-200 pb-3 inline-block mx-auto w-full">5. 橫式書信</h5>
+                                <img src="Chinese-Learning-29/p5.jpg" alt="橫式書信" class="w-full max-w-4xl mx-auto rounded-xl shadow-lg border border-slate-300" onerror="this.style.display='none'">
+                                <div class="text-lg md:text-xl mt-8 space-y-3 text-slate-800 max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-inner border border-slate-100">
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>稱謂 (如：親愛的媽媽)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>開頭應酬語 ➔ 正文 ➔ 結尾應酬語</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>問候語 (如：敬祝 平安健康)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>自稱 ＋ 署名 ＋ 末啟詞 (如：女兒 薇薇 叩上)</p>
+                                    <p class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-3"></span>日期 (如：民國一一四年十月二日)</p>
                                 </div>
                             </div>
                         </div>
@@ -313,113 +336,146 @@
             {
                 id: 'sec3', title: '第三部分（柬帖與封套） 🧧', theme: 'rose',
                 content: `
-                <div class="space-y-6 text-lg md:text-xl text-gray-800">
-                    <div class="bg-white p-6 md:p-8 rounded-2xl border border-rose-100 shadow-xl relative overflow-hidden">
-                        <h3 class="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-500 text-2xl md:text-4xl mb-8 border-b-2 border-rose-100 pb-4 relative z-10 text-center">
-                            🕊️ 題辭解釋：第三部分（柬帖與封套）
+                <div class="space-y-8 text-lg md:text-xl text-gray-800">
+                    <div class="bg-white p-6 md:p-10 rounded-3xl border border-rose-100 shadow-2xl relative overflow-hidden">
+                        <h3 class="font-black text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-rose-600 text-3xl md:text-4xl lg:text-5xl mb-10 border-b-4 border-rose-100 pb-5 relative z-10 text-center tracking-wide">
+                            🕊️ 第三部分：柬帖與封套
                         </h3>
                         
-                        <div class="bg-gradient-to-br from-rose-50 to-red-50 p-6 rounded-2xl shadow-sm border border-rose-100 mb-6">
-                            <h4 class="font-bold text-rose-800 text-2xl mb-3 border-b border-rose-200 pb-2">一、柬帖介紹</h4>
-                            <table class="knowledge-table w-full text-sm md:text-base bg-white">
-                                <tbody>
-                                    <tr>
-                                        <th class="w-24">定義</th>
-                                        <td>用於婚喪喜慶或交際應酬的書面通知。</td>
-                                    </tr>
-                                    <tr>
-                                        <th>種類</th>
-                                        <td>
-                                            <ul class="list-decimal pl-5">
-                                                <li><strong>婚嫁：</strong>訂婚、結婚喜帖有固定格式。</li>
-                                                <li><strong>慶賀：</strong>喜慶邀請函，如開幕、慶典、喬遷、彌月、壽誕等。</li>
-                                                <li><strong>喪葬：</strong>訃聞通告親友入殮、安葬日期。</li>
-                                                <li><strong>普通應酬：</strong>如餞行、同學會。</li>
-                                            </ul>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>格式</th>
-                                        <td>
-                                            <ul class="list-decimal pl-5">
-                                                <li><strong>時間：</strong>包括月、日、時刻。</li>
-                                                <li><strong>地點：</strong>包括地址、場所名稱。</li>
-                                                <li><strong>目的：</strong>邀約事宜、活動方式。</li>
-                                                <li><strong>發帖人具名。</strong></li>
-                                            </ul>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="bg-gradient-to-br from-rose-50 to-red-50 p-6 md:p-8 rounded-3xl shadow-sm border border-rose-200 mb-10">
+                            <h4 class="font-bold text-rose-900 text-2xl md:text-3xl mb-5 border-b-2 border-rose-200 pb-3 flex items-center"><span class="bg-rose-200 w-10 h-10 rounded-full flex items-center justify-center mr-3">一</span>柬帖介紹</h4>
+                            <div class="overflow-x-auto rounded-xl border border-white">
+                                <table class="knowledge-table w-full text-lg md:text-xl m-0 bg-white/60 backdrop-blur-sm">
+                                    <tbody class="divide-y divide-rose-100">
+                                        <tr>
+                                            <th class="w-32 p-5 text-rose-800 font-extrabold text-xl border-r border-rose-100">定義</th>
+                                            <td class="p-5 font-medium text-slate-800">用於婚喪喜慶或交際應酬的書面通知。</td>
+                                        </tr>
+                                        <tr>
+                                            <th class="p-5 text-rose-800 font-extrabold text-xl border-r border-rose-100">種類</th>
+                                            <td class="p-5">
+                                                <ul class="list-decimal pl-6 space-y-3 font-medium text-slate-800">
+                                                    <li><strong class="text-rose-700">婚嫁：</strong>訂婚、結婚喜帖有固定格式。</li>
+                                                    <li><strong class="text-rose-700">慶賀：</strong>喜慶邀請函，如開幕、慶典、喬遷、彌月、壽誕等。</li>
+                                                    <li><strong class="text-slate-600">喪葬：</strong>訃聞通告親友入殮、安葬日期。</li>
+                                                    <li><strong class="text-amber-700">普通應酬：</strong>如餞行、同學會。</li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th class="p-5 text-rose-800 font-extrabold text-xl border-r border-rose-100">格式</th>
+                                            <td class="p-5">
+                                                <ul class="list-decimal pl-6 space-y-3 font-medium text-slate-800">
+                                                    <li><strong class="text-indigo-700">時間：</strong>包括月、日、時刻。</li>
+                                                    <li><strong class="text-indigo-700">地點：</strong>包括地址、場所名稱。</li>
+                                                    <li><strong class="text-indigo-700">目的：</strong>邀約事宜、活動方式。</li>
+                                                    <li><strong class="text-indigo-700">發帖人具名。</strong></li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
-                        <div class="bg-gradient-to-br from-rose-50 to-red-50 p-6 rounded-2xl shadow-sm border border-rose-100 mb-6">
-                            <h4 class="font-bold text-rose-800 text-2xl mb-3 border-b border-rose-200 pb-2">二、柬帖用語</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm md:text-base">
-                                <div class="bg-white p-4 rounded-xl shadow-sm border border-rose-100">
-                                    <h5 class="font-bold text-rose-700 border-b border-rose-100 mb-2">💍 婚嫁</h5>
-                                    <ul class="space-y-1">
-                                        <li>1. <strong>文定：</strong>訂婚。</li>
-                                        <li>2. <strong>于歸：</strong>女子出嫁。</li>
-                                        <li>3. <strong>詹於：</strong>即「占於」。意指經占卜而決定。</li>
-                                        <li>4. <strong>闔第光臨：</strong>請客人全家到來之敬語。</li>
+                        <div class="bg-gradient-to-br from-rose-50 to-red-50 p-6 md:p-8 rounded-3xl shadow-sm border border-rose-200 mb-12">
+                            <h4 class="font-bold text-rose-900 text-2xl md:text-3xl mb-6 border-b-2 border-rose-200 pb-3 flex items-center"><span class="bg-rose-200 w-10 h-10 rounded-full flex items-center justify-center mr-3">二</span>柬帖用語</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-lg md:text-xl">
+                                <div class="bg-white p-6 rounded-2xl shadow-sm border border-rose-100 hover:-translate-y-1 transition-transform">
+                                    <h5 class="font-black text-rose-700 text-2xl border-b-2 border-rose-100 mb-4 pb-2 flex items-center"><span class="text-3xl mr-2">💍</span> 婚嫁</h5>
+                                    <ul class="space-y-3 font-medium text-slate-700">
+                                        <li>1. <strong class="text-rose-900 text-xl">文定：</strong>訂婚。</li>
+                                        <li>2. <strong class="text-rose-900 text-xl">于歸：</strong>女子出嫁。</li>
+                                        <li>3. <strong class="text-rose-900 text-xl">詹於：</strong>即「占於」。意指經占卜而決定。</li>
+                                        <li>4. <strong class="text-rose-900 text-xl">闔第光臨：</strong>請客人全家到來之敬語。</li>
                                     </ul>
                                 </div>
-                                <div class="bg-white p-4 rounded-xl shadow-sm border border-rose-100">
-                                    <h5 class="font-bold text-rose-700 border-b border-rose-100 mb-2">🎉 喜慶</h5>
-                                    <ul class="space-y-1">
-                                        <li>1. <strong>桃觴：</strong>祝壽之酒席。</li>
-                                        <li>2. <strong>弄璋：</strong>稱生男孩。(璋，玉器)</li>
-                                        <li>3. <strong>弄瓦：</strong>稱生女孩。(瓦，紡紗的錠錘)</li>
+                                <div class="bg-white p-6 rounded-2xl shadow-sm border border-rose-100 hover:-translate-y-1 transition-transform">
+                                    <h5 class="font-black text-rose-700 text-2xl border-b-2 border-rose-100 mb-4 pb-2 flex items-center"><span class="text-3xl mr-2">🎉</span> 喜慶</h5>
+                                    <ul class="space-y-3 font-medium text-slate-700">
+                                        <li>1. <strong class="text-rose-900 text-xl">桃觴：</strong>祝壽之酒席。</li>
+                                        <li>2. <strong class="text-rose-900 text-xl">弄璋：</strong>稱生男孩。(璋，玉器)</li>
+                                        <li>3. <strong class="text-rose-900 text-xl">弄瓦：</strong>稱生女孩。(瓦，紡紗的錠錘)</li>
                                     </ul>
                                 </div>
-                                <div class="bg-white p-4 rounded-xl shadow-sm border border-rose-100">
-                                    <h5 class="font-bold text-slate-700 border-b border-slate-200 mb-2">🪦 喪葬</h5>
-                                    <ul class="space-y-1 text-slate-800">
+                                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:-translate-y-1 transition-transform">
+                                    <h5 class="font-black text-slate-700 text-2xl border-b-2 border-slate-200 mb-4 pb-2 flex items-center"><span class="text-3xl mr-2">🪦</span> 喪葬</h5>
+                                    <ul class="space-y-3 font-medium text-slate-800">
                                         <li>1. <strong>壽終正寢：</strong>男喪用。</li>
                                         <li>2. <strong>壽終內寢：</strong>女喪用。</li>
-                                        <li>3. <strong>孤子：</strong>母親健在，父死，子稱「孤子」。</li>
-                                        <li>4. <strong>哀子：</strong>父親健在，母死，子稱「哀子」。</li>
-                                        <li>5. <strong>孤哀子：</strong>父母親皆死，稱「孤哀子」。</li>
-                                        <li>6. <strong>未亡人：</strong>夫死，妻自稱「未亡人」。</li>
+                                        <li>3. <strong>孤子：</strong>母親健在，父死。</li>
+                                        <li>4. <strong>哀子：</strong>父親健在，母死。</li>
+                                        <li>5. <strong>孤哀子：</strong>父母雙亡。</li>
+                                        <li>6. <strong>未亡人：</strong>夫死，妻自稱。</li>
                                         <li>7. <strong>諱：</strong>稱已死尊長之名。</li>
-                                        <li>8. <strong>舉例：</strong>「顯妣王母張太夫人」：去世的是母親，母親姓張，夫家姓王。</li>
-                                        <li>9. <strong>年齡：</strong>卒年六十歲以上者稱「享壽」；不滿六十歲者稱「享年」；三十歲以下者稱「得年」。</li>
+                                        <li class="bg-slate-50 p-2 rounded-lg text-base">8. <strong>舉例：</strong>「顯妣王母張太夫人」：去世的是母親，母親姓張，夫家姓王。</li>
+                                        <li class="bg-slate-50 p-2 rounded-lg text-base">9. <strong>年齡：</strong>60歲以上稱「享壽」；不滿60歲稱「享年」；30歲以下稱「得年」。</li>
                                     </ul>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex flex-col gap-8 text-rose-950 mb-8">
-                            <div class="bg-rose-50/50 p-6 md:p-8 rounded-xl shadow-sm border border-rose-100">
-                                <h5 class="font-bold text-center text-xl md:text-2xl mb-4">範例1：結婚請帖 (男方)</h5>
-                                <img src="Chinese-Learning-29/p6.jpg" alt="結婚請帖男方" class="w-full max-w-3xl mx-auto rounded-xl shadow-md border border-slate-200 mb-4" onerror="this.style.display='none'">
-                                <p class="text-base md:text-lg text-slate-600 text-center max-w-3xl mx-auto">發帖人為新郎父母 (李慶和、汪淑華) 為長男(鈞豪)結婚敬備喜筵。</p>
+                        <!-- 柬帖範例 改為上下排列，並放大圖片 -->
+                        <div class="flex flex-col gap-12 text-rose-950 mb-16">
+                            <div class="bg-rose-50/70 p-6 md:p-10 rounded-3xl shadow-sm border border-rose-200 hover:shadow-md transition-shadow">
+                                <h5 class="font-black text-center text-2xl md:text-3xl mb-6 text-rose-900 border-b border-rose-200 pb-3 inline-block mx-auto w-full">範例1：結婚請帖 (男方)</h5>
+                                <img src="Chinese-Learning-29/p6.jpg" alt="結婚請帖男方" class="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-slate-300 mb-6" onerror="this.style.display='none'">
+                                <div class="bg-white p-5 rounded-2xl shadow-inner border border-rose-100 max-w-4xl mx-auto">
+                                    <p class="text-lg md:text-xl text-rose-800 text-center font-bold">💡 解析</p>
+                                    <p class="text-lg md:text-xl text-slate-700 text-center mt-2">發帖人為新郎父母 (李慶和、汪淑華)，為長男(鈞豪)結婚敬備喜筵。</p>
+                                </div>
                             </div>
-                            <div class="bg-rose-50/50 p-6 md:p-8 rounded-xl shadow-sm border border-rose-100">
-                                <h5 class="font-bold text-center text-xl md:text-2xl mb-4">範例2：歸寧請帖 (女方)</h5>
-                                <img src="Chinese-Learning-29/p7.jpg" alt="歸寧請帖女方" class="w-full max-w-3xl mx-auto rounded-xl shadow-md border border-slate-200 mb-4" onerror="this.style.display='none'">
-                                <p class="text-base md:text-lg text-slate-600 text-center max-w-3xl mx-auto">發帖人為新娘父母 (呂明漢、汪麗珠) 為肆女(敏鈴)歸寧會親敬備喜筵。</p>
+                            
+                            <div class="bg-rose-50/70 p-6 md:p-10 rounded-3xl shadow-sm border border-rose-200 hover:shadow-md transition-shadow">
+                                <h5 class="font-black text-center text-2xl md:text-3xl mb-6 text-rose-900 border-b border-rose-200 pb-3 inline-block mx-auto w-full">範例2：歸寧請帖 (女方)</h5>
+                                <img src="Chinese-Learning-29/p7.jpg" alt="歸寧請帖女方" class="w-full max-w-4xl mx-auto rounded-2xl shadow-lg border border-slate-300 mb-6" onerror="this.style.display='none'">
+                                <div class="bg-white p-5 rounded-2xl shadow-inner border border-rose-100 max-w-4xl mx-auto">
+                                    <p class="text-lg md:text-xl text-rose-800 text-center font-bold">💡 解析</p>
+                                    <p class="text-lg md:text-xl text-slate-700 text-center mt-2">發帖人為新娘父母 (呂明漢、汪麗珠)，為肆女(敏鈴)歸寧會親敬備喜筵。</p>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="bg-gradient-to-br from-slate-50 to-gray-100 p-6 rounded-2xl shadow-sm border border-gray-200">
-                            <h4 class="font-bold text-slate-800 text-2xl mb-3 border-b border-gray-300 pb-2">三、封套介紹</h4>
-                            <p class="text-base text-slate-700 mb-4"><strong>定義：</strong>裝禮金或奠儀。<br><strong>種類：</strong>1. 喜慶用紅色封套。 2. 喪事用白色或藍色封套。<br><strong>格式：</strong>1. 對象稱謂 2. 賀辭或哀悼辭 3. 題辭 4. 署名敬辭。</p>
+                        <!-- 封套介紹與範例 改為上下排列 -->
+                        <div class="bg-gradient-to-br from-slate-50 to-gray-100 p-6 md:p-10 rounded-3xl shadow-sm border border-gray-200">
+                            <h4 class="font-bold text-slate-800 text-2xl md:text-3xl mb-6 border-b-2 border-gray-300 pb-3 flex items-center"><span class="bg-slate-200 w-10 h-10 rounded-full flex items-center justify-center mr-3">三</span>封套介紹</h4>
                             
-                            <div class="flex flex-col gap-8 mt-6">
-                                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-rose-100 text-center">
-                                    <h5 class="font-bold text-rose-700 text-xl md:text-2xl mb-4">例1：紅包封套</h5>
-                                    <img src="Chinese-Learning-29/p8.jpg" alt="紅包封套" class="w-full max-w-md mx-auto rounded-xl shadow-md border border-slate-200 mb-4" onerror="this.style.display='none'">
-                                    <p class="text-base md:text-lg text-slate-600 mt-4 leading-relaxed max-w-md mx-auto">○○先生 △△小姐 結婚誌喜<br><span class="font-bold text-rose-600 text-2xl my-2 block">琴瑟和鳴</span>弟 敬賀</p>
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-10 text-lg md:text-xl">
+                                <p class="text-slate-800 mb-3"><strong class="text-indigo-800">定義：</strong>裝禮金或奠儀。</p>
+                                <p class="text-slate-800 mb-3"><strong class="text-indigo-800">種類：</strong>1. 喜慶用紅色封套。 2. 喪事用白色或藍色封套。</p>
+                                <p class="text-slate-800"><strong class="text-indigo-800">格式：</strong>1. 對象稱謂 2. 賀辭或哀悼辭 3. 題辭 4. 署名敬辭。</p>
+                            </div>
+                            
+                            <div class="flex flex-col gap-10 mt-6">
+                                <!-- 紅包封套 -->
+                                <div class="bg-white p-8 md:p-12 rounded-3xl shadow-md border border-rose-200 text-center relative overflow-hidden">
+                                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-rose-100 rounded-full opacity-50"></div>
+                                    <h5 class="font-black text-rose-700 text-2xl md:text-3xl mb-8 relative z-10 border-b-2 border-rose-100 pb-3 inline-block">例1：紅包封套</h5>
+                                    <img src="Chinese-Learning-29/p8.jpg" alt="紅包封套" class="w-full max-w-2xl mx-auto rounded-2xl shadow-xl border-4 border-rose-50 mb-8 relative z-10" onerror="this.style.display='none'">
+                                    <div class="bg-rose-50 p-6 rounded-2xl border border-rose-100 max-w-2xl mx-auto">
+                                        <p class="text-lg md:text-xl text-slate-700 font-medium leading-relaxed">
+                                            ○○先生 △△小姐 結婚誌喜<br>
+                                            <span class="font-black text-rose-600 text-3xl md:text-4xl my-4 block tracking-widest">琴瑟和鳴</span>
+                                            弟 敬賀
+                                        </p>
+                                    </div>
                                 </div>
-                                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 text-center">
-                                    <h5 class="font-bold text-slate-700 text-xl md:text-2xl mb-4">例2：白包封套</h5>
-                                    <img src="Chinese-Learning-29/p9.jpg" alt="白包封套" class="w-full max-w-md mx-auto rounded-xl shadow-md border border-slate-200 mb-4" onerror="this.style.display='none'">
-                                    <p class="text-base md:text-lg text-slate-600 mt-4 leading-relaxed max-w-md mx-auto">○老先生 千古<br><span class="font-bold text-slate-800 text-2xl my-2 block">奠儀</span>晚 敬輓</p>
-                                    <div class="text-left bg-slate-50 p-5 rounded-xl mt-6 text-sm md:text-base max-w-xl mx-auto border border-slate-200">
-                                        <p class="mb-2"><strong>千古：</strong>哀悼死者的話，即「永別」，用於男性。<br>女性要用「○太夫人仙逝」。</p>
-                                        <p><strong>輓：</strong>表哀悼之意。</p>
+                                
+                                <!-- 白包封套 -->
+                                <div class="bg-white p-8 md:p-12 rounded-3xl shadow-md border border-slate-300 text-center relative overflow-hidden">
+                                    <div class="absolute -left-10 -top-10 w-32 h-32 bg-slate-100 rounded-full opacity-50"></div>
+                                    <h5 class="font-black text-slate-800 text-2xl md:text-3xl mb-8 relative z-10 border-b-2 border-slate-200 pb-3 inline-block">例2：白包封套</h5>
+                                    <img src="Chinese-Learning-29/p9.jpg" alt="白包封套" class="w-full max-w-2xl mx-auto rounded-2xl shadow-xl border-4 border-slate-50 mb-8 relative z-10" onerror="this.style.display='none'">
+                                    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200 max-w-2xl mx-auto">
+                                        <p class="text-lg md:text-xl text-slate-700 font-medium leading-relaxed">
+                                            ○老先生 千古<br>
+                                            <span class="font-black text-slate-900 text-3xl md:text-4xl my-4 block tracking-widest">奠儀</span>
+                                            晚 敬輓
+                                        </p>
+                                        <div class="text-left bg-white p-6 rounded-xl mt-8 text-base md:text-lg border-l-4 border-slate-400 shadow-sm">
+                                            <p class="mb-3 leading-relaxed"><strong class="text-slate-900 text-xl">千古：</strong>哀悼死者的話，即「永別」，<span class="text-rose-600 font-bold">用於男性</span>。<br>※女性要用「○太夫人<span class="text-rose-600 font-bold">仙逝</span>」。</p>
+                                            <p><strong class="text-slate-900 text-xl">輓：</strong>表哀悼之意。</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -430,7 +486,9 @@
             }
         ];
 
-        // 50題 綜合挑戰版生成器
+        // ==========================================
+        //  80題 綜合挑戰版題庫生成
+        // ==========================================
         const generate120Questions = () => {
             const qList = [];
             const addQ = (q, o0, o1, o2, o3, ans, exp) => qList.push({ q, opts:[o0,o1,o2,o3], ans, showExplanation: false, selectedAns: null, isCorrect: false, exp });
@@ -555,42 +613,132 @@
             }
         };
 
-        const loadRecentUsers = async () => {
+        // 監聽全域使用者名單 (Quick Login 用)
+        const listenToGlobalUsers = () => {
             if (!isFirebaseInitialized || !currentUser) return;
-            try {
-                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'recent_users', COLLECTION_NAME);
-                const snap = await getDoc(ref);
-                if(snap.exists() && snap.data().users) {
-                    recentUsers = snap.data().users;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+            
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            
+            unsubscribeGlobal = onSnapshot(globalRef, (snap) => {
+                if(snap.exists()) {
+                    recentUsers = snap.data().users || [];
+                } else {
+                    recentUsers = [];
                 }
-            } catch(e) {}
-            if (currentTab === 'login') renderLogin();
+                if(currentTab === 'login') renderLogin();
+            });
         };
 
-        const saveRecentUser = async (name) => {
-            if (!isFirebaseInitialized || !currentUser) return;
+        // ==========================================
+        //  核心資料儲存與跨裝置同步
+        // ==========================================
+        
+        // 1. 監聽當前使用者的個人檔案 (從 public/data/ 取得，實現以 userName 跨裝置同步)
+        const listenToUserDocument = (name) => {
+            if (!isFirebaseInitialized || !currentUser) {
+                loadLocalData(name);
+                return;
+            }
+            // 嚴格遵守 Rule 1 路徑格式
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, name);
+            
+            if(unsubscribeUser) unsubscribeUser();
+            
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    // 合併雲端資料到本地狀態
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [] }, docSnap.data());
+                    // 備份至 LocalStorage
+                    saveLocalData(name);
+                } else {
+                    // 新使用者
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()] };
+                    setDoc(userRef, userData, { merge: true });
+                }
+                
+                // 若正在相關頁面，即時更新 UI
+                if(currentTab === 'favorites') renderFavorites();
+                else if(currentTab === 'mistakes') renderMistakes();
+                else if(currentTab === 'history') renderHistory();
+                
+            }, (error) => console.error("Listen user error", error));
+        };
+
+        // 2. 儲存資料至雲端
+        const saveUserDataToCloud = async () => {
+            saveLocalData(username);
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
             try {
-                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'recent_users', COLLECTION_NAME);
-                await setDoc(ref, { users: arrayUnion(name) }, { merge: true });
-                if (!recentUsers.includes(name)) recentUsers.push(name);
+                await setDoc(userRef, userData, { merge: true });
+            } catch(e) {
+                console.error("Firebase save error:", e);
+            }
+        };
+
+        // 3. LocalStorage 備用系統
+        const loadLocalData = (name) => {
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
+                if (localData) {
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [] }, JSON.parse(localData));
+                }
+            } catch(e) {}
+        };
+
+        const saveLocalData = (name) => {
+            try {
+                if (name) localStorage.setItem(`${COLLECTION_NAME}_${name}_data`, JSON.stringify(userData));
+            } catch(e) {}
+        };
+
+        const saveQuizState = () => {
+            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+        };
+
+        const loadLocalQuizState = () => {
+            try {
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = q;
+                }
             } catch(e) {}
         };
 
         const initApp = async () => {
             renderApp();
+            
+            const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_user`);
+            
             if (isFirebaseInitialized) {
                 await initAuth(); 
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         currentUser = user;
-                        await loadUserData();
-                        await loadRecentUsers();
-                        if (username) renderMain();
-                        else renderLogin();
+                        listenToGlobalUsers();
+                        
+                        if (lastUser) {
+                            username = lastUser;
+                            listenToUserDocument(username);
+                            loadLocalQuizState();
+                            renderMain();
+                        } else {
+                            renderLogin();
+                        }
                     } else renderLogin();
                 });
             } else {
-                if (username) renderMain(); else renderLogin();
+                if (lastUser) {
+                    username = lastUser;
+                    loadLocalData(username);
+                    loadLocalQuizState();
+                    renderMain();
+                } else {
+                    renderLogin();
+                }
             }
         };
 
@@ -605,69 +753,50 @@
                 }, 2000);
                 return;
             }
+            
             username = name;
-            await loadUserData();
+            localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
             
             if (isFirebaseInitialized && currentUser) {
-                const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
-                await setDoc(userRef, { username, lastLogin: new Date() }, { merge: true });
-                const loginRef = doc(collection(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME + '_logs'));
-                await setDoc(loginRef, { type: 'login', time: new Date() });
-                await saveRecentUser(name);
+                const now = new Date().toISOString();
+                
+                // 1. 更新登入紀錄
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(now);
+                if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50); // 保留最近50次
+                
+                // 2. 更新全域清單 (Quick Login)
+                const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                try {
+                    const snap = await getDoc(globalRef);
+                    let users = snap.exists() ? snap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username); // 去重
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10); // 只留最新10個供快速登入
+                    await setDoc(globalRef, { users }, { merge: true });
+                } catch(e) {}
+                
+                // 3. 儲存至個人檔案
+                saveUserDataToCloud();
+                
+                // 4. 開始持續監聽
+                listenToUserDocument(username);
+            } else {
+                loadLocalData(username);
             }
+            
             renderMain();
         };
 
-        const loadUserData = async () => {
-            if (isFirebaseInitialized && currentUser) {
-                const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'profile');
-                try {
-                    const snap = await getDoc(ref);
-                    if (snap.exists()) {
-                        const d = snap.data();
-                        if(d.favorites) userData.favorites = d.favorites;
-                        if(d.mistakes) userData.mistakes = d.mistakes;
-                    }
-                } catch(e) {}
-            } else {
-                try {
-                    const localData = localStorage.getItem(`${COLLECTION_NAME}_${username}_data`);
-                    if (localData) {
-                        const d = JSON.parse(localData);
-                        if(d.favorites) userData.favorites = d.favorites;
-                        if(d.mistakes) userData.mistakes = d.mistakes;
-                    }
-                } catch(e) {}
-            }
-            
-            try {
-                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
-                if (localQuiz) {
-                    const q = JSON.parse(localQuiz);
-                    if (q && q.active) quizState = q;
-                }
-            } catch(e) {}
-        };
-
-        const saveUserData = async () => {
-            try {
-                if (username) localStorage.setItem(`${COLLECTION_NAME}_${username}_data`, JSON.stringify(userData));
-            } catch(e) {}
-
-            if (!isFirebaseInitialized || !currentUser) return;
-            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'profile');
-            try { await setDoc(ref, userData, { merge: true }); } catch(e) {}
-        };
-
-        const saveQuizState = () => {
-            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
-        };
-
         window.toggleFavorite = async (itemId) => {
+            if (!userData.favorites) userData.favorites = [];
             const idx = userData.favorites.indexOf(itemId);
             if (idx > -1) userData.favorites.splice(idx, 1);
             else userData.favorites.push(itemId);
-            saveUserData();
+            
+            saveUserDataToCloud();
+            
+            // 由於 onSnapshot 會觸發 UI 更新，此處為 Optimistic Update
             if(currentTab === 'learn') renderLearnContent();
             if(currentTab === 'favorites') renderFavorites();
         };
@@ -692,26 +821,26 @@
                         </div>
                     </div>
 
-                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl z-10 w-[30rem] max-w-[95vw] text-center border border-white/60">
-                        <div class="w-20 h-20 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-6">
-                            <span class="text-5xl text-white">✉️</span>
+                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl z-10 w-[32rem] max-w-[95vw] text-center border border-white/60">
+                        <div class="w-24 h-24 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-6">
+                            <span class="text-6xl text-white">✉️</span>
                         </div>
-                        <h1 class="text-4xl md:text-5xl font-extrabold text-orange-950 mb-4 tracking-widest leading-tight">書信柬帖<br>大挑戰 📜✨</h1>
-                        <p class="text-orange-600 mb-10 text-xl font-bold bg-orange-100 inline-block px-4 py-1.5 rounded-full border border-orange-200 shadow-sm">🎯 80題 綜合挑戰版 👑</p>
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-orange-950 mb-4 tracking-widest leading-tight">書信柬帖<br>大挑戰 📜✨</h1>
+                        <p class="text-orange-600 mb-10 text-xl md:text-2xl font-bold bg-orange-100 inline-block px-5 py-2 rounded-full border border-orange-200 shadow-sm">🎯 80題 綜合挑戰版 👑</p>
                         
                         <div class="space-y-6">
-                            <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-5 py-4 text-lg rounded-xl border-2 border-orange-200 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 text-center transition-all bg-white/80 backdrop-blur-sm">
-                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-6 text-xl rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                            <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-orange-200 focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
+                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
                                 進入學習系統 🚀✨
                             </button>
                         </div>
                         
                         <div class="mt-10 border-t border-orange-200/50 pt-6">
-                            <p class="text-sm text-orange-700/60 mb-4 font-medium tracking-wide">☁️ 雲端最近登入 👥</p>
+                            <p class="text-base text-orange-700/60 mb-4 font-bold tracking-wide">☁️ 雲端最近登入 👥</p>
                             <div class="flex flex-wrap justify-center gap-3">
                                 ${recentUsers.length > 0 
-                                    ? recentUsers.slice(-5).map(u => `<button onclick="handleLogin('${u}')" class="text-sm font-bold bg-white/60 border border-orange-200 text-orange-800 hover:bg-orange-100 hover:text-orange-900 hover:border-orange-300 px-4 py-2 rounded-lg shadow-sm transition-all">${u}</button>`).join('')
-                                    : `<span class="text-sm text-orange-700/60 bg-white/50 px-4 py-2 rounded-lg">尚無紀錄或尚未連線</span>`
+                                    ? recentUsers.slice().reverse().slice(0, 8).map(u => `<button onclick="handleLogin('${u.name}')" class="text-base font-bold bg-white/80 border-2 border-orange-200 text-orange-800 hover:bg-orange-100 hover:text-orange-900 hover:border-orange-400 px-5 py-2.5 rounded-xl shadow-sm transition-all">${u.name}</button>`).join('')
+                                    : `<span class="text-base text-orange-700/60 bg-white/50 px-5 py-2.5 rounded-xl">尚無紀錄或尚未連線</span>`
                                 }
                             </div>
                         </div>
@@ -723,24 +852,24 @@
         window.renderMain = () => {
             el('view-container').innerHTML = `
                 <nav class="glass-nav text-white shadow-lg z-20 shrink-0">
-                    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                    <div class="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
                         <div class="flex justify-between h-20">
                             <div class="flex items-center gap-2 sm:gap-4 flex-1 overflow-hidden min-w-0">
-                                <span class="font-extrabold text-xl md:text-2xl tracking-widest hidden lg:flex items-center shrink-0 text-white">
-                                    <span class="bg-white/20 p-2 rounded-lg mr-3">✉️</span>應用文高手 🎓✨
+                                <span class="font-extrabold text-2xl md:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
+                                    <span class="bg-white/20 p-2 rounded-lg mr-3 shadow-sm">✉️</span>應用文高手 🎓✨
                                 </span>
-                                <div class="flex items-center bg-white/10 px-3 py-1.5 rounded-full border border-white/20 shadow-inner text-xs sm:text-sm font-medium shrink-0">
+                                <div class="flex items-center bg-white/10 px-3 py-1.5 rounded-full border border-white/20 shadow-inner text-sm font-medium shrink-0">
                                     <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
                                     <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
                                 </div>
                                 <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-4 animate-fade-in shrink-0 min-w-0">
-                                    <div class="flex items-center bg-white/95 px-3 py-1.5 rounded-xl shadow-md text-sm sm:text-base font-bold shrink-0 text-orange-950">
-                                        <span class="text-emerald-600 flex items-center"><span class="mr-1.5">✅</span><span id="nav-stat-correct">0</span></span>
-                                        <div class="w-px bg-slate-300 h-4 mx-3"></div>
-                                        <span class="text-rose-600 flex items-center"><span class="mr-1.5">❌</span><span id="nav-stat-incorrect">0</span></span>
+                                    <div class="flex items-center bg-white/95 px-4 py-2 rounded-xl shadow-md text-base md:text-lg font-bold shrink-0 text-orange-950">
+                                        <span class="text-emerald-600 flex items-center"><span class="mr-2">✅</span><span id="nav-stat-correct">0</span></span>
+                                        <div class="w-px bg-slate-300 h-5 mx-4"></div>
+                                        <span class="text-rose-600 flex items-center"><span class="mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
                                     </div>
-                                    <div class="hidden md:flex flex-col w-24 lg:w-32 ml-4 shrink-0">
-                                        <div class="w-full bg-orange-950/50 rounded-full h-2.5 overflow-hidden shadow-inner border border-white/10">
+                                    <div class="hidden md:flex flex-col w-32 lg:w-40 ml-4 shrink-0">
+                                        <div class="w-full bg-orange-950/50 rounded-full h-3 overflow-hidden shadow-inner border border-white/10">
                                             <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-amber-400 to-orange-400 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
                                                 <div class="absolute inset-0 bg-white/20 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
                                             </div>
@@ -750,13 +879,14 @@
                             </div>
                             
                             <div class="flex items-center space-x-1 sm:space-x-3 shrink-0 overflow-x-auto scrollbar-hide max-w-full pl-2">
-                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
-                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
-                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
-                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
                                 <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/20 shrink-0 whitespace-nowrap">
-                                    <span class="text-sm sm:text-base font-bold mr-3 bg-white/10 px-3 py-1.5 rounded-lg text-white"><span class="mr-2">👤</span>${username}</span>
-                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors" title="登出">🚪</button>
+                                    <span class="text-base sm:text-lg lg:text-xl font-bold mr-3 bg-white/10 px-3 py-1.5 rounded-lg text-white shadow-inner"><span class="mr-2">👤</span>${username}</span>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg" title="登出">🚪</button>
                                 </div>
                             </div>
                         </div>
@@ -771,14 +901,16 @@
 
         window.logout = () => {
             username = '';
-            userData = { favorites: [], mistakes: [] };
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [] };
             quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+            if(unsubscribeUser) unsubscribeUser();
             renderLogin();
         };
 
         window.switchTab = (tab) => {
             currentTab = tab;
-            ['learn', 'quiz', 'mistakes', 'favorites'].forEach(t => {
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
                 const btn = el(`nav-${t}`);
                 if(btn) {
                     if(t === tab) {
@@ -808,6 +940,7 @@
             if(tab === 'quiz') renderQuizView(content);
             if(tab === 'mistakes') renderMistakes(content);
             if(tab === 'favorites') renderFavorites(content);
+            if(tab === 'history') renderHistory(content);
         };
 
         const renderLearnView = (container) => {
@@ -825,7 +958,7 @@
                         <i class="fas fa-bars text-xl md:mr-3"></i>
                         <span class="font-bold text-lg hidden md:inline tracking-wide">單元選單</span>
                     </button>
-                    <span class="font-extrabold text-xl md:text-2xl truncate drop-shadow-sm" id="current-learn-title">${currentData ? currentData.title : ''}</span>
+                    <span class="font-extrabold text-xl md:text-2xl lg:text-3xl truncate drop-shadow-sm" id="current-learn-title">${currentData ? currentData.title : ''}</span>
                 </div>
                 <div id="learn-overlay" onclick="toggleLearnMenu(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden transition-opacity duration-300"></div>
                 <div id="learn-drawer" class="fixed inset-y-0 left-0 w-[24rem] max-w-[85vw] bg-white border-r border-orange-100 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl flex flex-col">
@@ -868,14 +1001,14 @@
             if(!area) return;
             const data = learnData.find(d => d.id === learnSubTab);
             area.innerHTML = `
-                <div class="max-w-5xl mx-auto w-full animate-fade-in pb-12">
+                <div class="max-w-6xl xl:max-w-7xl mx-auto w-full animate-fade-in pb-12">
                     ${data.content}
                 </div>
             `;
             setTimeout(() => {
                 document.querySelectorAll('.fav-btn').forEach(btn => {
                     const id = btn.getAttribute('data-id');
-                    if(userData.favorites.includes(id)) {
+                    if(userData.favorites && userData.favorites.includes(id)) {
                         btn.classList.remove('text-gray-300', 'text-white/50');
                         btn.classList.add('text-rose-500');
                         btn.innerHTML = '❤️';
@@ -888,20 +1021,20 @@
             if(!quizState.active) {
                 container.innerHTML = `
                     <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto relative z-10">
-                        <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-3xl w-full border border-white/60 relative overflow-hidden">
+                        <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-3xl lg:max-w-4xl w-full border border-white/60 relative overflow-hidden">
                             <div class="absolute top-0 right-0 w-40 h-40 bg-orange-100 rounded-bl-full -z-10 opacity-50"></div>
                             
-                            <div class="w-24 h-24 bg-gradient-to-br from-orange-500 to-red-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
-                                <span class="text-5xl text-white">🧠</span>
+                            <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-orange-500 to-red-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
+                                <span class="text-6xl md:text-7xl text-white">🧠</span>
                             </div>
                             
-                            <h2 class="text-3xl md:text-4xl font-extrabold mb-6 text-orange-950 tracking-wide">80題 綜合挑戰測驗 🏆</h2>
-                            <p class="text-orange-800/80 mb-10 text-lg md:text-xl leading-loose">
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-orange-950 tracking-wide">80題 綜合挑戰測驗 🏆</h2>
+                            <p class="text-orange-800/80 mb-10 text-xl md:text-2xl leading-loose">
                                 題目涵蓋講義所有應用文分類，驗收您的精熟度！<br>
-                                <span class="bg-orange-100 text-orange-800 font-bold px-4 py-1.5 rounded-full inline-block mt-4 border border-orange-200 shadow-sm">🌊 瀑布流模式</span><br>
-                                <span class="text-base text-orange-700/60 mt-2 block">點擊選項後立即顯示解析，無須換頁，快速複習最有效率！ ✨</span>
+                                <span class="bg-orange-100 text-orange-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-orange-200 shadow-sm">🌊 瀑布流模式</span><br>
+                                <span class="text-lg md:text-xl text-orange-700/60 mt-3 block font-bold">點擊選項後立即顯示解析，無須換頁，快速複習最有效率！ ✨</span>
                             </p>
-                            <button onclick="startQuiz()" class="w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 px-16 text-xl md:text-2xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl">
+                            <button onclick="startQuiz()" class="w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-5 px-16 text-2xl md:text-3xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl">
                                 開始挑戰 🚀🔥
                             </button>
                         </div>
@@ -953,20 +1086,20 @@
         const renderQuizWaterfall = (container) => {
             const total = quizState.questions.length;
             let html = `
-                <div class="w-full flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
-                    <div class="max-w-4xl mx-auto relative w-full">
-                        <div class="glass-card flex justify-between items-center rounded-2xl p-4 md:p-5 shadow-sm border border-white/60 mb-8 sticky top-0 z-50 backdrop-blur-xl">
-                            <h2 class="text-xl md:text-2xl font-extrabold text-orange-900 flex items-center"><span class="mr-3 text-orange-600 bg-orange-100 p-2 rounded-lg">📝</span>測驗進行中 ⏳</h2>
-                            <button onclick="clearQuizHistory()" class="text-sm md:text-base text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center border border-transparent hover:border-rose-200"><span class="mr-1.5">🚪</span>放棄作答</button>
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
+                    <div class="max-w-5xl xl:max-w-6xl mx-auto relative w-full">
+                        <div class="glass-card flex justify-between items-center rounded-2xl p-5 md:p-6 shadow-sm border border-white/60 mb-10 sticky top-0 z-50 backdrop-blur-xl">
+                            <h2 class="text-2xl md:text-3xl font-extrabold text-orange-900 flex items-center"><span class="mr-3 text-orange-600 bg-orange-100 p-2 rounded-lg">📝</span>測驗進行中 ⏳</h2>
+                            <button onclick="clearQuizHistory()" class="text-base md:text-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-transparent hover:border-rose-200"><span class="mr-2">🚪</span>放棄作答</button>
                         </div>
-                        <div id="questions-list" class="space-y-8 w-full">
+                        <div id="questions-list" class="space-y-10 w-full">
             `;
             quizState.questions.forEach((_, qIdx) => {
                 html += `<div id="q-block-${qIdx}" class="bg-white rounded-3xl shadow-lg overflow-hidden border border-orange-100 transition-all w-full">${generateSingleQuestionHtml(qIdx)}</div>`;
             });
             html += `
                         </div>
-                        <button onclick="finishQuizWaterfall()" class="w-full mt-12 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold py-5 md:py-6 text-xl md:text-3xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center break-words border-b-4 border-red-700">
+                        <button onclick="finishQuizWaterfall()" class="w-full mt-16 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-red-700">
                             🏁 完成測驗並結算成績 📊
                         </button>
                     </div>
@@ -980,18 +1113,19 @@
             let optionsHtml = '';
             
             q.opts.forEach((opt, i) => {
-                let btnClass = "w-full text-left p-4 md:p-5 text-lg md:text-xl rounded-2xl border-2 transition-all duration-200 flex items-center group relative overflow-hidden ";
-                let iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mr-4 font-extrabold text-lg md:text-xl transition-colors shrink-0 shadow-inner group-hover:bg-orange-100 group-hover:text-orange-700">${String.fromCharCode(65+i)}</span>`;
+                // 加大按鈕與內文字級
+                let btnClass = "w-full text-left p-4 md:p-6 text-xl md:text-2xl rounded-2xl border-2 transition-all duration-200 flex items-center group relative overflow-hidden ";
+                let iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mr-4 md:mr-6 font-extrabold text-xl md:text-2xl transition-colors shrink-0 shadow-inner group-hover:bg-orange-100 group-hover:text-orange-700">${String.fromCharCode(65+i)}</span>`;
                 
                 if (!q.showExplanation) {
                     btnClass += "border-orange-100 hover:border-orange-400 hover:bg-orange-50/50 bg-white cursor-pointer hover:shadow-md";
                 } else {
                     if (i === q.ans) {
                         btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 font-bold shadow-md z-10 ring-2 ring-emerald-400/20";
-                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-4 font-bold text-xl md:text-2xl shrink-0 shadow-sm">✅</span>`;
+                        iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-4 md:mr-6 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">✅</span>`;
                     } else if (i === q.selectedAns) {
                         btnClass += "border-rose-400 bg-rose-50 text-rose-900 font-bold";
-                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-rose-500 text-white flex items-center justify-center mr-4 font-bold text-xl md:text-2xl shrink-0 shadow-sm">❌</span>`;
+                        iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-rose-500 text-white flex items-center justify-center mr-4 md:mr-6 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">❌</span>`;
                     } else {
                         btnClass += "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed";
                     }
@@ -1000,7 +1134,7 @@
                 optionsHtml += `
                     <button ${q.showExplanation ? 'disabled' : `onclick="answerWaterfallQuestion(${qIdx}, ${i})"`} class="${btnClass}">
                         ${iconHtml}
-                        <span class="flex-1 leading-relaxed break-words z-10 text-slate-800 group-hover:text-orange-950">${opt}</span>
+                        <span class="flex-1 leading-relaxed break-words z-10 text-slate-800 group-hover:text-orange-950 font-medium">${opt}</span>
                     </button>
                 `;
             });
@@ -1009,20 +1143,20 @@
             if (q.showExplanation) {
                 const isCorrect = q.selectedAns === q.ans;
                 explanationHtml = `
-                    <div class="mt-8 p-5 md:p-8 rounded-2xl border ${isCorrect ? 'bg-emerald-50/50 border-emerald-200' : 'bg-rose-50/50 border-rose-200'} animate-fade-in w-full">
-                        <div class="flex items-center mb-5 border-b ${isCorrect ? 'border-emerald-200/50' : 'border-rose-200/50'} pb-4">
-                            <div class="w-12 h-12 rounded-full ${isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'} flex items-center justify-center mr-4 shrink-0 text-3xl">
+                    <div class="mt-10 p-6 md:p-8 rounded-3xl border ${isCorrect ? 'bg-emerald-50/50 border-emerald-200' : 'bg-rose-50/50 border-rose-200'} animate-fade-in w-full">
+                        <div class="flex items-center mb-6 border-b ${isCorrect ? 'border-emerald-200/50' : 'border-rose-200/50'} pb-5">
+                            <div class="w-16 h-16 rounded-full ${isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'} flex items-center justify-center mr-5 shrink-0 text-4xl">
                                 ${isCorrect ? '🎉' : '😲'}
                             </div>
-                            <span class="font-extrabold text-2xl md:text-3xl ${isCorrect ? 'text-emerald-800' : 'text-rose-800'}">${isCorrect ? '太棒了，答對了！' : '哎呀，答錯了！'}</span>
+                            <span class="font-extrabold text-3xl md:text-4xl ${isCorrect ? 'text-emerald-800' : 'text-rose-800'}">${isCorrect ? '太棒了，答對了！' : '哎呀，答錯了！'}</span>
                         </div>
                         <div class="w-full">
-                            <p class="font-bold mb-3 text-lg md:text-xl text-slate-700 flex items-center"><span class="mr-2">🔍</span>完整題目解析</p>
-                            <p class="mt-2 text-lg md:text-xl break-words text-slate-700 bg-white p-4 rounded-xl border border-orange-100 shadow-sm">正確答案為 <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600'} text-xl md:text-2xl ml-2">(${String.fromCharCode(65+q.ans)}) ${q.opts[q.ans]}</strong></p>
-                            <div class="mt-4 p-5 md:p-6 bg-orange-50/50 border border-orange-200/60 rounded-xl text-orange-950 w-full relative overflow-hidden">
-                                <div class="absolute left-0 top-0 bottom-0 w-1 bg-orange-400"></div>
-                                <p class="font-bold text-lg md:text-xl mb-2 flex items-center"><span class="mr-2 text-xl">💡</span>深度解析</p>
-                                <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-1">${q.exp}</p>
+                            <p class="font-bold mb-4 text-xl md:text-2xl text-slate-700 flex items-center"><span class="mr-3">🔍</span>完整題目解析</p>
+                            <p class="mt-3 text-xl md:text-2xl break-words text-slate-700 bg-white p-5 rounded-2xl border border-orange-100 shadow-sm font-medium">正確答案為 <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600'} text-2xl md:text-3xl ml-2">(${String.fromCharCode(65+q.ans)}) ${q.opts[q.ans]}</strong></p>
+                            <div class="mt-6 p-6 md:p-8 bg-orange-50/50 border border-orange-200/60 rounded-2xl text-orange-950 w-full relative overflow-hidden">
+                                <div class="absolute left-0 top-0 bottom-0 w-2 bg-orange-400"></div>
+                                <p class="font-bold text-xl md:text-2xl mb-3 flex items-center"><span class="mr-3 text-2xl">💡</span>深度解析</p>
+                                <p class="text-xl md:text-2xl leading-loose break-words whitespace-pre-wrap pl-2 font-medium">${q.exp}</p>
                             </div>
                         </div>
                     </div>
@@ -1030,17 +1164,17 @@
             }
 
             return `
-                <div class="px-5 md:px-8 py-4 border-b border-orange-100 flex justify-between items-center transition-colors ${q.showExplanation ? (q.selectedAns === q.ans ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-gradient-to-r from-rose-50 to-white') : 'bg-orange-50/30'}">
-                    <span class="font-extrabold text-orange-400 text-lg md:text-xl bg-white px-3 py-1 rounded-lg border border-orange-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
+                <div class="px-6 md:px-10 py-5 border-b border-orange-100 flex justify-between items-center transition-colors ${q.showExplanation ? (q.selectedAns === q.ans ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-gradient-to-r from-rose-50 to-white') : 'bg-orange-50/30'}">
+                    <span class="font-extrabold text-orange-500 text-xl md:text-2xl bg-white px-4 py-1.5 rounded-xl border border-orange-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
                     ${q.showExplanation 
                         ? (q.selectedAns === q.ans 
-                            ? '<span class="text-emerald-600 font-bold text-lg md:text-xl flex items-center bg-emerald-100 px-3 py-1 rounded-full"><span class="mr-1.5">✅</span>答對</span>' 
-                            : '<span class="text-rose-600 font-bold text-lg md:text-xl flex items-center bg-rose-100 px-3 py-1 rounded-full"><span class="mr-1.5">❌</span>答錯</span>') 
-                        : '<span class="text-orange-400 font-bold text-sm md:text-base flex items-center bg-orange-100/50 px-3 py-1 rounded-full"><span class="mr-1.5">✍️</span>作答區</span>'}
+                            ? '<span class="text-emerald-600 font-bold text-xl md:text-2xl flex items-center bg-emerald-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">✅</span>答對</span>' 
+                            : '<span class="text-rose-600 font-bold text-xl md:text-2xl flex items-center bg-rose-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯</span>') 
+                        : '<span class="text-orange-400 font-bold text-lg md:text-xl flex items-center bg-orange-100/50 px-4 py-1.5 rounded-full border border-orange-200"><span class="mr-2">✍️</span>作答區</span>'}
                 </div>
-                <div class="p-5 md:p-8 w-full overflow-hidden">
-                    <h3 class="text-xl md:text-2xl font-extrabold text-slate-800 mb-8 leading-loose break-words">${q.q}</h3>
-                    <div class="space-y-4 w-full">
+                <div class="p-6 md:p-10 w-full overflow-hidden">
+                    <h3 class="text-2xl md:text-3xl font-extrabold text-slate-800 mb-10 leading-loose break-words">${q.q}</h3>
+                    <div class="space-y-5 w-full">
                         ${optionsHtml}
                     </div>
                     ${explanationHtml}
@@ -1064,12 +1198,13 @@
             } else {
                 playWrongSound();
                 const mistakeId = q.q; 
+                if(!userData.mistakes) userData.mistakes = [];
                 const exists = userData.mistakes.find(m => m.id === mistakeId);
                 if(!exists) {
                     userData.mistakes.push({
                         id: mistakeId, q: q.q, opts: q.opts, ans: q.ans, time: new Date().toISOString()
                     });
-                    saveUserData();
+                    saveUserDataToCloud();
                 }
             }
             saveQuizState();
@@ -1102,43 +1237,47 @@
             const total = quizState.questions.length;
             const scorePercent = Math.round((correctCount / total) * 100);
             
+            // 更新測驗紀錄並上傳
+            if (!userData.quizHistory) userData.quizHistory = [];
+            userData.quizHistory.push({
+                date: new Date().toLocaleString(),
+                score: scorePercent,
+                total: total,
+                correct: correctCount
+            });
+            if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
+            saveUserDataToCloud();
+
             const navStats = el('nav-quiz-stats');
             if (navStats) {
                 navStats.classList.add('hidden');
                 navStats.classList.remove('flex');
             }
 
-            if(isFirebaseInitialized && currentUser) {
-                const docRef = doc(collection(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME + '_quizzes'));
-                try {
-                    await setDoc(docRef, { score: scorePercent, date: new Date(), total, correct: correctCount });
-                } catch(e) { console.error("Save Quiz Error", e); }
-            }
-
             const container = el('main-content');
             container.innerHTML = `
                 <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto pb-24 relative z-10">
-                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-3xl w-full border border-white/60 relative overflow-hidden">
-                        <div class="absolute -top-20 -left-20 w-48 h-48 bg-amber-100 rounded-full mix-blend-multiply filter blur-2xl opacity-70 -z-10"></div>
+                    <div class="glass-card p-10 md:p-16 rounded-3xl shadow-2xl text-center max-w-4xl w-full border border-white/60 relative overflow-hidden">
+                        <div class="absolute -top-20 -left-20 w-64 h-64 bg-amber-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70 -z-10"></div>
                         
-                        <div class="w-28 h-28 bg-gradient-to-br from-amber-300 to-orange-500 rounded-full mx-auto mb-6 flex items-center justify-center shadow-xl border-4 border-white text-6xl">
+                        <div class="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-amber-300 to-orange-500 rounded-full mx-auto mb-8 flex items-center justify-center shadow-2xl border-4 border-white text-7xl md:text-8xl">
                             🏆
                         </div>
                         
-                        <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-orange-950">🎉 測驗完成！ 🎊</h2>
-                        <div class="my-8 relative inline-block">
-                            <span class="text-8xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 drop-shadow-sm">${scorePercent}</span>
-                            <span class="text-2xl md:text-3xl text-orange-600 font-bold absolute bottom-2 -right-10">分</span>
+                        <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-orange-950">🎉 測驗完成！ 🎊</h2>
+                        <div class="my-10 relative inline-block">
+                            <span class="text-8xl md:text-9xl lg:text-[12rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 drop-shadow-md leading-none">${scorePercent}</span>
+                            <span class="text-3xl md:text-4xl text-orange-600 font-bold absolute bottom-4 -right-12">分</span>
                         </div>
-                        <div class="bg-orange-50/80 rounded-2xl p-6 mb-8 border border-orange-100 shadow-inner inline-block">
-                            <p class="text-orange-900 text-xl md:text-2xl font-medium">答對 🎯 <span class="text-rose-600 font-black text-2xl mx-1">${correctCount}</span> 題 / 共作答 📝 ${answeredCount} 題</p>
-                            <p class="text-sm md:text-base mt-2 text-orange-700/60 font-bold tracking-widest">(總題數 ${total} 題)</p>
+                        <div class="bg-orange-50/80 rounded-3xl p-8 mb-10 border border-orange-100 shadow-inner inline-block">
+                            <p class="text-orange-900 text-2xl md:text-3xl font-medium">答對 🎯 <span class="text-rose-600 font-black text-3xl md:text-4xl mx-2">${correctCount}</span> 題 / 共作答 📝 ${answeredCount} 題</p>
+                            <p class="text-lg md:text-xl mt-3 text-orange-700/60 font-bold tracking-widest">(總題數 ${total} 題)</p>
                         </div>
-                        <div class="flex flex-col sm:flex-row gap-4 w-full">
-                            <button onclick="switchTab('mistakes')" class="flex-1 bg-white border-2 border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-700 font-extrabold py-4 px-6 text-xl rounded-2xl shadow-sm hover:shadow-md transition-all">
+                        <div class="flex flex-col sm:flex-row gap-6 w-full max-w-2xl mx-auto">
+                            <button onclick="switchTab('mistakes')" class="flex-1 bg-white border-4 border-orange-200 hover:border-orange-300 hover:bg-orange-50 text-orange-700 font-extrabold py-5 px-6 text-2xl rounded-2xl shadow-sm hover:shadow-md transition-all">
                                 🩹 查看錯題
                             </button>
-                            <button onclick="startQuiz()" class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-extrabold py-4 px-6 text-xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border-b-4 border-red-800">
+                            <button onclick="startQuiz()" class="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-extrabold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border-b-4 border-red-800">
                                 🔄 重新挑戰
                             </button>
                         </div>
@@ -1166,38 +1305,38 @@
 
         window.renderMistakes = (container) => {
             if(!container) container = el('main-content');
-            if(userData.mistakes.length === 0) {
+            if(!userData.mistakes || userData.mistakes.length === 0) {
                 container.innerHTML = `
                     <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-orange-400 flex-col text-center relative z-10 animate-fade-in">
-                        <div class="w-32 h-32 bg-emerald-50 rounded-full flex items-center justify-center mb-6 shadow-inner border-2 border-emerald-200 text-6xl">🥳</div>
-                        <h2 class="text-3xl md:text-4xl font-extrabold text-orange-950 mb-2">太棒了！✨</h2>
-                        <p class="text-xl md:text-2xl font-medium text-orange-800/60">目前沒有任何錯題紀錄 🎉</p>
+                        <div class="w-40 h-40 bg-emerald-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-emerald-200 text-7xl">🥳</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-orange-950 mb-4">太棒了！✨</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-orange-800/60">目前沒有任何錯題紀錄 🎉</p>
                     </div>`;
                 return;
             }
 
             container.innerHTML = `
                 <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
-                    <div class="max-w-5xl mx-auto w-full">
-                        <div class="flex justify-between items-end border-b-4 border-rose-200 pb-4 mb-10">
+                    <div class="max-w-6xl xl:max-w-7xl mx-auto w-full">
+                        <div class="flex justify-between items-end border-b-4 border-rose-200 pb-5 mb-12">
                             <div>
-                                <h2 class="text-3xl md:text-4xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-12 h-12 flex items-center justify-center rounded-xl mr-4">🩹</span>錯題本 📚</h2>
-                                <p class="text-rose-900/50 mt-2 ml-16 font-medium">收錄您在測驗中答錯的題目，溫故知新 🔄💡</p>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">🩹</span>錯題本 📚</h2>
+                                <p class="text-rose-900/50 mt-3 ml-20 font-bold text-lg md:text-xl">收錄您在測驗中答錯的題目，溫故知新 🔄💡</p>
                             </div>
-                            <button onclick="clearMistakes()" class="text-sm md:text-base text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 px-4 py-2 rounded-lg border border-rose-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
+                            <button onclick="clearMistakes()" class="text-base md:text-xl text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 px-5 py-3 rounded-xl border-2 border-rose-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
                         </div>
-                        <div class="space-y-8 md:space-y-10 w-full">
+                        <div class="space-y-10 md:space-y-12 w-full">
                             ${userData.mistakes.map((m, i) => `
-                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-orange-100 w-full overflow-hidden relative group">
-                                    <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-rose-400 to-orange-400"></div>
-                                    <h3 class="font-extrabold text-orange-950 mb-8 text-xl md:text-2xl break-words leading-loose flex items-start">
-                                        <span class="text-rose-500 mr-3 text-2xl font-black bg-rose-50 px-2 rounded-lg">🤔 Q</span>${m.q}
+                                <div class="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-orange-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-orange-400"></div>
+                                    <h3 class="font-extrabold text-orange-950 mb-10 text-2xl md:text-3xl break-words leading-loose flex items-start">
+                                        <span class="text-rose-500 mr-4 text-3xl font-black bg-rose-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
                                     </h3>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-lg md:text-xl w-full">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6 text-xl md:text-2xl w-full font-medium">
                                         ${m.opts.map((opt, idx) => `
-                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-orange-50 text-slate-600 border border-orange-100'}">
-                                                <span class="inline-block w-8 font-bold ${idx === m.ans ? 'text-emerald-600' : 'text-orange-400'}">${String.fromCharCode(65+idx)}.</span> ${opt}
-                                                ${idx === m.ans ? '<span class="float-right text-emerald-500">✅</span>' : ''}
+                                            <div class="p-5 md:p-6 rounded-2xl break-words transition-all ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-orange-50 text-slate-600 border border-orange-100'}">
+                                                <span class="inline-block w-10 font-bold ${idx === m.ans ? 'text-emerald-600' : 'text-orange-400'}">${String.fromCharCode(65+idx)}.</span> ${opt}
+                                                ${idx === m.ans ? '<span class="float-right text-emerald-500 text-2xl">✅</span>' : ''}
                                             </div>
                                         `).join('')}
                                     </div>
@@ -1213,7 +1352,7 @@
             if(confirm('警告：確定要清空所有錯題紀錄嗎？\n(此動作無法復原)')) {
                 if(confirm('【第二次確認】真的要徹底清空錯題本嗎？\n按下「確定」將會刪除所有錯題資料。')) {
                     userData.mistakes = [];
-                    saveUserData();
+                    saveUserDataToCloud();
                     renderMistakes();
                 }
             }
@@ -1221,34 +1360,96 @@
 
         window.renderFavorites = (container) => {
             if(!container) container = el('main-content');
-            if(userData.favorites.length === 0) {
+            if(!userData.favorites || userData.favorites.length === 0) {
                 container.innerHTML = `
                     <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-orange-400 flex-col text-center relative z-10 animate-fade-in">
-                        <div class="w-32 h-32 bg-rose-50 rounded-full flex items-center justify-center mb-6 shadow-inner border-2 border-rose-100 text-6xl">💔</div>
-                        <h2 class="text-3xl md:text-4xl font-extrabold text-orange-950 mb-2">暫無收藏</h2>
-                        <p class="text-xl md:text-2xl font-medium text-orange-800/60 mb-8">到「學習區」點擊愛心圖示即可收藏！ 📌✨</p>
-                        <button onclick="switchTab('learn')" class="bg-white border-2 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-8 py-3 rounded-full shadow-sm transition-colors">🏃‍♂️💨 前往學習區</button>
+                        <div class="w-40 h-40 bg-rose-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-rose-100 text-7xl">💔</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-orange-950 mb-4">暫無收藏</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-orange-800/60 mb-10">到「學習區」點擊愛心圖示即可收藏！ 📌✨</p>
+                        <button onclick="switchTab('learn')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🏃‍♂️💨 前往學習區</button>
                     </div>`;
                 return;
             }
 
             container.innerHTML = `
                 <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
-                    <div class="max-w-6xl mx-auto w-full">
-                        <div class="flex items-end border-b-4 border-rose-200 pb-4 mb-10">
-                            <h2 class="text-3xl md:text-4xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-12 h-12 flex items-center justify-center rounded-xl mr-4 shadow-sm">💖</span>我的最愛 🌟</h2>
-                            <p class="text-rose-900/50 mt-2 ml-6 font-medium hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
+                    <div class="max-w-6xl xl:max-w-7xl mx-auto w-full">
+                        <div class="flex items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">💖</span>我的最愛 🌟</h2>
+                            <p class="text-rose-900/50 mt-3 ml-8 font-bold text-lg md:text-xl hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 w-full">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 w-full">
                             ${userData.favorites.map(favId => `
-                                <div class="bg-white p-6 md:p-8 rounded-3xl shadow-md border border-rose-100 flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-2 w-full h-full min-h-[160px]">
-                                    <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-gradient-to-tl from-rose-100 to-orange-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500 ease-out"></div>
-                                    <span class="font-bold text-orange-950 z-10 text-xl md:text-2xl break-words flex-1 leading-relaxed mb-4">${favId}</span>
+                                <div class="bg-white p-8 md:p-10 rounded-3xl shadow-lg border border-rose-100 flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 w-full h-full min-h-[200px]">
+                                    <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-gradient-to-tl from-rose-100 to-orange-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500 ease-out"></div>
+                                    <span class="font-bold text-orange-950 z-10 text-2xl md:text-3xl break-words flex-1 leading-relaxed mb-6">${favId}</span>
                                     <div class="flex justify-end mt-auto z-10">
-                                        <button onclick="toggleFavorite('${favId}')" class="bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white w-12 h-12 rounded-full flex items-center justify-center text-xl transition-colors shadow-sm">❤️</button>
+                                        <button onclick="toggleFavorite('${favId}')" class="bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-colors shadow-sm border border-rose-100 hover:border-transparent">❤️</button>
                                     </div>
                                 </div>
                             `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderHistory = (container) => {
+            if(!container) container = el('main-content');
+            if((!userData.quizHistory || userData.quizHistory.length === 0) && (!userData.loginHistory || userData.loginHistory.length === 0)) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-orange-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-slate-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-slate-200 text-7xl">📜</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-orange-950 mb-4">暫無紀錄</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-orange-800/60 mb-10">您還沒有完成任何測驗或留下足跡喔！</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-orange-200 text-orange-600 hover:bg-orange-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="max-w-6xl xl:max-w-7xl mx-auto w-full">
+                        <div class="flex justify-between items-end border-b-4 border-amber-300 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-amber-800 flex items-center"><span class="bg-amber-100 text-amber-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">📜</span>作答與登入紀錄</h2>
+                                <p class="text-amber-900/60 mt-3 ml-20 font-bold text-lg md:text-xl">追蹤您的學習軌跡，跨裝置同步更新 ☁️</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <!-- 作答紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+                                <div class="bg-amber-50 p-6 border-b border-amber-200">
+                                    <h3 class="text-3xl font-bold text-amber-900 flex items-center"><span class="mr-3 text-3xl">🎯</span>最近作答成績</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                                    ${(userData.quizHistory || []).slice().reverse().map((h, i) => `
+                                        <div class="flex justify-between items-center p-5 rounded-2xl border-2 border-slate-100 ${h.score >= 80 ? 'bg-emerald-50/50 border-emerald-100' : (h.score < 60 ? 'bg-rose-50/50 border-rose-100' : 'bg-slate-50')} transition-all hover:shadow-md">
+                                            <div>
+                                                <div class="font-bold text-slate-800 text-xl md:text-2xl">${h.date}</div>
+                                                <div class="text-lg text-slate-500 mt-2 font-medium">共 ${h.total} 題，答對 <span class="font-bold text-slate-700">${h.correct}</span> 題</div>
+                                            </div>
+                                            <div class="text-5xl font-black ${h.score >= 80 ? 'text-emerald-600' : (h.score < 60 ? 'text-rose-500' : 'text-amber-500')}">${h.score}<span class="text-2xl ml-1 font-bold">分</span></div>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">目前還沒有測驗紀錄喔</p>'}
+                                </div>
+                            </div>
+
+                            <!-- 登入紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden h-fit">
+                                <div class="bg-slate-50 p-6 border-b border-slate-200">
+                                    <h3 class="text-3xl font-bold text-slate-800 flex items-center"><span class="mr-3 text-3xl">👣</span>最近登入足跡</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-4 max-h-[40vh] overflow-y-auto">
+                                    ${(userData.loginHistory || []).slice().reverse().map((time, i) => `
+                                        <div class="flex items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors">
+                                            <span class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 mr-4 text-lg font-bold shadow-inner">${i+1}</span>
+                                            <span class="font-bold text-slate-700 text-xl">${new Date(time).toLocaleString()}</span>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">無登入紀錄</p>'}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
