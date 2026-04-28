@@ -485,6 +485,15 @@
                         if(d.mistakes) userData.mistakes = d.mistakes;
                     }
                 } catch(e) {}
+                
+                const quizRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'quizState');
+                try {
+                    const qSnap = await getDoc(quizRef);
+                    if (qSnap.exists()) {
+                        const q = qSnap.data();
+                        if (q && q.active) quizState = q;
+                    }
+                } catch(e) {}
             } else {
                 try {
                     const localData = localStorage.getItem(`${COLLECTION_NAME}_${username}_data`);
@@ -494,15 +503,14 @@
                         if(d.mistakes) userData.mistakes = d.mistakes;
                     }
                 } catch(e) {}
+                try {
+                    const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                    if (localQuiz) {
+                        const q = JSON.parse(localQuiz);
+                        if (q && q.active) quizState = q;
+                    }
+                } catch(e) {}
             }
-            
-            try {
-                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
-                if (localQuiz) {
-                    const q = JSON.parse(localQuiz);
-                    if (q && q.active) quizState = q;
-                }
-            } catch(e) {}
         };
 
         const saveUserData = async () => {
@@ -515,8 +523,11 @@
             try { await setDoc(ref, userData, { merge: true }); } catch(e) {}
         };
 
-        const saveQuizState = () => {
+        const saveQuizState = async () => {
             try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            if (!isFirebaseInitialized || !currentUser) return;
+            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'quizState');
+            try { await setDoc(ref, quizState, { merge: true }); } catch(e) {}
         };
 
         window.toggleFavorite = async (itemId) => {
@@ -579,7 +590,7 @@
         window.renderMain = () => {
             el('view-container').innerHTML = `
                 <nav class="glass-nav !bg-orange-700/90 text-white shadow-lg z-20 shrink-0">
-                    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                    <div class="w-full max-w-[96%] mx-auto px-3 sm:px-6">
                         <div class="flex justify-between h-20">
                             <div class="flex items-center gap-2 sm:gap-4 flex-1 overflow-hidden min-w-0">
                                 <span class="font-extrabold text-xl md:text-2xl tracking-widest hidden lg:flex items-center shrink-0 text-white">
@@ -706,7 +717,7 @@
                         `}).join('')}
                     </ul>
                 </div>
-                <div class="flex-1 p-4 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden w-full relative z-10" id="learn-content-area"></div>
+                <div class="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden w-full relative z-10" id="learn-content-area"></div>
             `;
             renderLearnContent();
         };
@@ -722,7 +733,7 @@
             if(!area) return;
             const data = learnData.find(d => d.id === learnSubTab);
             area.innerHTML = `
-                <div class="max-w-5xl mx-auto w-full animate-fade-in pb-12">
+                <div class="max-w-[96%] xl:max-w-7xl mx-auto w-full animate-fade-in pb-12">
                     ${data.content}
                 </div>
             `;
@@ -807,8 +818,8 @@
         const renderQuizWaterfall = (container) => {
             const total = quizState.questions.length;
             let html = `
-                <div class="w-full flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
-                    <div class="max-w-4xl mx-auto relative w-full">
+                <div class="w-full flex-1 p-3 md:p-6 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
+                    <div class="max-w-[96%] xl:max-w-6xl mx-auto relative w-full">
                         <div class="glass-card flex justify-between items-center rounded-2xl p-4 md:p-5 shadow-sm border border-white/60 mb-8 sticky top-0 z-50 backdrop-blur-xl">
                             <h2 class="text-xl md:text-2xl font-extrabold text-orange-900 flex items-center"><span class="mr-3 text-orange-600 bg-orange-100 p-2 rounded-lg">📝</span>測驗進行中 ⏳</h2>
                             <button onclick="clearQuizHistory()" class="text-sm md:text-base text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center border border-transparent hover:border-rose-200"><span class="mr-1.5">🚪</span>放棄作答</button>
@@ -1031,8 +1042,8 @@
             }
 
             container.innerHTML = `
-                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
-                    <div class="max-w-5xl mx-auto w-full">
+                <div class="w-full flex-1 p-3 md:p-6 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="max-w-[96%] xl:max-w-7xl mx-auto w-full">
                         <div class="flex justify-between items-end border-b-4 border-rose-200 pb-4 mb-10">
                             <div>
                                 <h2 class="text-3xl md:text-4xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-12 h-12 flex items-center justify-center rounded-xl mr-4">🩹</span>錯題本 📚</h2>
@@ -1087,8 +1098,8 @@
             }
 
             container.innerHTML = `
-                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
-                    <div class="max-w-6xl mx-auto w-full">
+                <div class="w-full flex-1 p-3 md:p-6 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="max-w-[96%] xl:max-w-[90rem] mx-auto w-full">
                         <div class="flex items-end border-b-4 border-rose-200 pb-4 mb-10">
                             <h2 class="text-3xl md:text-4xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-12 h-12 flex items-center justify-center rounded-xl mr-4 shadow-sm">💖</span>我的最愛 🌟</h2>
                             <p class="text-rose-900/50 mt-2 ml-6 font-medium hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
