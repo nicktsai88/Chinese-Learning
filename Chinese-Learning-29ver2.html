@@ -912,22 +912,22 @@
                         <div class="flex justify-between h-20">
                             <div class="flex items-center gap-2 sm:gap-4 flex-1 overflow-hidden min-w-0">
                                 <span class="font-extrabold text-2xl md:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
-                                    <span class="bg-white/20 p-2 rounded-xl mr-3 shadow-sm">✉️</span>應用文高手 🎓✨
+                                    <span class="bg-white/20 p-2 rounded-lg mr-3 shadow-sm">✉️</span>應用文高手 🎓✨
                                 </span>
-                                <div class="flex items-center bg-white/20 px-3 py-1.5 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
+                                <div class="flex items-center bg-white/10 px-3 py-1.5 rounded-full border border-white/20 shadow-inner text-sm font-medium shrink-0">
                                     <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
                                     <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
                                 </div>
-                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-4 animate-fade-in shrink-0 min-w-0 gap-3">
-                                    <div class="flex items-center bg-white px-4 py-1.5 rounded-xl shadow-md text-base md:text-lg font-bold shrink-0 text-orange-950">
+                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-4 animate-fade-in shrink-0 min-w-0">
+                                    <div class="flex items-center bg-white/95 px-4 py-2 rounded-xl shadow-md text-base md:text-lg font-bold shrink-0 text-orange-950">
                                         <span class="text-emerald-600 flex items-center"><span class="mr-2">✅</span><span id="nav-stat-correct">0</span></span>
-                                        <div class="w-px bg-slate-300 h-5 mx-3"></div>
+                                        <div class="w-px bg-slate-300 h-5 mx-4"></div>
                                         <span class="text-rose-600 flex items-center"><span class="mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
                                     </div>
-                                    <div class="hidden md:flex flex-col w-32 lg:w-40 shrink-0">
-                                        <div class="w-full bg-orange-950/40 rounded-full h-3.5 overflow-hidden shadow-inner border border-white/20">
-                                            <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-amber-300 to-amber-500 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
-                                                <div class="absolute inset-0 bg-white/30 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.2) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.2) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                                    <div class="hidden md:flex flex-col w-32 lg:w-40 ml-4 shrink-0">
+                                        <div class="w-full bg-orange-950/50 rounded-full h-3 overflow-hidden shadow-inner border border-white/10">
+                                            <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-amber-400 to-orange-400 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
+                                                <div class="absolute inset-0 bg-white/20 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -935,18 +935,14 @@
                             </div>
                             
                             <div class="flex items-center space-x-1 sm:space-x-3 shrink-0 overflow-x-auto scrollbar-hide max-w-full pl-2">
-                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
-                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
-                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
-                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
-                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
-                                
-                                <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-2 md:gap-3">
-                                    <div class="text-base sm:text-lg lg:text-xl font-bold bg-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-white shadow-inner flex items-center">
-                                        <span class="mr-2">👤</span>${username}
-                                    </div>
-                                    <button onclick="deleteCurrentUser()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg md:text-xl" title="刪除帳號紀錄">🗑️</button>
-                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg md:text-xl" title="登出">🚪</button>
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
+                                <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/20 shrink-0 whitespace-nowrap">
+                                    <span class="text-base sm:text-lg lg:text-xl font-bold mr-3 bg-white/10 px-3 py-1.5 rounded-lg text-white shadow-inner"><span class="mr-2">👤</span>${username}</span>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg" title="登出">🚪</button>
                                 </div>
                             </div>
                         </div>
@@ -959,35 +955,9 @@
             switchTab('learn');
         };
 
-        window.deleteCurrentUser = async () => {
-            if(!confirm(`確定要從雲端刪除選手 ${username} 的所有資料？此操作無法復原！`)) return;
-            if(!confirm(`⚠️ 再次警告：這將永久刪除 ${username} 的所有進度、錯題與紀錄！\n\n您真的確定要執行刪除嗎？`)) return;
-            
-            try {
-                if (isFirebaseInitialized && currentUser) {
-                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
-                    const snap = await getDoc(globalRef);
-                    if(snap.exists()) {
-                        let users = snap.data().users || [];
-                        users = users.filter(u => u.name !== username);
-                        await setDoc(globalRef, { users }, { merge: true });
-                    }
-                }
-                
-                localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
-                userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
-                if(unsubscribeUser) unsubscribeUser();
-                username = '';
-                renderLogin();
-            } catch(e) {
-                console.error("Delete user error:", e);
-                alert("刪除失敗，請稍後再試");
-            }
-        };
-
         window.logout = () => {
             username = '';
-            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [] };
             quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
             localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
             if(unsubscribeUser) unsubscribeUser();
@@ -1000,9 +970,11 @@
                 const btn = el(`nav-${t}`);
                 if(btn) {
                     if(t === tab) {
-                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                        btn.classList.add('bg-white/20', 'text-white', 'shadow-sm');
+                        btn.classList.remove('text-white/70', 'hover:bg-white/10');
                     } else {
-                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                        btn.classList.remove('bg-white/20', 'text-white', 'shadow-sm');
+                        btn.classList.add('text-white/70', 'hover:bg-white/10');
                     }
                 }
             });
