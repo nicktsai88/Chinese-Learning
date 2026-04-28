@@ -45,7 +45,9 @@
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const ORIGINAL_PREFIX = 'Chinese-Learning-30'; 
         const COLLECTION_NAME = 'Chinese-Learning-30'; 
+        const DOC_GLOBAL = 'Global_Users';
         
         let app, auth, db;
         let isFirebaseInitialized = false;
@@ -54,6 +56,15 @@
         let userData = { favorites: [], mistakes: [] };
         let connectionStatus = 'loading';
         let recentUsers = [];
+        let unsubscribeGlobal = null;
+        let unsubscribeUser = null;
+        
+        let currentTab = 'login';
+        let learnSubTab = 'sec1';
+        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+        let isLearnMenuOpen = false;
+
+        const el = id => document.getElementById(id);
         
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
@@ -386,51 +397,32 @@
             return qList;
         };
 
-        // ==========================================
-        //  應用程式狀態與邏輯
-        // ==========================================
-        let currentTab = 'login';
-        let learnSubTab = 'sec1';
-        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
-        let isLearnMenuOpen = false;
-
-        const el = id => document.getElementById(id);
-
-        window.toggleLearnMenu = (show) => {
-            isLearnMenuOpen = typeof show === 'boolean' ? show : !isLearnMenuOpen;
-            const drawer = el('learn-drawer');
-            const overlay = el('learn-overlay');
-            if(drawer && overlay) {
-                if(isLearnMenuOpen) {
-                    drawer.classList.remove('-translate-x-full');
-                    overlay.classList.remove('hidden');
+        function listenToGlobalUsers() {
+            if (!isFirebaseInitialized) return;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, DOC_GLOBAL);
+            unsubscribeGlobal = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    recentUsers = docSnap.data().users || [];
                 } else {
-                    drawer.classList.add('-translate-x-full');
-                    overlay.classList.add('hidden');
+                    recentUsers = [];
                 }
+                if (currentTab === 'login') renderLogin();
+            }, (error) => console.error("Global Users listen error:", error));
+        }
+
+        async function updateGlobalUserList(name, isDelete = false) {
+            if (!isFirebaseInitialized || !currentUser) return;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, DOC_GLOBAL);
+            try {
+                if (isDelete) {
+                    await updateDoc(docRef, { users: arrayRemove(name) });
+                } else {
+                    await setDoc(docRef, { users: arrayUnion(name) }, { merge: true });
+                }
+            } catch(e) {
+                if (!isDelete) await setDoc(docRef, { users: [name] });
             }
-        };
-
-        const loadRecentUsers = async () => {
-            if (!isFirebaseInitialized || !currentUser) return;
-            try {
-                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'recent_users', COLLECTION_NAME);
-                const snap = await getDoc(ref);
-                if(snap.exists() && snap.data().users) {
-                    recentUsers = snap.data().users;
-                }
-            } catch(e) {}
-            if (currentTab === 'login') renderLogin();
-        };
-
-        const saveRecentUser = async (name) => {
-            if (!isFirebaseInitialized || !currentUser) return;
-            try {
-                const ref = doc(db, 'artifacts', appId, 'public', 'data', 'recent_users', COLLECTION_NAME);
-                await setDoc(ref, { users: arrayUnion(name) }, { merge: true });
-                if (!recentUsers.includes(name)) recentUsers.push(name);
-            } catch(e) {}
-        };
+        }
 
         const initApp = async () => {
             renderApp();
@@ -439,14 +431,26 @@
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         currentUser = user;
-                        await loadUserData();
-                        await loadRecentUsers();
-                        if (username) renderMain();
-                        else renderLogin();
+                        listenToGlobalUsers();
+                        
+                        const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_active_user`);
+                        if (lastUser) {
+                            username = lastUser;
+                            listenToUserData();
+                            renderMain();
+                        } else {
+                            renderLogin();
+                        }
                     } else renderLogin();
                 });
             } else {
-                if (username) renderMain(); else renderLogin();
+                const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_active_user`);
+                if (lastUser) {
+                    username = lastUser;
+                    renderMain();
+                } else {
+                    renderLogin();
+                }
             }
         };
 
@@ -462,79 +466,79 @@
                 return;
             }
             username = name;
-            await loadUserData();
+            localStorage.setItem(`${COLLECTION_NAME}_last_active_user`, username);
+            
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${username}_data`);
+                if (localData) {
+                    const d = JSON.parse(localData);
+                    if(d.favorites) userData.favorites = d.favorites;
+                    if(d.mistakes) userData.mistakes = d.mistakes;
+                }
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = q;
+                }
+            } catch(e) {}
             
             if (isFirebaseInitialized && currentUser) {
-                const userRef = doc(db, 'artifacts', appId, 'users', currentUser.uid);
-                await setDoc(userRef, { username, lastLogin: new Date() }, { merge: true });
-                const loginRef = doc(collection(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME + '_logs'));
-                await setDoc(loginRef, { type: 'login', time: new Date() });
-                await saveRecentUser(name);
+                await updateGlobalUserList(username, false);
+                listenToUserData();
             }
             renderMain();
         };
 
-        const loadUserData = async () => {
-            if (isFirebaseInitialized && currentUser) {
-                const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'profile');
-                try {
-                    const snap = await getDoc(ref);
-                    if (snap.exists()) {
-                        const d = snap.data();
-                        if(d.favorites) userData.favorites = d.favorites;
-                        if(d.mistakes) userData.mistakes = d.mistakes;
+        function listenToUserData() {
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, username);
+            
+            if (unsubscribeUser) unsubscribeUser();
+            
+            unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userData.favorites = data.favorites || [];
+                    userData.mistakes = data.mistakes || [];
+                    if (data.quizState && data.quizState.active) {
+                        quizState = data.quizState;
                     }
-                } catch(e) {}
+                }
                 
-                const quizRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'quizState');
-                try {
-                    const qSnap = await getDoc(quizRef);
-                    if (qSnap.exists()) {
-                        const q = qSnap.data();
-                        if (q && q.active) quizState = q;
-                    }
-                } catch(e) {}
-            } else {
-                try {
-                    const localData = localStorage.getItem(`${COLLECTION_NAME}_${username}_data`);
-                    if (localData) {
-                        const d = JSON.parse(localData);
-                        if(d.favorites) userData.favorites = d.favorites;
-                        if(d.mistakes) userData.mistakes = d.mistakes;
-                    }
-                } catch(e) {}
-                try {
-                    const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
-                    if (localQuiz) {
-                        const q = JSON.parse(localQuiz);
-                        if (q && q.active) quizState = q;
-                    }
-                } catch(e) {}
-            }
-        };
+                if (currentTab === 'learn') renderLearnContent();
+                if (currentTab === 'favorites') renderFavorites();
+                if (currentTab === 'mistakes') renderMistakes();
+                if (currentTab === 'quiz' && quizState.active && document.getElementById('quiz-scroll-container')) {
+                    updateQuizStats();
+                }
+            }, (error) => console.error("User Data listen error:", error));
+        }
 
-        const saveUserData = async () => {
-            try {
-                if (username) localStorage.setItem(`${COLLECTION_NAME}_${username}_data`, JSON.stringify(userData));
+        window.saveUserDataToCloud = async () => {
+            try { 
+                if (username) {
+                    localStorage.setItem(`${COLLECTION_NAME}_${username}_data`, JSON.stringify(userData));
+                    localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState));
+                }
             } catch(e) {}
 
-            if (!isFirebaseInitialized || !currentUser) return;
-            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'profile');
-            try { await setDoc(ref, userData, { merge: true }); } catch(e) {}
-        };
-
-        const saveQuizState = async () => {
-            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
-            if (!isFirebaseInitialized || !currentUser) return;
-            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'quizState');
-            try { await setDoc(ref, quizState, { merge: true }); } catch(e) {}
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, username);
+            try { 
+                await setDoc(userDocRef, { 
+                    favorites: userData.favorites,
+                    mistakes: userData.mistakes,
+                    quizState: quizState,
+                    lastUpdate: new Date().toISOString()
+                }, { merge: true }); 
+            } catch(e) {}
         };
 
         window.toggleFavorite = async (itemId) => {
             const idx = userData.favorites.indexOf(itemId);
             if (idx > -1) userData.favorites.splice(idx, 1);
             else userData.favorites.push(itemId);
-            saveUserData();
+            await window.saveUserDataToCloud();
             if(currentTab === 'learn') renderLearnContent();
             if(currentTab === 'favorites') renderFavorites();
         };
@@ -641,43 +645,49 @@
             username = '';
             userData = { favorites: [], mistakes: [] };
             quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_active_user`);
+            if (unsubscribeUser) {
+                unsubscribeUser();
+                unsubscribeUser = null;
+            }
             renderLogin();
         };
 
         window.deleteUserData = async () => {
             if(confirm('🚨 嚴重警告：確定要刪除您的「所有登入資訊與作答紀錄」嗎？\n(此動作將會清除雲端與本機的所有錯題、最愛、測驗紀錄與帳號綁定，且無法復原！)')) {
                 if(confirm('【最後確認】真的要徹底刪除所有資料嗎？\n按下「確定」將會清空所有資料並返回登入頁面。')) {
+                    
+                    const nameToDelete = username;
+                    
                     // 1. 清除本機紀錄
-                    localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
-                    localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+                    localStorage.removeItem(`${COLLECTION_NAME}_${nameToDelete}_data`);
+                    localStorage.removeItem(`${COLLECTION_NAME}_${nameToDelete}_quiz`);
+                    localStorage.removeItem(`${COLLECTION_NAME}_last_active_user`);
 
                     // 2. 清除 Firebase 雲端紀錄
                     if (isFirebaseInitialized && currentUser) {
                         try {
-                            const profileRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'profile');
-                            await deleteDoc(profileRef);
+                            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, nameToDelete);
+                            await deleteDoc(userDocRef);
                             
-                            const quizRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'quizState');
-                            await deleteDoc(quizRef);
-                            
-                            const completedQuizRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME + '_quizzes');
+                            const completedQuizRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME + '_quizzes', nameToDelete);
                             await deleteDoc(completedQuizRef);
                             
-                            // 自最近登入名單中移除
-                            const recentRef = doc(db, 'artifacts', appId, 'public', 'data', 'recent_users', COLLECTION_NAME);
-                            await updateDoc(recentRef, {
-                                users: arrayRemove(username)
-                            });
+                            await updateGlobalUserList(nameToDelete, true);
                         } catch(e) { console.error("Error deleting data:", e); }
                     }
 
                     // 3. 重置狀態並更新畫面
-                    // 立即從本地暫存陣列中剔除該使用者，解決畫面非同步渲染的時間差問題
-                    recentUsers = recentUsers.filter(u => u !== username);
+                    recentUsers = recentUsers.filter(u => u !== nameToDelete);
                     
                     username = '';
                     userData = { favorites: [], mistakes: [] };
                     quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                    
+                    if (unsubscribeUser) {
+                        unsubscribeUser();
+                        unsubscribeUser = null;
+                    }
                     
                     renderLogin();
                 }
@@ -826,7 +836,7 @@
                 isCorrect: false
             }));
             quizState = { active: true, questions: qList };
-            saveQuizState();
+            window.saveUserDataToCloud();
             renderQuizView(el('main-content'));
             
             const navStats = el('nav-quiz-stats');
@@ -975,10 +985,9 @@
                     userData.mistakes.push({
                         id: mistakeId, q: q.q, opts: q.opts, ans: q.ans, time: new Date().toISOString()
                     });
-                    saveUserData();
                 }
             }
-            saveQuizState();
+            window.saveUserDataToCloud();
             const block = document.getElementById(`q-block-${qIdx}`);
             if (block) {
                 block.innerHTML = generateSingleQuestionHtml(qIdx);
@@ -1003,7 +1012,7 @@
             }
 
             quizState.active = false;
-            saveQuizState();
+            window.saveUserDataToCloud();
             
             const total = quizState.questions.length;
             const scorePercent = Math.round((correctCount / total) * 100);
@@ -1015,9 +1024,9 @@
             }
 
             if(isFirebaseInitialized && currentUser) {
-                const docRef = doc(collection(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME + '_quizzes'));
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME + '_quizzes', username);
                 try {
-                    await setDoc(docRef, { score: scorePercent, date: new Date(), total, correct: correctCount });
+                    await setDoc(docRef, { score: scorePercent, date: new Date().toISOString(), total, correct: correctCount }, { merge: true });
                 } catch(e) { console.error("Save Quiz Error", e); }
             }
 
@@ -1059,7 +1068,7 @@
             if(confirm('警告：確定要清除目前的作答紀錄嗎？\n(此動作將會遺失目前所有測驗進度)')) {
                 if(confirm('【第二次確認】真的要清除作答紀錄並放棄目前測驗嗎？\n按下「確定」將會清空並返回測驗首頁。')) {
                     quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
-                    saveQuizState();
+                    window.saveUserDataToCloud();
                     const navStats = el('nav-quiz-stats');
                     if (navStats) {
                         navStats.classList.add('hidden');
@@ -1119,7 +1128,7 @@
             if(confirm('警告：確定要清空所有錯題紀錄嗎？\n(此動作無法復原)')) {
                 if(confirm('【第二次確認】真的要徹底清空錯題本嗎？\n按下「確定」將會刪除所有錯題資料。')) {
                     userData.mistakes = [];
-                    saveUserData();
+                    window.saveUserDataToCloud();
                     renderMistakes();
                 }
             }
