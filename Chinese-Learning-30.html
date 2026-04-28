@@ -33,7 +33,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
@@ -623,6 +623,7 @@
                                 <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-sm sm:text-base font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
                                 <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/20 shrink-0 whitespace-nowrap">
                                     <span class="text-sm sm:text-base font-bold mr-3 bg-white/20 px-3 py-1.5 rounded-lg text-white"><span class="mr-2">👤</span>${username}</span>
+                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-red-600/80 p-2 rounded-lg transition-colors mr-1" title="刪除帳號與紀錄">🗑️</button>
                                     <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors" title="登出">🚪</button>
                                 </div>
                             </div>
@@ -641,6 +642,44 @@
             userData = { favorites: [], mistakes: [] };
             quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
             renderLogin();
+        };
+
+        window.deleteUserData = async () => {
+            if(confirm('🚨 嚴重警告：確定要刪除您的「所有登入資訊與作答紀錄」嗎？\n(此動作將會清除雲端與本機的所有錯題、最愛、測驗紀錄與帳號綁定，且無法復原！)')) {
+                if(confirm('【最後確認】真的要徹底刪除所有資料嗎？\n按下「確定」將會清空所有資料並返回登入頁面。')) {
+                    // 1. 清除本機紀錄
+                    localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
+                    localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+
+                    // 2. 清除 Firebase 雲端紀錄
+                    if (isFirebaseInitialized && currentUser) {
+                        try {
+                            const profileRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'profile');
+                            await deleteDoc(profileRef);
+                            
+                            const quizRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME, 'quizState');
+                            await deleteDoc(quizRef);
+                            
+                            const completedQuizRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, COLLECTION_NAME + '_quizzes');
+                            await deleteDoc(completedQuizRef);
+                            
+                            // 自最近登入名單中移除
+                            const recentRef = doc(db, 'artifacts', appId, 'public', 'data', 'recent_users', COLLECTION_NAME);
+                            await updateDoc(recentRef, {
+                                users: arrayRemove(username)
+                            });
+                        } catch(e) { console.error("Error deleting data:", e); }
+                    }
+
+                    // 3. 重置狀態並更新畫面
+                    username = '';
+                    userData = { favorites: [], mistakes: [] };
+                    quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                    
+                    loadRecentUsers(); // 重新讀取最近登入名單
+                    renderLogin();
+                }
+            }
         };
 
         window.switchTab = (tab) => {
