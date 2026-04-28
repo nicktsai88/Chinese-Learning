@@ -722,7 +722,8 @@
                         
                         if (lastUser) {
                             username = lastUser;
-                            listenToUserDocument(username);
+                            // 延遲一點點，讓 Firebase 連線確立後再啟動監聽，防止閃爍
+                            setTimeout(() => listenToUserDocument(username), 200);
                             loadLocalQuizState();
                             renderMain();
                         } else {
@@ -759,30 +760,46 @@
             
             if (isFirebaseInitialized && currentUser) {
                 const now = new Date().toISOString();
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
                 
-                // 1. 更新登入紀錄
-                if (!userData.loginHistory) userData.loginHistory = [];
-                userData.loginHistory.push(now);
-                if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50); // 保留最近50次
-                
-                // 2. 更新全域清單 (Quick Login)
-                const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
                 try {
-                    const snap = await getDoc(globalRef);
-                    let users = snap.exists() ? snap.data().users || [] : [];
+                    // 1. 先取得雲端現有資料 (避免覆蓋)
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [] }, snap.data());
+                    } else {
+                        // 嘗試從 local 取
+                        loadLocalData(username);
+                    }
+                    
+                    // 2. 更新登入紀錄
+                    if (!userData.loginHistory) userData.loginHistory = [];
+                    userData.loginHistory.push(now);
+                    if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50); // 保留最近50次
+                    
+                    // 3. 儲存至個人檔案
+                    await setDoc(userRef, userData, { merge: true });
+                    
+                    // 4. 更新全域清單 (Quick Login)
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
                     users = users.filter(u => u.name !== username); // 去重
                     users.push({ name: username, lastLogin: now });
                     if(users.length > 10) users = users.slice(-10); // 只留最新10個供快速登入
                     await setDoc(globalRef, { users }, { merge: true });
-                } catch(e) {}
+                    
+                } catch(e) {
+                    console.error("Login data sync error:", e);
+                }
                 
-                // 3. 儲存至個人檔案
-                saveUserDataToCloud();
-                
-                // 4. 開始持續監聽
+                // 5. 開始持續監聽
                 listenToUserDocument(username);
             } else {
                 loadLocalData(username);
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(new Date().toISOString());
+                saveLocalData(username);
             }
             
             renderMain();
