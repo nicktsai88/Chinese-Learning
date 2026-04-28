@@ -56,7 +56,7 @@
         let isFirebaseInitialized = false;
         let currentUser = null;
         let username = '';
-        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [] };
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
         let connectionStatus = 'loading';
         let recentUsers = [];
         let unsubscribeUser = null;
@@ -647,13 +647,41 @@
             
             unsubscribeUser = onSnapshot(userRef, (docSnap) => {
                 if (docSnap.exists()) {
+                    const data = docSnap.data();
                     // 合併雲端資料到本地狀態
-                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [] }, docSnap.data());
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, data);
                     // 備份至 LocalStorage
                     saveLocalData(name);
+                    
+                    // 跨裝置同步測驗狀態 (題號、進度、隨機排序)
+                    if (userData.quizState) {
+                        const cloudStateStr = JSON.stringify(userData.quizState);
+                        const localStateStr = JSON.stringify(quizState);
+                        if (cloudStateStr !== localStateStr) {
+                            quizState = userData.quizState;
+                            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, cloudStateStr); } catch(e) {}
+                            
+                            // 若使用者正停留在測驗頁面，即時刷新畫面以反映另一台裝置的最新進度
+                            if(currentTab === 'quiz') {
+                                renderQuizView(document.getElementById('main-content'));
+                                const navStats = document.getElementById('nav-quiz-stats');
+                                if (navStats) {
+                                    if (quizState.active) {
+                                        navStats.classList.remove('hidden');
+                                        navStats.classList.add('flex');
+                                        updateQuizStats();
+                                    } else {
+                                        navStats.classList.add('hidden');
+                                        navStats.classList.remove('flex');
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                 } else {
                     // 新使用者
-                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()] };
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()], quizState: null };
                     setDoc(userRef, userData, { merge: true });
                 }
                 
@@ -683,7 +711,7 @@
             try {
                 const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
                 if (localData) {
-                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [] }, JSON.parse(localData));
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, JSON.parse(localData));
                 }
             } catch(e) {}
         };
@@ -696,9 +724,16 @@
 
         const saveQuizState = () => {
             try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            // 將測驗進度寫入 userData，並觸發雲端同步
+            userData.quizState = quizState;
+            saveUserDataToCloud();
         };
 
         const loadLocalQuizState = () => {
+            if (userData.quizState) {
+                quizState = userData.quizState;
+                return;
+            }
             try {
                 const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
                 if (localQuiz) {
@@ -766,7 +801,11 @@
                     // 1. 先取得雲端現有資料 (避免覆蓋)
                     const snap = await getDoc(userRef);
                     if (snap.exists()) {
-                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [] }, snap.data());
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
+                        if (userData.quizState) {
+                            quizState = userData.quizState;
+                            try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
+                        }
                     } else {
                         // 嘗試從 local 取
                         loadLocalData(username);
