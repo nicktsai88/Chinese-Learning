@@ -132,88 +132,66 @@
                         <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow mb-8">
                             <h4 class="font-bold text-orange-800 text-2xl mb-4 border-b-2 border-orange-100 pb-3">一、書信用語簡表</h4>
                             <div class="overflow-x-auto rounded-xl border border-orange-200">
-                                <table class="knowledge-table w-full text-base md:text-lg m-0 border-none text-center">
-                                    <thead class="bg-amber-100/50 text-orange-900">
-                                        <tr>
-                                            <th class="p-3 border border-orange-200 align-middle text-center">對象<br>用語</th>
-                                            <th class="p-3 border border-orange-200 align-middle text-center">親屬長輩</th>
-                                            <th class="p-3 border border-orange-200 align-middle text-center" colspan="2">其他長輩</th>
-                                            <th class="p-3 border border-orange-200 align-middle text-center">師長</th>
-                                            <th class="p-3 border border-orange-200 align-middle text-center">平輩</th>
-                                            <th class="p-3 border border-orange-200 align-middle text-center">晚輩</th>
+                                <table class="knowledge-table w-full text-base md:text-lg m-0 border-none">
+                                    <thead>
+                                        <tr class="text-lg">
+                                            <th class="p-4 border-orange-200">對象</th>
+                                            <th class="p-4 border-orange-200">1. 稱謂</th>
+                                            <th class="p-4 border-orange-200">2. 提稱語</th>
+                                            <th class="p-4 border-orange-200">3. 申悃語(可略)</th>
+                                            <th class="p-4 border-orange-200">4.問候語</th>
+                                            <th class="p-4 border-orange-200">5.自稱</th>
+                                            <th class="p-4 border-orange-200">6. 未啟詞</th>
+                                            <th class="p-4 border-orange-200">7. 啟封詞</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-orange-200 bg-white">
-                                        <!-- 1. 稱謂 -->
+                                    <tbody class="divide-y divide-orange-100">
                                         <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">1. 稱謂</td>
-                                            <td class="p-3 border border-orange-200">祖父母大人<br>父母親大人<br><span class="text-sm text-slate-500">(不加姓名)</span></td>
-                                            <td class="p-3 border border-orange-200">伯父母<br>叔父母<br>舅父母</td>
-                                            <td class="p-3 border border-orange-200">○○先生<br>○○女士<br><span class="text-sm text-slate-500">(加字號或名)</span></td>
-                                            <td class="p-3 border border-orange-200">○○吾師<br><span class="text-sm text-slate-500">(加字號或名)</span></td>
-                                            <td class="p-3 border border-orange-200">○○吾兄(姐)<br>○○仁兄<br><span class="text-sm text-slate-500">(加字號或名)</span></td>
-                                            <td class="p-3 border border-orange-200">○○吾兒<br>○○吾女<br><span class="text-sm text-slate-500">(加名)</span></td>
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">親屬長輩<br><span class="text-sm text-orange-600 font-normal">(祖父母/父母)</span></td>
+                                            <td class="p-4 border-r border-orange-100">祖父母大人<br>父母親大人<br><span class="text-sm text-slate-500">(不加姓名)</span></td>
+                                            <td class="p-4 border-r border-orange-100 text-rose-700 font-bold">膝前、膝下<br><span class="text-sm text-slate-500 font-normal">(用於直系)</span></td>
+                                            <td class="p-4 border-r border-orange-100" rowspan="2">肅此、謹此<br>敬此</td>
+                                            <td class="p-4 border-r border-orange-100">敬請鈞安<br><span class="text-rose-600 font-bold">請金安*</span><br>恭請崇安<br>敬請福安</td>
+                                            <td class="p-4 border-r border-orange-100">孫、孫女<br>兒、女兒</td>
+                                            <td class="p-4 border-r border-orange-100" rowspan="2">叩上、叩稟<br>謹上、敬稟<br>謹叩、敬上</td>
+                                            <td class="p-4" rowspan="2">鈞啟、賜啟<br>安啟、福啟<br><div class="bg-rose-50 border border-rose-100 p-2 rounded-lg mt-3 text-sm text-rose-700 font-medium leading-normal">1.啟封詞不可用「敬啟」或「恭啟」。<br>2.明信片沒有啟封詞,只能用「收」。</div></td>
                                         </tr>
-                                        <!-- 2. 提稱語 -->
                                         <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">2. 提稱語</td>
-                                            <td class="p-3 border border-orange-200"><span class="text-rose-600 font-bold">膝前</span><span class="text-rose-600">✦</span>、膝下<br><span class="text-sm text-sky-600">(用於直系)</span></td>
-                                            <td class="p-3 border border-orange-200">尊前、尊鑒</td>
-                                            <td class="p-3 border border-orange-200">尊鑒、<span class="text-orange-500 font-bold">鈞鑒</span><br><span class="text-rose-600 font-bold">崇鑒</span>、賜鑒</td>
-                                            <td class="p-3 border border-orange-200">尊鑒、<span class="text-orange-500 font-bold">鈞鑒</span><br><span class="text-orange-500 font-bold">道鑒</span>、函丈<br>講座、壇席</td>
-                                            <td class="p-3 border border-orange-200"><span class="text-rose-600 font-bold">惠鑒</span>、<span class="text-orange-500 font-bold">臺鑒</span><br>大鑒、<span class="text-rose-600 font-bold">足下</span><span class="text-rose-600">✦</span><br>左右、硯右</td>
-                                            <td class="p-3 border border-orange-200">知之、知悉<br><span class="text-sm text-sky-600">(用於子姪)</span><br>如晤、如握<br><span class="text-sm text-sky-600">(用於一般人)</span></td>
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">親屬其他長輩</td>
+                                            <td class="p-4 border-r border-orange-100">伯父母<br>叔父母<br>舅</td>
+                                            <td class="p-4 border-r border-orange-100">尊鑒、鈞鑒<br>尊前、尊鑒<br>崇鑒、賜鑒</td>
+                                            <td class="p-4 border-r border-orange-100">福安、鈞安、尊安<br><span class="text-sm text-slate-500">(臺安、近祺等,須換行頂格書寫)</span></td>
+                                            <td class="p-4 border-r border-orange-100">姪、姪女<br>甥、甥女<br>晚</td>
                                         </tr>
-                                        <!-- 3. 申悃語 -->
                                         <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">3. 申悃語<br><span class="text-sm font-normal text-slate-500">(可略)</span></td>
-                                            <td class="p-3 border border-orange-200" colspan="4">肅此、謹此、敬此</td>
-                                            <td class="p-3 border border-orange-200">專此、特此</td>
-                                            <td class="p-3 border border-orange-200">匆此、草此</td>
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">師長</td>
+                                            <td class="p-4 border-r border-orange-100">○○吾師<br><span class="text-sm text-slate-500">(加字號或名)</span></td>
+                                            <td class="p-4 border-r border-orange-100 font-bold text-amber-700">道鑒、函丈<br>講座、壇席<br>尊鑒、鈞鑒</td>
+                                            <td class="p-4 border-r border-orange-100">肅此、謹此、敬此</td>
+                                            <td class="p-4 border-r border-orange-100">敬請教安<br>敬請道安</td>
+                                            <td class="p-4 border-r border-orange-100">受業、學生</td>
+                                            <td class="p-4 border-r border-orange-100">敬上、謹上</td>
+                                            <td class="p-4">鈞啟、道啟</td>
                                         </tr>
-                                        <!-- 4. 問候語 -->
                                         <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">4. 問候語</td>
-                                            <td class="p-3 border border-orange-200">叩請 <span class="text-orange-500 font-bold">金安</span>*<br>敬請 福安</td>
-                                            <td class="p-3 border border-orange-200" colspan="2">敬請 <span class="text-rose-500 font-bold">鈞安</span><br>恭請 <span class="text-purple-600 font-bold">崇安</span></td>
-                                            <td class="p-3 border border-orange-200">敬請 <span class="text-orange-500 font-bold">教安</span><br>敬請 <span class="text-orange-500 font-bold">道安</span></td>
-                                            <td class="p-3 border border-orange-200">敬請 <span class="text-orange-500 font-bold">臺安</span><br>敬請 <span class="text-orange-500 font-bold">大安</span><br>順頌 時綏</td>
-                                            <td class="p-3 border border-orange-200">順問 近祺<br>即問 近好<br>即頌 近佳</td>
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">平輩</td>
+                                            <td class="p-4 border-r border-orange-100">○○吾兄(姐)<br>○○仁兄<br>○○先生<br>○○女士</td>
+                                            <td class="p-4 border-r border-orange-100 font-bold text-emerald-700">惠鑒、臺鑒<br>大鑒、足下<br>左右、硯右</td>
+                                            <td class="p-4 border-r border-orange-100">專此、特此</td>
+                                            <td class="p-4 border-r border-orange-100">敬請臺安<br>敬請大安<br>順頌時綏<br>近祺</td>
+                                            <td class="p-4 border-r border-orange-100">弟、妹<br>同學、愚兄<br>學弟、學妹</td>
+                                            <td class="p-4 border-r border-orange-100">敬啟、謹啟<br>拜啟、頓首</td>
+                                            <td class="p-4">惠啟、臺啟<br>大啟</td>
                                         </tr>
-                                        <!-- 中間提示 -->
-                                        <tr class="bg-blue-50/30 transition-colors">
-                                            <td colspan="7" class="p-2 border border-orange-200 text-center text-sky-600 font-bold text-sm md:text-base">福安、鈞安、臺安、近祺等，須換行頂格書寫</td>
-                                        </tr>
-                                        <!-- 5. 自稱 -->
                                         <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">5. 自稱</td>
-                                            <td class="p-3 border border-orange-200">孫、孫女<br>兒、女兒</td>
-                                            <td class="p-3 border border-orange-200">姪、姪女<br>甥、甥女</td>
-                                            <td class="p-3 border border-orange-200">晚</td>
-                                            <td class="p-3 border border-orange-200">受業、學生</td>
-                                            <td class="p-3 border border-orange-200">同學、愚兄<br>學弟、學妹</td>
-                                            <td class="p-3 border border-orange-200">父、母<br>伯父、伯母</td>
-                                        </tr>
-                                        <!-- 6. 未啟詞 -->
-                                        <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">6. 未啟詞</td>
-                                            <td class="p-3 border border-orange-200">叩上、叩稟<br>敬稟、謹叩</td>
-                                            <td class="p-3 border border-orange-200" colspan="3">謹上、敬上</td>
-                                            <td class="p-3 border border-orange-200">敬啟、謹啟<br>拜啟、頓首</td>
-                                            <td class="p-3 border border-orange-200"><span class="text-orange-500 font-bold">手示</span>、<span class="text-orange-500 font-bold">手書</span><br><span class="text-orange-500 font-bold">手諭</span>、<span class="text-orange-500 font-bold">手字</span></td>
-                                        </tr>
-                                        <!-- 7. 啟封詞 -->
-                                        <tr class="hover:bg-orange-50/50 transition-colors">
-                                            <td class="p-3 font-bold text-orange-800 border border-orange-200 bg-orange-50/30">7. 啟封詞</td>
-                                            <td class="p-3 border border-orange-200">安啟<span class="text-rose-600">✦</span>、福啟</td>
-                                            <td class="p-3 border border-orange-200" colspan="2"><span class="text-orange-500 font-bold">鈞啟</span>、賜啟</td>
-                                            <td class="p-3 border border-orange-200"><span class="text-orange-500 font-bold">鈞啟</span>、<span class="text-orange-500 font-bold">道啟</span></td>
-                                            <td class="p-3 border border-orange-200"><span class="text-orange-500 font-bold">惠啟</span>、<span class="text-orange-500 font-bold">臺啟</span><br><span class="text-orange-500 font-bold">大啟</span></td>
-                                            <td class="p-3 border border-orange-200">啟<br>收</td>
-                                        </tr>
-                                        <!-- 底部提示 -->
-                                        <tr class="bg-blue-50/30 transition-colors">
-                                            <td colspan="7" class="p-3 border border-orange-200 text-center text-sky-600 text-sm md:text-base font-medium">1. 啟封詞不可用「敬啟」或「恭啟」。 2. 明信片沒有啟封詞，只能用「收」。</td>
+                                            <td class="p-4 font-extrabold text-orange-900 border-r border-orange-100">晚輩</td>
+                                            <td class="p-4 border-r border-orange-100">○○吾兒<br>○○吾女<br><span class="text-sm text-slate-500">(加名)</span></td>
+                                            <td class="p-4 border-r border-orange-100 font-bold text-sky-700">知之、知悉<br><span class="text-sm text-slate-500 font-normal">(用於子姪)</span><br>如晤、如握<br><span class="text-sm text-slate-500 font-normal">(用於一般)</span></td>
+                                            <td class="p-4 border-r border-orange-100">匆此、草此</td>
+                                            <td class="p-4 border-r border-orange-100">順問 近祺<br>近好 即問<br>近佳 即頌</td>
+                                            <td class="p-4 border-r border-orange-100">父、母<br>伯父、伯母</td>
+                                            <td class="p-4 border-r border-orange-100">手示、手書<br>手諭、手字</td>
+                                            <td class="p-4">啟<br>收</td>
                                         </tr>
                                     </tbody>
                                 </table>
