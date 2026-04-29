@@ -1232,6 +1232,7 @@
             let optionsHtml = '';
             
             q.opts.forEach((opt, i) => {
+                // 加大按鈕與內文字級
                 let btnClass = "w-full text-left p-4 md:p-6 text-2xl md:text-[1.65rem] rounded-2xl border-2 transition-all duration-200 flex items-center group relative overflow-hidden ";
                 let iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center mr-4 md:mr-6 font-extrabold text-2xl md:text-3xl transition-colors shrink-0 shadow-inner group-hover:bg-orange-100 group-hover:text-orange-700">${String.fromCharCode(65+i)}</span>`;
                 
@@ -1281,19 +1282,9 @@
                 `;
             }
 
-            const isFav = userData.favorites && userData.favorites.includes(q.q);
-            const favIconHtml = isFav 
-                ? '<i class="fa-solid fa-heart text-rose-500"></i>' 
-                : '<i class="fa-regular fa-heart text-rose-500"></i>';
-
             return `
                 <div class="px-6 md:px-10 py-5 border-b border-orange-100 flex justify-between items-center transition-colors ${q.showExplanation ? (q.selectedAns === q.ans ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-gradient-to-r from-rose-50 to-white') : 'bg-orange-50/30'}">
-                    <div class="flex items-center">
-                        <span class="font-extrabold text-orange-500 text-xl md:text-2xl bg-white px-4 py-1.5 rounded-xl border border-orange-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
-                        <button onclick="toggleQuizFavorite(${qIdx})" class="ml-5 text-[1.75rem] md:text-4xl hover:scale-110 transition-transform focus:outline-none drop-shadow-sm" title="加入/取消最愛">
-                            ${favIconHtml}
-                        </button>
-                    </div>
+                    <span class="font-extrabold text-orange-500 text-xl md:text-2xl bg-white px-4 py-1.5 rounded-xl border border-orange-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
                     ${q.showExplanation 
                         ? (q.selectedAns === q.ans 
                             ? '<span class="text-emerald-600 font-bold text-xl md:text-2xl flex items-center bg-emerald-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">✅</span>答對</span>' 
@@ -1308,24 +1299,6 @@
                     ${explanationHtml}
                 </div>
             `;
-        };
-
-        window.toggleQuizFavorite = (qIdx) => {
-            const q = quizState.questions[qIdx];
-            const qText = q.q;
-            if (!userData.favorites) userData.favorites = [];
-            const idx = userData.favorites.indexOf(qText);
-            if (idx > -1) {
-                userData.favorites.splice(idx, 1);
-            } else {
-                userData.favorites.push(qText);
-            }
-            saveUserDataToCloud();
-            
-            const block = document.getElementById(`q-block-${qIdx}`);
-            if (block) {
-                block.innerHTML = generateSingleQuestionHtml(qIdx);
-            }
         };
 
         window.answerWaterfallQuestion = (qIdx, optIdx) => {
@@ -1511,17 +1484,11 @@
                     <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-orange-400 flex-col text-center relative z-10 animate-fade-in">
                         <div class="w-40 h-40 bg-rose-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-rose-100 text-7xl">💔</div>
                         <h2 class="text-4xl md:text-5xl font-extrabold text-orange-950 mb-4">暫無收藏</h2>
-                        <p class="text-2xl md:text-3xl font-medium text-orange-800/60 mb-10">在測驗中點擊愛心圖示即可收藏題目！ 📌✨</p>
-                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                        <p class="text-2xl md:text-3xl font-medium text-orange-800/60 mb-10">到「學習區」點擊愛心圖示即可收藏！ 📌✨</p>
+                        <button onclick="switchTab('learn')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🏃‍♂️💨 前往學習區</button>
                     </div>`;
                 return;
             }
-
-            // 比對全題庫以抓取完整題目內容
-            const allQList = generate120Questions();
-            const favQuestions = userData.favorites.map(favText => {
-                return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exp: '題目資料已遺失或不存在' };
-            });
 
             container.innerHTML = `
                 <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
@@ -1530,52 +1497,20 @@
                             <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">💖</span>我的最愛 🌟</h2>
                             <p class="text-rose-900/50 mt-3 ml-8 font-bold text-lg md:text-xl hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
                         </div>
-                        <div class="space-y-10 md:space-y-12 w-full">
-                            ${favQuestions.map((qObj, i) => {
-                                if (qObj.opts.length === 0) return '';
-                                return `
-                                <div class="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-rose-100 w-full overflow-hidden relative group">
-                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-rose-600"></div>
-                                    <div class="flex justify-between items-start mb-10">
-                                        <h3 class="font-extrabold text-orange-950 text-2xl md:text-3xl break-words leading-loose flex items-start pr-6 flex-1">
-                                            <span class="text-rose-500 mr-4 text-3xl font-black bg-rose-50 px-3 py-1 rounded-xl">📌 Q</span>${qObj.q}
-                                        </h3>
-                                        <button onclick="toggleFavoritePage('${qObj.q}')" class="text-[2rem] md:text-4xl hover:scale-110 transition-transform shrink-0 mt-1 focus:outline-none drop-shadow-sm" title="移除最愛">
-                                            <i class="fa-solid fa-heart text-rose-500"></i>
-                                        </button>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6 text-2xl md:text-[1.65rem] w-full font-medium">
-                                        ${qObj.opts.map((opt, idx) => `
-                                            <div class="p-5 md:p-6 rounded-2xl break-words transition-all ${idx === qObj.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
-                                                <span class="inline-block w-10 font-bold ${idx === qObj.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> ${opt}
-                                                ${idx === qObj.ans ? '<span class="float-right text-emerald-500 text-3xl">✅</span>' : ''}
-                                            </div>
-                                        `).join('')}
-                                    </div>
-                                    <div class="mt-8 p-6 bg-rose-50/50 border border-rose-200/60 rounded-2xl relative overflow-hidden">
-                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-rose-400"></div>
-                                        <p class="font-bold text-rose-800 text-xl md:text-2xl mb-3 flex items-center"><span class="mr-3 text-2xl">💡</span>深度解析</p>
-                                        <p class="text-xl md:text-2xl text-slate-700 leading-loose break-words whitespace-pre-wrap pl-2 font-medium">${qObj.exp}</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 md:gap-10 w-full">
+                            ${userData.favorites.map(favId => `
+                                <div class="bg-white p-8 md:p-10 rounded-3xl shadow-lg border border-rose-100 flex flex-col justify-between group relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 w-full h-full min-h-[200px]">
+                                    <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-gradient-to-tl from-rose-100 to-orange-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-500 ease-out"></div>
+                                    <span class="font-bold text-orange-950 z-10 text-2xl md:text-3xl break-words flex-1 leading-relaxed mb-6">${favId}</span>
+                                    <div class="flex justify-end mt-auto z-10">
+                                        <button onclick="toggleFavorite('${favId}')" class="bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl transition-colors shadow-sm border border-rose-100 hover:border-transparent">❤️</button>
                                     </div>
                                 </div>
-                                `;
-                            }).reverse().join('')}
+                            `).join('')}
                         </div>
                     </div>
                 </div>
             `;
-        };
-
-        window.toggleFavoritePage = (qText) => {
-            if (!userData.favorites) return;
-            const idx = userData.favorites.indexOf(qText);
-            if (idx > -1) {
-                if(confirm('確定要從最愛中移除此題嗎？')) {
-                    userData.favorites.splice(idx, 1);
-                    saveUserDataToCloud();
-                    renderFavorites();
-                }
-            }
         };
 
         window.renderHistory = (container) => {
