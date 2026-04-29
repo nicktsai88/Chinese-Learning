@@ -947,21 +947,21 @@
         window.renderMain = () => {
             el('view-container').innerHTML = `
                 <nav class="glass-nav text-white shadow-lg z-20 shrink-0">
-                    <div class="w-full px-2 sm:px-4 md:px-6 lg:px-8 mx-auto">
-                        <div class="flex justify-between items-center h-20 w-full overflow-x-auto scrollbar-hide gap-2 md:gap-4">
-                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                                <span class="font-extrabold text-xl md:text-2xl lg:text-xl xl:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
-                                    <span class="bg-white/20 p-2 rounded-xl mr-2 xl:mr-3 shadow-sm">✉️</span>應用文高手 🎓✨
+                    <div class="max-w-[95%] lg:max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+                        <div class="flex justify-between items-center h-20 w-full overflow-x-auto scrollbar-hide gap-4">
+                            <div class="flex items-center gap-2 sm:gap-4 shrink-0">
+                                <span class="font-extrabold text-2xl md:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
+                                    <span class="bg-white/20 p-2 rounded-xl mr-3 shadow-sm">✉️</span>應用文高手 🎓✨
                                 </span>
-                                <div class="flex items-center bg-white/20 px-2 py-1.5 md:px-3 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
+                                <div class="flex items-center bg-white/20 px-3 py-1.5 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
                                     <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
                                     <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
                                 </div>
-                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-2 animate-fade-in shrink-0 gap-2 md:gap-3">
-                                    <div class="flex items-center bg-white px-3 py-1.5 md:px-4 md:py-1.5 rounded-xl shadow-md text-sm md:text-lg font-bold shrink-0 text-orange-950">
-                                        <span class="text-emerald-600 flex items-center"><span class="mr-1 md:mr-2">✅</span><span id="nav-stat-correct">0</span></span>
+                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-4 animate-fade-in shrink-0 gap-2 md:gap-3">
+                                    <div class="flex items-center bg-white px-3 py-1.5 md:px-4 md:py-1.5 rounded-xl shadow-md text-base md:text-lg font-bold shrink-0 text-orange-950">
+                                        <span class="text-emerald-600 flex items-center"><span class="mr-1.5 md:mr-2">✅</span><span id="nav-stat-correct">0</span></span>
                                         <div class="w-px bg-slate-300 h-4 md:h-5 mx-2 md:mx-3"></div>
-                                        <span class="text-rose-600 flex items-center"><span class="mr-1 md:mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
+                                        <span class="text-rose-600 flex items-center"><span class="mr-1.5 md:mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
                                     </div>
                                     <div class="hidden xl:flex flex-col w-24 lg:w-32 shrink-0">
                                         <div class="w-full bg-orange-950/40 rounded-full h-3.5 overflow-hidden shadow-inner border border-white/20">
@@ -973,19 +973,15 @@
                                 </div>
                             </div>
                             
-                            <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
-                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
-                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
-                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
-                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
-                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
-                                
-                                <div class="ml-1 sm:ml-2 lg:ml-4 flex items-center pl-2 sm:pl-3 lg:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-1 md:gap-2">
-                                    <div class="text-sm md:text-base lg:text-lg xl:text-xl font-bold bg-white/20 px-2 py-1.5 md:px-3 lg:px-4 lg:py-2 rounded-xl text-white shadow-inner flex items-center">
-                                        <span class="mr-1 lg:mr-2">👤</span>${username}
-                                    </div>
-                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="刪除帳號紀錄">🗑️</button>
-                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="登出">🚪</button>
+                            <div class="flex items-center space-x-1 sm:space-x-3 shrink-0 pl-2">
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/20 shrink-0 whitespace-nowrap">
+                                    <span class="text-base sm:text-lg font-bold mr-3 bg-white/20 px-3 py-1.5 rounded-lg text-white"><span class="mr-2">👤</span>${username}</span>
+                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-red-600/80 p-2 rounded-lg transition-colors mr-1 text-lg" title="刪除帳號與紀錄">🗑️</button>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg" title="登出">🚪</button>
                                 </div>
                             </div>
                         </div>
@@ -1035,13 +1031,13 @@
 
         window.switchTab = (tab) => {
             currentTab = tab;
-            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
+            ['learn', 'quiz', 'mistakes', 'favorites'].forEach(t => {
                 const btn = el(`nav-${t}`);
                 if(btn) {
                     if(t === tab) {
-                        btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
                     } else {
-                        btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
                     }
                 }
             });
