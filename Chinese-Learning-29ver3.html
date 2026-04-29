@@ -935,14 +935,18 @@
                             </div>
                             
                             <div class="flex items-center space-x-1 sm:space-x-3 shrink-0 overflow-x-auto scrollbar-hide max-w-full pl-2">
-                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
-                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
-                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
-                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
-                                <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/20 shrink-0 whitespace-nowrap">
-                                    <span class="text-base sm:text-lg font-bold mr-3 bg-white/20 px-3 py-1.5 rounded-lg text-white"><span class="mr-2">👤</span>${username}</span>
-                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-red-600/80 p-2 rounded-lg transition-colors mr-1 text-lg" title="刪除帳號與紀錄">🗑️</button>
-                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg" title="登出">🚪</button>
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(80)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
+                                
+                                <div class="ml-2 sm:ml-4 flex items-center pl-3 sm:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-2 md:gap-3">
+                                    <div class="text-base sm:text-lg lg:text-xl font-bold bg-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-xl text-white shadow-inner flex items-center">
+                                        <span class="mr-2">👤</span>${username}
+                                    </div>
+                                    <button onclick="deleteCurrentUser()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg md:text-xl" title="刪除帳號紀錄">🗑️</button>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-2 rounded-lg transition-colors text-lg md:text-xl" title="登出">🚪</button>
                                 </div>
                             </div>
                         </div>
@@ -955,7 +959,7 @@
             switchTab('learn');
         };
 
-        window.deleteUserData = async () => {
+        window.deleteCurrentUser = async () => {
             if(!confirm(`確定要從雲端刪除選手 ${username} 的所有資料？此操作無法復原！`)) return;
             if(!confirm(`⚠️ 再次警告：這將永久刪除 ${username} 的所有進度、錯題與紀錄！\n\n您真的確定要執行刪除嗎？`)) return;
             
@@ -992,13 +996,13 @@
 
         window.switchTab = (tab) => {
             currentTab = tab;
-            ['learn', 'quiz', 'mistakes', 'favorites'].forEach(t => {
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
                 const btn = el(`nav-${t}`);
                 if(btn) {
                     if(t === tab) {
-                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
                     } else {
-                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                        btn.className = 'whitespace-nowrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-base sm:text-lg lg:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
                     }
                 }
             });
