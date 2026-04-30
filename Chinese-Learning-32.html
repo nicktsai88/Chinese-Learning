@@ -112,92 +112,49 @@
         // ==========================================
         const learnData = [
             {
-                id: 'sec1', title: '第一部分：四季綜合分析表 🌸☀️🍁❄️', theme: 'orange',
+                id: 'sec1', title: '第一部分：四季綜合分析 🌸☀️🍁❄️', theme: 'orange',
                 content: `
                 <div class="space-y-8 text-xl md:text-2xl text-gray-800">
                     <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-10 rounded-3xl border-l-8 border-orange-500 shadow-lg">
                         
                         <div class="text-center font-black text-4xl md:text-5xl text-orange-950 mb-8 border-b-2 border-orange-200 pb-4">🎯 單元玖 貫通國學常識 📚</div>
                         
-                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-8 text-orange-900 text-xl md:text-2xl leading-relaxed">
-                            <p class="font-bold text-rose-600 mb-3 text-2xl">命題排行榜: NO.17 🏆</p>
-                            <p><strong>學習小站 🚉：</strong>1.季節、節慶的比較 2.年齡、天干地支的比較 3.各代文學主流 4.詩詞曲格律比較</p>
-                            <p><strong>跨單元題組練習 🧩：</strong>搭配演練 P267 第3、P278第1、P313第12~13</p>
-                            <p class="text-lg mt-3 text-slate-500 bg-orange-50 p-3 rounded-lg font-medium">✨ 標示表會考、基測會考過的重點 | 命題率 90%</p>
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-10 text-orange-900 text-xl md:text-2xl leading-relaxed relative overflow-hidden">
+                            <div class="absolute right-0 top-0 opacity-10 text-8xl">🏆</div>
+                            <p class="font-bold text-rose-600 mb-3 text-2xl flex items-center"><span class="mr-2">🔥</span>命題排行榜: NO.17</p>
+                            <p class="flex items-center"><span class="mr-2">🚉</span><strong>學習小站：</strong>1.季節、節慶的比較 2.年齡、天干地支的比較 3.各代文學主流 4.詩詞曲格律比較</p>
+                            <p class="flex items-center"><span class="mr-2">🧩</span><strong>跨單元題組練習：</strong>搭配演練 P267 第3、P278第1、P313第12~13</p>
+                            <p class="text-lg mt-4 text-slate-500 bg-orange-50 p-4 rounded-xl font-bold flex items-center border border-orange-100"><span class="text-2xl mr-3">✨</span>標示表會考、基測會考過的重點 | 命題率高達 90% 📈</p>
                         </div>
 
-                        <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-6 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">📍</span>第1站 季節、節慶的比較 📅</h3>
+                        <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-8 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">📍</span>第1站 季節意象大賞 📅🌈</h3>
                         
                         <!-- 春季 -->
-                        <div class="bg-green-50 p-6 md:p-8 rounded-2xl shadow-sm border border-green-200 hover:shadow-md transition-shadow mb-8">
-                            <h4 class="font-black text-green-800 text-4xl mb-4 border-b-2 border-green-200 pb-3 flex items-center"><span class="text-5xl mr-3">🌸</span>春季</h4>
-                            <img src="Chinese-Learning-32/p1.jpg" alt="春季意象" class="w-full max-w-3xl mx-auto h-auto rounded-2xl shadow-md mb-6 border-4 border-white" onerror="this.style.display='none'">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-xl border border-green-100">
-                                <div class="col-span-1 font-bold text-green-700 bg-green-100/50 p-3 rounded-lg text-center">農曆月分</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3">孟春(一月)、仲春(二月)、季春(三月)</div>
-                                
-                                <div class="col-span-1 font-bold text-green-700 bg-green-100/50 p-3 rounded-lg text-center">相關詞語</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3 leading-loose">
-                                    <span class="text-rose-600 font-bold">東風</span>、<span class="text-rose-600 font-bold">楊柳風</span>、<span class="text-rose-600 font-bold">斗杓東指</span>、桃花、杏花*、梨花、楊柳、鶯啼、燕語、驚蟄、桃符、新歲、百花含笑、桃紅柳綠、柳暗花明、惠風和暢、奼紫嫣紅
-                                </div>
-                                
-                                <div class="col-span-1 font-bold text-green-700 bg-green-100/50 p-3 rounded-lg text-center">節日</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3"><span class="bg-green-100 px-3 py-1 rounded-md">春節</span>、<span class="bg-green-100 px-3 py-1 rounded-md">元宵(上元)</span>、<span class="bg-green-100 px-3 py-1 rounded-md">清明</span></div>
-                            </div>
+                        <div class="bg-green-50/80 p-8 md:p-12 rounded-[2.5rem] shadow-md border border-green-200 hover:shadow-lg transition-shadow mb-12 relative">
+                            <div class="absolute -top-6 -left-6 bg-white rounded-full p-4 shadow-md border-4 border-green-100 text-5xl">🌸</div>
+                            <h4 class="font-black text-green-800 text-4xl mb-6 text-center tracking-widest">春季意象</h4>
+                            <img src="Chinese-Learning-32/p1.jpg" alt="春季意象" class="w-full max-w-4xl mx-auto h-auto rounded-3xl shadow-xl border-8 border-white block transition-transform hover:scale-[1.02]" onerror="this.style.display='none'">
                         </div>
 
                         <!-- 夏季 -->
-                        <div class="bg-red-50 p-6 md:p-8 rounded-2xl shadow-sm border border-red-200 hover:shadow-md transition-shadow mb-8">
-                            <h4 class="font-black text-red-800 text-4xl mb-4 border-b-2 border-red-200 pb-3 flex items-center"><span class="text-5xl mr-3">☀️</span>夏季</h4>
-                            <img src="Chinese-Learning-32/p2.jpg" alt="夏季意象" class="w-full max-w-3xl mx-auto h-auto rounded-2xl shadow-md mb-6 border-4 border-white" onerror="this.style.display='none'">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-xl border border-red-100">
-                                <div class="col-span-1 font-bold text-red-700 bg-red-100/50 p-3 rounded-lg text-center">農曆月分</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3">孟夏(四月)、仲夏(五月)、季夏(六月)</div>
-                                
-                                <div class="col-span-1 font-bold text-red-700 bg-red-100/50 p-3 rounded-lg text-center">相關詞語</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3 leading-loose">
-                                    <span class="text-rose-600 font-bold">南風</span>、<span class="text-rose-600 font-bold">薰風</span>、<span class="text-rose-600 font-bold">暖風</span>、<span class="text-rose-600 font-bold">斗杓南指</span>、荷花、黃梅、荔枝、西瓜、蟬嘶、蛙鳴、螢舞、浮瓜沉李、芰荷(荷花的別名)、菖蒲、稻花、蓮花、藕花
-                                </div>
-                                
-                                <div class="col-span-1 font-bold text-red-700 bg-red-100/50 p-3 rounded-lg text-center">節日</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3"><span class="bg-red-100 px-3 py-1 rounded-md">端午</span></div>
-                            </div>
+                        <div class="bg-red-50/80 p-8 md:p-12 rounded-[2.5rem] shadow-md border border-red-200 hover:shadow-lg transition-shadow mb-12 relative">
+                            <div class="absolute -top-6 -right-6 bg-white rounded-full p-4 shadow-md border-4 border-red-100 text-5xl">☀️</div>
+                            <h4 class="font-black text-red-800 text-4xl mb-6 text-center tracking-widest">夏季意象</h4>
+                            <img src="Chinese-Learning-32/p2.jpg" alt="夏季意象" class="w-full max-w-4xl mx-auto h-auto rounded-3xl shadow-xl border-8 border-white block transition-transform hover:scale-[1.02]" onerror="this.style.display='none'">
                         </div>
 
                         <!-- 秋季 -->
-                        <div class="bg-amber-100/50 p-6 md:p-8 rounded-2xl shadow-sm border border-amber-200 hover:shadow-md transition-shadow mb-8">
-                            <h4 class="font-black text-amber-800 text-4xl mb-4 border-b-2 border-amber-200 pb-3 flex items-center"><span class="text-5xl mr-3">🍁</span>秋季</h4>
-                            <img src="Chinese-Learning-32/p3.jpg" alt="秋季意象" class="w-full max-w-3xl mx-auto h-auto rounded-2xl shadow-md mb-6 border-4 border-white" onerror="this.style.display='none'">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-xl border border-amber-100">
-                                <div class="col-span-1 font-bold text-amber-700 bg-amber-100/50 p-3 rounded-lg text-center">農曆月分</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3">孟秋(七月)、仲秋(八月)、季秋(九月)</div>
-                                
-                                <div class="col-span-1 font-bold text-amber-700 bg-amber-100/50 p-3 rounded-lg text-center">相關詞語</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3 leading-loose">
-                                    <span class="text-rose-600 font-bold">西風</span>、<span class="text-rose-600 font-bold">金風</span>、<span class="text-rose-600 font-bold">斗杓西指</span>、桂花、蘆花、菊花(黃花)、楓紅、商意、白霜、枯荷、殘荷、促織(蟋蟀)、菅芒、茱萸
-                                </div>
-                                
-                                <div class="col-span-1 font-bold text-amber-700 bg-amber-100/50 p-3 rounded-lg text-center">節日</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3"><span class="bg-amber-100 px-3 py-1 rounded-md">七夕</span>、<span class="bg-amber-100 px-3 py-1 rounded-md">中元</span>、<span class="bg-amber-100 px-3 py-1 rounded-md">中秋</span>、<span class="bg-amber-100 px-3 py-1 rounded-md">重陽</span></div>
-                            </div>
+                        <div class="bg-amber-50/80 p-8 md:p-12 rounded-[2.5rem] shadow-md border border-amber-200 hover:shadow-lg transition-shadow mb-12 relative">
+                            <div class="absolute -bottom-6 -left-6 bg-white rounded-full p-4 shadow-md border-4 border-amber-100 text-5xl">🍁</div>
+                            <h4 class="font-black text-amber-800 text-4xl mb-6 text-center tracking-widest">秋季意象</h4>
+                            <img src="Chinese-Learning-32/p3.jpg" alt="秋季意象" class="w-full max-w-4xl mx-auto h-auto rounded-3xl shadow-xl border-8 border-white block transition-transform hover:scale-[1.02]" onerror="this.style.display='none'">
                         </div>
 
                         <!-- 冬季 -->
-                        <div class="bg-slate-100 p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow mb-8">
-                            <h4 class="font-black text-slate-800 text-4xl mb-4 border-b-2 border-slate-200 pb-3 flex items-center"><span class="text-5xl mr-3">❄️</span>冬季</h4>
-                            <img src="Chinese-Learning-32/p4.jpg" alt="冬季意象" class="w-full max-w-3xl mx-auto h-auto rounded-2xl shadow-md mb-6 border-4 border-white" onerror="this.style.display='none'">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-xl border border-slate-200">
-                                <div class="col-span-1 font-bold text-slate-700 bg-slate-200/50 p-3 rounded-lg text-center">農曆月分</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3">孟冬(十月)、仲冬(十一月)、季冬(十二月)</div>
-                                
-                                <div class="col-span-1 font-bold text-slate-700 bg-slate-200/50 p-3 rounded-lg text-center">相關詞語</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3 leading-loose">
-                                    <span class="text-rose-600 font-bold">北風</span>、<span class="text-rose-600 font-bold">朔風</span>、<span class="text-rose-600 font-bold">寒風</span>、<span class="text-rose-600 font-bold">斗杓北指</span>(斗杓又將東指)、梅花、歲暮、年盡、臘月、踏雪、松柏、橙黃橘綠(初冬)
-                                </div>
-                                
-                                <div class="col-span-1 font-bold text-slate-700 bg-slate-200/50 p-3 rounded-lg text-center">節日</div>
-                                <div class="col-span-3 font-medium text-slate-700 p-3"><span class="bg-slate-200 px-3 py-1 rounded-md">冬至</span>、<span class="bg-slate-200 px-3 py-1 rounded-md">除夕</span></div>
-                            </div>
+                        <div class="bg-slate-100/80 p-8 md:p-12 rounded-[2.5rem] shadow-md border border-slate-200 hover:shadow-lg transition-shadow mb-8 relative">
+                            <div class="absolute -bottom-6 -right-6 bg-white rounded-full p-4 shadow-md border-4 border-slate-100 text-5xl">❄️</div>
+                            <h4 class="font-black text-slate-800 text-4xl mb-6 text-center tracking-widest">冬季意象</h4>
+                            <img src="Chinese-Learning-32/p4.jpg" alt="冬季意象" class="w-full max-w-4xl mx-auto h-auto rounded-3xl shadow-xl border-8 border-white block transition-transform hover:scale-[1.02]" onerror="this.style.display='none'">
                         </div>
 
                     </div>
@@ -212,85 +169,117 @@
                         
                         <div class="space-y-12">
                             <!-- 春節 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-rose-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-rose-200 pb-4 mb-6">
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-rose-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-rose-100 text-rose-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">🎆</div>
+                                <div class="flex items-center justify-between border-b-4 border-rose-200 pb-4 mb-6 relative z-10">
                                     <h4 class="font-black text-rose-800 text-3xl md:text-4xl flex items-center"><span class="bg-rose-100 p-3 rounded-xl mr-4 shadow-sm">🧨</span>春節</h4>
-                                    <span class="font-bold text-rose-600 bg-rose-50 px-4 py-2 rounded-full text-xl border border-rose-100">農曆 1/1</span>
+                                    <span class="font-bold text-rose-600 bg-rose-50 px-4 py-2 rounded-full text-xl border border-rose-100 shadow-sm">農曆 1/1</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-rose-50/50 p-6 rounded-2xl border border-rose-100">
                                         <p class="font-bold text-rose-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (宋·王安石〈元日〉)</p>
                                         <p class="text-slate-700 leading-loose">爆竹聲中一歲除，春風送暖入屠蘇。<br>千門萬戶曈曈日，總把新桃換舊符。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-rose-400 shadow-sm">
+                                            <p class="text-rose-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩中描寫在劈啪的「爆竹」聲中送走舊歲，喝著「屠蘇酒」迎來春風。初昇的太陽（曈曈日）照耀著千家萬戶，大家忙著把舊的「桃符」（春聯的前身）換成新的。充滿了除舊佈新、熱鬧歡樂的新年氣象！✨🍊</p>
+                                        </div>
                                     </div>
                                     <div class="bg-rose-50/50 p-6 rounded-2xl border border-rose-100">
                                         <p class="font-bold text-rose-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (清·孔尚任〈甲午元旦〉)</p>
                                         <p class="text-slate-700 leading-loose">蕭疏白髮不盈顛，守歲圍爐竟廢眠。剪燭催乾消夜酒，傾囊分遍買春錢。<br>聽燒爆竹童心在，看換桃符老興偏。鼓角梅花添一部，五更歡笑拜新年。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-rose-400 shadow-sm">
+                                            <p class="text-rose-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人描寫除夕夜「守歲圍爐」不睡覺，發「買春錢」（壓歲錢）。聽著爆竹聲彷彿童心未泯，看著換桃符興致高昂。到了五更天（黎明），大家在歡笑聲中互相拜年，生動刻畫了過年團聚的溫馨與喜悅！👨‍👩‍👧‍👦🍲</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-rose-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-rose-100/60 p-5 rounded-2xl border border-rose-200">
                                         <span class="font-bold text-rose-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">爆竹、桃符(春聯、門神畫像)</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">爆竹、桃符(春聯、門神畫像) 🚪🎊</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 元宵 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-orange-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-orange-200 pb-4 mb-6">
-                                    <h4 class="font-black text-orange-800 text-3xl md:text-4xl flex items-center"><span class="bg-orange-100 p-3 rounded-xl mr-4 shadow-sm">🏮</span>元宵 (上元)</h4>
-                                    <span class="font-bold text-orange-600 bg-orange-50 px-4 py-2 rounded-full text-xl border border-orange-100">農曆 1/15</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-orange-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-orange-100 text-orange-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">🏮</div>
+                                <div class="flex items-center justify-between border-b-4 border-orange-200 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-orange-800 text-3xl md:text-4xl flex items-center"><span class="bg-orange-100 p-3 rounded-xl mr-4 shadow-sm">🍡</span>元宵 (上元)</h4>
+                                    <span class="font-bold text-orange-600 bg-orange-50 px-4 py-2 rounded-full text-xl border border-orange-100 shadow-sm">農曆 1/15</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-orange-50/50 p-6 rounded-2xl border border-orange-100">
                                         <p class="font-bold text-orange-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (宋·歐陽脩〈生查子·元夕〉)</p>
                                         <p class="text-slate-700 leading-loose">去年元夜時，花市燈如畫。月上柳梢頭，人約黃昏後。<br>今年元夜時，月與燈依舊。不見去年人，淚溼春衫袖。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-orange-400 shadow-sm">
+                                            <p class="text-orange-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人回憶去年「元夜」（元宵節）時，花燈美如畫，與意中人相約在月下柳梢頭。然而今年元宵節，雖然明月與花燈依舊，卻再也見不到去年的那個人，只能獨自傷心流淚。藉由元宵花燈對比出「物是人非」的深情與感傷。😢💔</p>
+                                        </div>
                                     </div>
                                     <div class="bg-orange-50/50 p-6 rounded-2xl border border-orange-100">
                                         <p class="font-bold text-orange-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (宋·辛棄疾〈青玉案·元夕〉)</p>
                                         <p class="text-slate-700 leading-loose">東風夜放花千樹。更吹落、星如雨。寶馬雕車香滿路。<br>鳳簫聲動，玉壺光轉，一夜魚龍舞。蛾兒雪柳黃金縷，笑語盈盈暗香去。<br>眾裡尋他千百度，驀然回首，那人卻在，燈火闌珊處。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-orange-400 shadow-sm">
+                                            <p class="text-orange-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">這首詞生動描寫元宵夜的極致繁華：「花千樹」比喻滿城的燈火，「星如雨」形容煙火如流星般散落。「魚龍舞」指元宵節的舞龍舞獅與魚燈表演。婦女們戴著「蛾兒雪柳」等頭飾笑語盈盈。最後詩人千尋萬覓，竟在燈火稀疏處（燈火闌珊處）找到了那位不慕繁華的佳人。⭐👀</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-orange-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-orange-100/60 p-5 rounded-2xl border border-orange-200">
                                         <span class="font-bold text-orange-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">火樹銀花、燈籠、湯圓</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">火樹銀花、燈籠、湯圓 🥣🎇</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 清明 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-green-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-green-200 pb-4 mb-6">
-                                    <h4 class="font-black text-green-800 text-3xl md:text-4xl flex items-center"><span class="bg-green-100 p-3 rounded-xl mr-4 shadow-sm">🌿</span>清明</h4>
-                                    <span class="font-bold text-green-600 bg-green-50 px-4 py-2 rounded-full text-xl border border-green-100">國曆 4/4~6</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-green-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-green-100 text-green-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">🌿</div>
+                                <div class="flex items-center justify-between border-b-4 border-green-200 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-green-800 text-3xl md:text-4xl flex items-center"><span class="bg-green-100 p-3 rounded-xl mr-4 shadow-sm">☔</span>清明</h4>
+                                    <span class="font-bold text-green-600 bg-green-50 px-4 py-2 rounded-full text-xl border border-green-100 shadow-sm">國曆 4/4~6</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-green-50/50 p-6 rounded-2xl border border-green-100">
                                         <p class="font-bold text-green-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 (唐·杜牧〈清明〉)</p>
                                         <p class="text-slate-700 leading-loose">清明時節雨紛紛，路上行人欲斷魂。<br>借問酒家何處有？牧童遙指杏花村。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-green-400 shadow-sm">
+                                            <p class="text-green-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人描繪在春雨綿綿的清明節，路上趕著去掃墓祭祖的行人，因為思念逝去的親人而悲傷得「欲斷魂」（像丟了魂一樣）。想要找個酒家借酒澆愁，牧童便指了指遠處盛開杏花的村莊。完美營造出清明節慎終追遠的哀思氛圍。🪦🌸</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-green-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-green-100/60 p-5 rounded-2xl border border-green-200">
                                         <span class="font-bold text-green-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">植樹、掃墓、祭祖、寒食</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">植樹、掃墓、祭祖、寒食 🌳🙇</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 端午 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-emerald-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-emerald-200 pb-4 mb-6">
-                                    <h4 class="font-black text-emerald-800 text-3xl md:text-4xl flex items-center"><span class="bg-emerald-100 p-3 rounded-xl mr-4 shadow-sm">🐉</span>端午</h4>
-                                    <span class="font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full text-xl border border-emerald-100">農曆 5/5</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-emerald-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-emerald-100 text-emerald-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">🐉</div>
+                                <div class="flex items-center justify-between border-b-4 border-emerald-200 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-emerald-800 text-3xl md:text-4xl flex items-center"><span class="bg-emerald-100 p-3 rounded-xl mr-4 shadow-sm">🛶</span>端午</h4>
+                                    <span class="font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full text-xl border border-emerald-100 shadow-sm">農曆 5/5</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                         <p class="font-bold text-emerald-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (宋·梅堯臣〈五月五日〉)</p>
                                         <p class="text-slate-700 leading-loose">屈氏已沉死，楚人哀不容。<br>何嘗奈讒謗，徒欲卻蛟龍。未泯生前恨，而追沒後蹤。<br>沅湘碧潭水，應自照千峰。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-emerald-400 shadow-sm">
+                                            <p class="text-emerald-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩中直接點出「屈氏」（屈原）已經沉江而死，楚國的百姓對此感到無比悲哀。人們把食物投入江中（包粽子的由來），是為了驅趕「蛟龍」保護屈原的遺體。表達了對一代愛國忠臣被讒言所害的惋惜與不平。🌊🍃</p>
+                                        </div>
                                     </div>
                                     <div class="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-100">
                                         <p class="font-bold text-emerald-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (宋·張耒〈和端午〉)</p>
                                         <p class="text-slate-700 leading-loose">競渡深悲千載冤，忠臣一去詎能還。<br>國亡身殞今何有，只留離騷在世間。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-emerald-400 shadow-sm">
+                                            <p class="text-emerald-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人看到端午節的龍舟「競渡」，心中深感悲痛，因為這是在紀念千年前含冤而死的忠臣。雖然楚國已經滅亡，屈原也已身死，但他偉大的愛國情操與不朽的詩篇《離騷》卻永遠流傳在世間。🏆📖</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-emerald-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-emerald-100/60 p-5 rounded-2xl border border-emerald-200">
                                         <span class="font-bold text-emerald-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">粽子、龍舟、艾草、菖蒲、雄黃酒、屈原</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">粽子、龍舟、艾草、菖蒲、雄黃酒、屈原 🌿🍷</span>
                                     </div>
                                 </div>
                             </div>
@@ -308,107 +297,148 @@
                         
                         <div class="space-y-12">
                             <!-- 七夕 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-fuchsia-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-fuchsia-200 pb-4 mb-6">
-                                    <h4 class="font-black text-fuchsia-800 text-3xl md:text-4xl flex items-center"><span class="bg-fuchsia-100 p-3 rounded-xl mr-4 shadow-sm">✨</span>七夕</h4>
-                                    <span class="font-bold text-fuchsia-600 bg-fuchsia-50 px-4 py-2 rounded-full text-xl border border-fuchsia-100">農曆 7/7</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-fuchsia-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-fuchsia-100 text-fuchsia-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">✨</div>
+                                <div class="flex items-center justify-between border-b-4 border-fuchsia-200 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-fuchsia-800 text-3xl md:text-4xl flex items-center"><span class="bg-fuchsia-100 p-3 rounded-xl mr-4 shadow-sm">🌌</span>七夕</h4>
+                                    <span class="font-bold text-fuchsia-600 bg-fuchsia-50 px-4 py-2 rounded-full text-xl border border-fuchsia-100 shadow-sm">農曆 7/7</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-fuchsia-50/50 p-6 rounded-2xl border border-fuchsia-100">
                                         <p class="font-bold text-fuchsia-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (宋·秦觀〈鵲橋仙〉)</p>
                                         <p class="text-slate-700 leading-loose">纖雲弄巧，飛星傳恨，銀漢迢迢暗渡。金風玉露一相逢，便勝卻人間無數。<br>柔情似水，佳期如夢，忍顧鵲橋歸路。兩情若是久長時，又豈在朝朝暮暮。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-fuchsia-400 shadow-sm">
+                                            <p class="text-fuchsia-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">這是一首極度浪漫的七夕詞。詩人寫牛郎織女在秋風白露（金風玉露）中於「鵲橋」短暫相會，這份真摯的愛勝過人間無數平凡的夫妻。最後點出名言：「只要兩人的愛情天長地久，又何必在乎是不是每天從早到晚都黏在一起呢？」昇華了愛情的境界。💑🕊️</p>
+                                        </div>
                                     </div>
                                     <div class="bg-fuchsia-50/50 p-6 rounded-2xl border border-fuchsia-100">
                                         <p class="font-bold text-fuchsia-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (唐·杜牧〈秋夕〉)</p>
                                         <p class="text-slate-700 leading-loose">銀燭秋光冷畫屏，輕羅小扇撲流螢。<br>天階夜色涼如水，坐看牽牛織女星。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-fuchsia-400 shadow-sm">
+                                            <p class="text-fuchsia-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人描寫一個孤單的宮女，在秋天微涼的夜晚（涼如水），無聊地用小扇子撲打螢火蟲。最後只能靜靜地坐在台階上，望著天上相聚的「牽牛織女星」。以天上的團聚反襯出人間宮女的寂寞與幽怨。🌠🪭</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-fuchsia-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-fuchsia-100/60 p-5 rounded-2xl border border-fuchsia-200">
                                         <span class="font-bold text-fuchsia-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">鵲橋、牛郎、織女、乞巧</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">鵲橋、牛郎、織女、乞巧 🧵🧶</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 中元 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-purple-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-purple-200 pb-4 mb-6">
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-purple-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-purple-100 text-purple-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">👻</div>
+                                <div class="flex items-center justify-between border-b-4 border-purple-200 pb-4 mb-6 relative z-10">
                                     <h4 class="font-black text-purple-800 text-3xl md:text-4xl flex items-center"><span class="bg-purple-100 p-3 rounded-xl mr-4 shadow-sm">🕯️</span>中元</h4>
-                                    <span class="font-bold text-purple-600 bg-purple-50 px-4 py-2 rounded-full text-xl border border-purple-100">農曆 7/15</span>
+                                    <span class="font-bold text-purple-600 bg-purple-50 px-4 py-2 rounded-full text-xl border border-purple-100 shadow-sm">農曆 7/15</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-purple-50/50 p-6 rounded-2xl border border-purple-100">
                                         <p class="font-bold text-purple-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 (唐·王建〈宮詞〉)</p>
                                         <p class="text-slate-700 leading-loose">燈前飛入玉階蟲，未臥常聞半夜鐘。<br>看著中元齋日到，自盤金線繡真容。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-purple-400 shadow-sm">
+                                            <p class="text-purple-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">這是一首描寫宮廷生活的詩。宮女在深夜還沒睡，聽到半夜的鐘聲。眼看著「中元節」這個需要齋戒祈福的日子即將到來，便親自用金線刺繡神佛的畫像（真容）。展現了古人對中元節普渡與敬神儀式的重視。🙏📿</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-purple-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-purple-100/60 p-5 rounded-2xl border border-purple-200">
                                         <span class="font-bold text-purple-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">中元普渡</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">中元普渡 🍢🍎</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 中秋 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-indigo-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-indigo-200 pb-4 mb-6">
-                                    <h4 class="font-black text-indigo-800 text-3xl md:text-4xl flex items-center"><span class="bg-indigo-100 p-3 rounded-xl mr-4 shadow-sm">🌕</span>中秋</h4>
-                                    <span class="font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full text-xl border border-indigo-100">農曆 8/15</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-indigo-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-indigo-100 text-indigo-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">🌕</div>
+                                <div class="flex items-center justify-between border-b-4 border-indigo-200 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-indigo-800 text-3xl md:text-4xl flex items-center"><span class="bg-indigo-100 p-3 rounded-xl mr-4 shadow-sm">🎑</span>中秋</h4>
+                                    <span class="font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full text-xl border border-indigo-100 shadow-sm">農曆 8/15</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
                                         <p class="font-bold text-indigo-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (唐·李商隱〈嫦娥〉)</p>
                                         <p class="text-slate-700 leading-loose">雲母屏風燭影深，長河漸落曉星沉。<br>嫦娥應悔偷靈藥，碧海青天夜夜心。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-indigo-400 shadow-sm">
+                                            <p class="text-indigo-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人望著秋夜的星空，想像月宮中的「嫦娥」雖然偷吃了長生不老藥而飛仙，但現在一定很後悔吧！因為她必須獨自面對碧海青天，夜夜忍受著無盡的孤寂。詩人其實是藉由嫦娥，暗喻自己才華洋溢卻孤立無援的心境。🐇💊</p>
+                                        </div>
                                     </div>
                                     <div class="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
                                         <p class="font-bold text-indigo-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (唐·杜甫〈八月十五夜月〉)</p>
                                         <p class="text-slate-700 leading-loose">滿月飛明鏡，歸心折大刀。<br>轉蓬行地遠，攀桂仰天高。水路疑霜雪，林棲見羽毛。<br>此時瞻白兔，直欲數秋毫。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-indigo-400 shadow-sm">
+                                            <p class="text-indigo-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">杜甫將中秋「滿月」比喻為飛在天空的「明鏡」。在圓月之下，勾起了詩人強烈的思鄉之情（歸心）。詩中巧妙地融入了中秋神話：望著高天的月亮彷彿想去「攀桂」（吳剛伐桂），仔細看著月亮裡的「白兔」（玉兔搗藥），連兔子身上的秋毫都想數清楚。充滿浪漫想像與鄉愁。🪓🌳</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-indigo-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-indigo-100/60 p-5 rounded-2xl border border-indigo-200">
                                         <span class="font-bold text-indigo-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">嫦娥、玉蟾(月亮)、嬋娟(月亮)、吳剛伐桂、玉兔搗藥</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">嫦娥、玉蟾(月亮)、嬋娟(月亮)、吳剛伐桂、玉兔搗藥 🐇🌝</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 重陽 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-amber-100 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-amber-200 pb-4 mb-6">
-                                    <h4 class="font-black text-amber-800 text-3xl md:text-4xl flex items-center"><span class="bg-amber-100 p-3 rounded-xl mr-4 shadow-sm">⛰️</span>重陽</h4>
-                                    <span class="font-bold text-amber-600 bg-amber-50 px-4 py-2 rounded-full text-xl border border-amber-100">農曆 9/9</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-amber-100 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-amber-100 text-amber-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">⛰️</div>
+                                <div class="flex items-center justify-between border-b-4 border-amber-200 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-amber-800 text-3xl md:text-4xl flex items-center"><span class="bg-amber-100 p-3 rounded-xl mr-4 shadow-sm">🍂</span>重陽</h4>
+                                    <span class="font-bold text-amber-600 bg-amber-50 px-4 py-2 rounded-full text-xl border border-amber-100 shadow-sm">農曆 9/9</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-amber-50/50 p-6 rounded-2xl border border-amber-100">
                                         <p class="font-bold text-amber-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (唐·王維〈九月九日憶山東兄弟〉)</p>
                                         <p class="text-slate-700 leading-loose">獨在異鄉為異客，每逢佳節倍思親。<br>遙知兄弟登高處，遍插茱萸少一人。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-amber-400 shadow-sm">
+                                            <p class="text-amber-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">這是最著名的重陽節思鄉詩。詩人獨自漂泊異鄉，到了佳節特別思念親人。他想像著遠方的兄弟們此時一定正在「登高」，大家身上都佩戴著避邪的「茱萸」，可惜就是少了我（詩人）一個人啊！生動刻畫出兄弟情深與無奈的鄉愁。🍃😢</p>
+                                        </div>
                                     </div>
                                     <div class="bg-amber-50/50 p-6 rounded-2xl border border-amber-100">
                                         <p class="font-bold text-amber-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (唐·杜牧〈九日齊山登高〉)</p>
                                         <p class="text-slate-700 leading-loose">江涵秋影雁初飛，與客攜壺上翠微。<br>塵世難逢開口笑，菊花須插滿頭歸。<br>但將酩酊酬佳節，不用登臨嘆落暉。<br>古往今來只如此，牛山何必獨沾衣。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-amber-400 shadow-sm">
+                                            <p class="text-amber-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人在重陽「九日」與朋友帶著酒壺「登高」賞秋。他感嘆人生在世難得有開心笑的機會，既然今天是佳節，就把「菊花」插滿頭上，盡情地喝個酩酊大醉吧！表現出詩人面對時光流逝與世事無奈時，選擇及時行樂、豁達灑脫的態度。🌼🍷</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-amber-100/50 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-amber-100/60 p-5 rounded-2xl border border-amber-200">
                                         <span class="font-bold text-amber-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">登高、飲酒賞菊、敬老、茱萸</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">登高、飲酒賞菊、敬老、茱萸 🥂🏵️</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- 除夕 -->
-                            <div class="bg-white p-8 rounded-[2rem] shadow-md border border-slate-200 hover:-translate-y-1 transition-transform">
-                                <div class="flex items-center justify-between border-b-4 border-slate-300 pb-4 mb-6">
-                                    <h4 class="font-black text-slate-800 text-3xl md:text-4xl flex items-center"><span class="bg-slate-100 p-3 rounded-xl mr-4 shadow-sm">🥘</span>除夕</h4>
-                                    <span class="font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full text-xl border border-slate-200">農曆 12月最後一天</span>
+                            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-200 hover:-translate-y-1 transition-transform relative overflow-hidden">
+                                <div class="absolute top-0 right-0 bg-slate-100 text-slate-500 w-32 h-32 rounded-bl-full flex items-start justify-end p-4 text-4xl opacity-50">🥘</div>
+                                <div class="flex items-center justify-between border-b-4 border-slate-300 pb-4 mb-6 relative z-10">
+                                    <h4 class="font-black text-slate-800 text-3xl md:text-4xl flex items-center"><span class="bg-slate-100 p-3 rounded-xl mr-4 shadow-sm">🧧</span>除夕</h4>
+                                    <span class="font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full text-xl border border-slate-200 shadow-sm">農曆 12月最後一天</span>
                                 </div>
-                                <div class="space-y-6">
+                                <div class="space-y-6 relative z-10">
                                     <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
                                         <p class="font-bold text-slate-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 1 (唐·崔塗〈除夜有懷〉)</p>
                                         <p class="text-slate-700 leading-loose">迢遞三巴路，羈危萬里身。<br>亂山殘雪夜，孤燭異鄉人。<br>漸與骨肉遠，轉於僮僕親。<br>那堪正漂泊，明日歲華新。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-slate-400 shadow-sm">
+                                            <p class="text-slate-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">除夕夜本是團圓的時刻，詩人卻漂泊萬里，在亂山殘雪中面對一盞孤燭。因為離家太久，與親人（骨肉）生疏，反而和身邊的僕人更親近了。感嘆自己還在四處漂泊，但明天就是新的一年（歲華新）了。充滿濃濃的鄉愁與淒涼。🕯️🏠</p>
+                                        </div>
                                     </div>
                                     <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
                                         <p class="font-bold text-slate-900 mb-3 text-2xl flex items-center"><span class="mr-2">📜</span>代表詩 2 (唐·高適〈除夜〉)</p>
                                         <p class="text-slate-700 leading-loose">旅館寒燈獨不眠，客心何事轉淒然？<br>故鄉今夜思千里，霜鬢明朝又一年。</p>
+                                        <div class="mt-5 bg-white p-5 rounded-xl border-l-8 border-slate-400 shadow-sm">
+                                            <p class="text-slate-800 font-bold flex items-center mb-2"><span class="mr-2">💡</span>詳細解析：</p>
+                                            <p class="text-slate-600 font-medium leading-relaxed">詩人在除夕夜獨自住在旅館，看著清冷的寒燈無法入睡，心情感到無比淒涼。想著遠方故鄉的親人今夜也一定在思念著我，看著自己斑白的頭髮（霜鬢），感嘆明天過後，自己又老了一歲。傳達了歲月不饒人的感慨。👴🕰️</p>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start bg-slate-100/80 p-5 rounded-2xl">
+                                    <div class="flex items-start bg-slate-100/80 p-5 rounded-2xl border border-slate-300">
                                         <span class="font-bold text-slate-800 text-2xl mr-4 shrink-0">🔑 關鍵詞：</span>
-                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">圍爐、年夜飯、壓歲錢</span>
+                                        <span class="text-slate-800 font-medium leading-relaxed tracking-wide">圍爐、年夜飯、壓歲錢 🍲💰</span>
                                     </div>
                                 </div>
                             </div>
