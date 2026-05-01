@@ -1418,6 +1418,23 @@
 
         const el = id => document.getElementById(id);
 
+        // --- 核心：資料無縫同步函式 (解決快取缺少 exps 的問題) ---
+        const syncQuestionsFormat = (state) => {
+            if (!state || !state.questions) return state;
+            // 如果舊進度沒有 exps 陣列，則用新題庫的解析來覆蓋，保留作答紀錄
+            if (state.questions.length > 0 && !state.questions[0].exps) {
+                const freshQuestions = generate100Questions();
+                state.questions = state.questions.map(oldQ => {
+                    const freshQ = freshQuestions.find(fq => fq.q === oldQ.q);
+                    if (freshQ) {
+                        return { ...freshQ, showExplanation: oldQ.showExplanation, selectedAns: oldQ.selectedAns, isCorrect: oldQ.isCorrect };
+                    }
+                    return oldQ;
+                });
+            }
+            return state;
+        };
+
         window.toggleLearnMenu = (show) => {
             isLearnMenuOpen = typeof show === 'boolean' ? show : !isLearnMenuOpen;
             const drawer = el('learn-drawer');
@@ -1460,6 +1477,7 @@
                     saveLocalData(name);
                     
                     if (userData.quizState) {
+                        userData.quizState = syncQuestionsFormat(userData.quizState); // 確保格式同步
                         const cloudStateStr = JSON.stringify(userData.quizState);
                         const localStateStr = JSON.stringify(quizState);
                         if (cloudStateStr !== localStateStr) {
@@ -1523,12 +1541,12 @@
         };
 
         const loadLocalQuizState = () => {
-            if (userData.quizState) { quizState = userData.quizState; return; }
+            if (userData.quizState) { quizState = syncQuestionsFormat(userData.quizState); return; }
             try {
                 const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
                 if (localQuiz) {
                     const q = JSON.parse(localQuiz);
-                    if (q && q.active) quizState = q;
+                    if (q && q.active) quizState = syncQuestionsFormat(q);
                 }
             } catch(e) {}
         };
@@ -1581,7 +1599,7 @@
                     if (snap.exists()) {
                         userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
                         if (userData.quizState) {
-                            quizState = userData.quizState;
+                            quizState = syncQuestionsFormat(userData.quizState);
                             try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
                         }
                     } else loadLocalData(username);
@@ -1929,7 +1947,6 @@
             container.innerHTML = html;
         };
 
-        // ========== 核心更新：解析直接嵌入選項框框中 ==========
         const generateSingleQuestionHtml = (qIdx) => {
             const q = quizState.questions[qIdx];
             let optionsHtml = '';
