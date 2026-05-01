@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>詩詞曲格律比較 - 互動學習系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: #fffbeb; color: #431407; font-size: 1.125rem; line-height: 1.8; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-loading { background-color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; box-shadow: 0 0 8px #fbbf24; }
+        .status-success { background-color: #34d399; box-shadow: 0 0 8px #34d399; }
+        .status-error { background-color: #f87171; box-shadow: 0 0 8px #f87171; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-nav { background: rgba(194, 65, 12, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .knowledge-table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; font-size: 1rem; }
+        .knowledge-table th, .knowledge-table td { border: 1px solid #fed7aa; padding: 0.75rem; }
+        .knowledge-table th { background-color: #ffedd5; color: #9a3412; font-weight: bold; }
+        .knowledge-table tr:nth-child(even) { background-color: #fffbeb; }
+        .tag-badge { display: inline-block; padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: bold; font-size: 1.25rem; line-height: 1.75rem; margin-right: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .tag-badge { font-size: 1.5rem; line-height: 2rem; padding: 0.75rem 1.5rem; margin-right: 1rem; margin-bottom: 1rem; } }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden bg-amber-50">
+
+    <div id="app" class="w-full h-full flex flex-col overflow-hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        //  Firebase Configuration & Constants
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const ORIGINAL_PREFIX = 'Chinese-Learning-35'; 
+        const COLLECTION_NAME = 'Chinese-Learning-35'; 
+        const DOC_GLOBAL = 'Global_Users';      
+        
+        let app, auth, db;
+        let isFirebaseInitialized = false;
+        let currentUser = null;
+        let username = '';
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+        let connectionStatus = 'loading';
+        let recentUsers = [];
+        let unsubscribeUser = null;
+        let unsubscribeGlobal = null;
+        
+        // ==========================================
+        //  Audio System
+        // ==========================================
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        const playTone = (freq, type, duration) => {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        };
+        const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
+        const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
+
+        // ==========================================
+        //  Firebase Initialization
+        // ==========================================
+        try {
+            const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+            if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
+                app = initializeApp(actualConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isFirebaseInitialized = true;
+                connectionStatus = 'success';
+            } else { connectionStatus = 'error'; }
+        } catch (error) { connectionStatus = 'error'; }
+
+        const initAuth = async () => {
+            if (!isFirebaseInitialized) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) { connectionStatus = 'error'; }
+        };
+
+        // ==========================================
+        //  Course Content (Learn Data)
+        // ==========================================
+        const learnData = [
+            {
+                id: 'sec1', title: '第一部分：圖解觀念與平仄 🔍', theme: 'orange',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-10 rounded-3xl border-l-8 border-orange-500 shadow-lg">
+                        
+                        <div class="text-center font-black text-4xl md:text-5xl text-orange-950 mb-8 border-b-2 border-orange-200 pb-4 flex justify-center items-center gap-4">
+                            <span class="text-5xl">📖</span> 第4站 詩詞曲格律比較 <span class="text-5xl">✨</span>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-8 text-orange-900 text-2xl md:text-3xl leading-relaxed">
+                            <p class="font-bold text-rose-600 mb-3 text-3xl flex items-center"><span class="mr-2">🔥</span> 標示表會考、命題率：基測曾考過的重點 80%</p>
+                            <p class="mt-2 text-slate-700 font-medium">學習重點 🎯：掌握古體詩與近體詩的差異，以及平仄判斷的技巧。</p>
+                        </div>
+
+                        <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-6 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">一</span>圖解語文密碼：如何判斷古體詩與近體詩 🕵️‍♂️</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border-2 border-slate-200 hover:border-orange-300 transition-colors">
+                                <h4 class="font-bold text-2xl text-slate-800 mb-4 border-b pb-2">📜 古體詩 特徵</h4>
+                                <ul class="space-y-3 text-xl text-slate-700 font-medium">
+                                    <li class="flex items-start"><span class="text-rose-500 mr-2">✔️</span> <strong>字數、句數：</strong> 不限字數、不限句數</li>
+                                    <li class="flex items-start"><span class="text-rose-500 mr-2">✔️</span> <strong>韻腳：</strong> 皆偶數句押韻，<span class="bg-rose-100 text-rose-700 px-2 rounded">可換韻</span></li>
+                                    <li class="flex items-start"><span class="text-rose-500 mr-2">✔️</span> <strong>平仄：</strong> 不限平仄</li>
+                                </ul>
+                            </div>
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border-2 border-indigo-200 hover:border-indigo-400 transition-colors">
+                                <h4 class="font-bold text-2xl text-indigo-900 mb-4 border-b pb-2">🏮 近體詩 特徵</h4>
+                                <ul class="space-y-3 text-xl text-indigo-800 font-medium">
+                                    <li class="flex items-start"><span class="text-indigo-500 mr-2">✔️</span> <strong>字數、句數：</strong> 只能用五言和七言。絕句4句、律詩8句<br>【律詩的<span class="text-rose-600 font-bold underline">頷聯(3,4句)</span> / <span class="text-rose-600 font-bold underline">頸聯(5,6句)</span>必須對仗】</li>
+                                    <li class="flex items-start"><span class="text-indigo-500 mr-2">✔️</span> <strong>韻腳：</strong> 偶數句押韻，<span class="bg-indigo-100 text-indigo-700 px-2 rounded">不可換韻</span></li>
+                                    <li class="flex items-start"><span class="text-indigo-500 mr-2">✔️</span> <strong>平仄：</strong> 偶數字平仄相對 (一三五不論，二四六分明)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="bg-rose-50 p-6 rounded-2xl shadow-sm border border-rose-200 mb-8 animate-fade-in">
+                            <h4 class="font-bold text-rose-800 text-2xl mb-4 flex items-center"><span class="text-3xl mr-2">💡</span> 解題密碼分析範例</h4>
+                            
+                            <div class="mb-6 bg-white p-5 rounded-xl border border-rose-100">
+                                <p class="text-slate-600 font-bold mb-2">範例 (1) 王勃〈滕王閣〉</p>
+                                <p class="text-xl text-slate-800 leading-relaxed font-serif">
+                                    滕王高閣臨江渚，佩玉鳴驚罷歌舞。畫棟朝飛南浦雲，珠簾暮卷西山雨。<br>
+                                    閑雲潭影日悠悠，物換星移幾度秋。閣中帝子今何在？檻外長江空自流。
+                                </p>
+                            </div>
+                            
+                            <div class="mb-6 bg-white p-5 rounded-xl border border-rose-100">
+                                <p class="text-slate-600 font-bold mb-2">範例 (2) 李商隱〈錦瑟〉</p>
+                                <p class="text-xl text-slate-800 leading-relaxed font-serif">
+                                    錦瑟無端五十弦，一弦一柱思華年。莊生曉夢迷蝴蝶，望帝春心托杜鵑。<br>
+                                    滄海月明珠有淚，藍田日暖玉生煙。此情可待成追憶，只是當時已惘然。
+                                </p>
+                            </div>
+                            
+                            <div class="bg-rose-100/50 p-4 rounded-lg text-rose-900 text-xl font-medium">
+                                <strong class="text-rose-700">說明 📝：</strong>這兩首詩都是七言8句。<br>
+                                滕王閣<span class="text-rose-600 font-bold underline">換了三次韻</span> (ㄨ、ㄩ、ㄡ韻)，錦瑟<span class="text-indigo-600 font-bold underline">一韻到底</span>，可以確定【滕王閣】是<span class="font-bold">古體詩</span>。<br>
+                                要判斷【錦瑟】是不是律詩，先看頷、頸聯是否符合對仗條件：3、4句「莊生」對「望帝」、「迷」對「托」；5、6句「滄海」對「藍田」、「珠有淚」對「玉生煙」，對仗工整；再看平仄，每一聯都符合偶數字平仄相對的條件，因此【錦瑟】是一首<span class="font-bold">近體詩(律詩)</span>。
+                            </div>
+                        </div>
+
+                        <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-6 mt-12 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">二</span>平仄比較表 🗣️</h3>
+                        
+                        <div class="overflow-x-auto rounded-xl border border-orange-200 shadow-sm bg-white mb-8">
+                            <table class="knowledge-table w-full text-xl m-0 border-none text-left">
+                                <thead class="bg-orange-100 text-orange-900">
+                                    <tr>
+                                        <th class="p-4 border border-orange-200 font-black w-24 text-center">平仄</th>
+                                        <th class="p-4 border border-orange-200 font-black">古代四聲</th>
+                                        <th class="p-4 border border-orange-200 font-black">國語四聲</th>
+                                        <th class="p-4 border border-orange-200 font-black">字例</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-orange-100">
+                                    <tr>
+                                        <td rowspan="2" class="p-4 border border-orange-200 font-bold text-center text-blue-700 text-2xl align-middle">平</td>
+                                        <td class="p-4 border border-orange-200 font-medium">陰平聲</td>
+                                        <td class="p-4 border border-orange-200 font-medium">第一聲</td>
+                                        <td class="p-4 border border-orange-200 text-slate-600">非、灰、滔</td>
+                                    </tr>
+                                    <tr class="bg-slate-50">
+                                        <td class="p-4 border border-orange-200 font-medium">陽平聲</td>
+                                        <td class="p-4 border border-orange-200 font-medium">第二聲</td>
+                                        <td class="p-4 border border-orange-200 text-slate-600">肥、回、桃</td>
+                                    </tr>
+                                    <tr>
+                                        <td rowspan="3" class="p-4 border border-orange-200 font-bold text-center text-rose-600 text-2xl align-middle">仄</td>
+                                        <td class="p-4 border border-orange-200 font-medium">上聲</td>
+                                        <td class="p-4 border border-orange-200 font-medium">第三聲</td>
+                                        <td class="p-4 border border-orange-200 text-slate-600">匪、悔、討</td>
+                                    </tr>
+                                    <tr class="bg-slate-50">
+                                        <td class="p-4 border border-orange-200 font-medium">去聲</td>
+                                        <td class="p-4 border border-orange-200 font-medium">第四聲</td>
+                                        <td class="p-4 border border-orange-200 text-slate-600">費、慧、套</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-4 border border-orange-200 font-bold text-rose-700">入聲<br><span class="text-base text-rose-500 font-normal">(通常讀音急促的)</span></td>
+                                        <td class="p-4 border border-orange-200 font-bold text-rose-700">就是入聲字<br><span class="text-base text-rose-500 font-normal">(以方言判讀，如台語)</span></td>
+                                        <td class="p-4 border border-orange-200 text-slate-700 leading-relaxed font-bold">
+                                            十、石、失、溼、得、德、白、伯、福、吉、節、絕、獨、雪、滅、竹、賊、冊、北、玉、吃、別、發、屋、讀、燭、覺、學、出、歇、宅、昔、寂、笛、國、擷、極、合、急、接、乏、一、菊 <br>
+                                            <span class="text-base text-slate-500 font-normal">(常見入聲字，請務必熟記 💯)</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec2', title: '第二部分：詩詞曲格律比較總表 📊', theme: 'amber',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-b from-amber-50 to-white p-6 md:p-10 rounded-3xl border-t-8 border-amber-500 shadow-lg overflow-hidden">
+                        
+                        <h3 class="font-bold text-3xl md:text-4xl text-amber-800 mb-6 flex items-center"><span class="bg-amber-200 p-2 rounded-lg mr-3 shadow-sm">三</span>詩、詞、曲格律比較表 🏆</h3>
+                        <p class="text-xl text-amber-700 mb-6 font-bold flex items-center"><span class="mr-2">🚨</span> 會考最愛考的重點大集合，請務必將此表烙印在腦海中！</p>
+                        
+                        <div class="overflow-x-auto rounded-2xl shadow-lg border border-amber-200">
+                            <table class="w-full text-lg md:text-xl m-0 border-collapse text-center bg-white min-w-[800px]">
+                                <thead class="bg-amber-100 text-amber-900 border-b-2 border-amber-300">
+                                    <tr>
+                                        <th class="p-4 border-r border-amber-200 font-black w-24">類別</th>
+                                        <th class="p-4 border-r border-amber-200 font-black">樂府詩 🎵</th>
+                                        <th class="p-4 border-r border-amber-200 font-black">古詩 📜</th>
+                                        <th class="p-4 border-r border-amber-200 font-black">近體詩 🏮<br>(絕句/律詩)</th>
+                                        <th class="p-4 border-r border-amber-200 font-black">詞 🍵</th>
+                                        <th class="p-4 border-r border-amber-200 font-black">曲 🎭</th>
+                                        <th class="p-4 font-black">現代詩 🖋️</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-amber-100">
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">盛行年代</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium" colspan="2">漢、魏至南北朝</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-indigo-700">唐</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-rose-700">宋</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-green-700">元</td>
+                                        <td class="p-3 font-medium">民國</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">別稱</td>
+                                        <td class="p-3 border-r border-amber-200 text-slate-600">(多用歌、行、吟、弄等字)</td>
+                                        <td class="p-3 border-r border-amber-200 text-slate-600">古風</td>
+                                        <td class="p-3 border-r border-amber-200 text-slate-600">今體詩</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-rose-700">詩餘、樂府、倚聲、曲子詞、長短句</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-green-700">詞餘、樂府</td>
+                                        <td class="p-3 text-slate-600">新詩、白話詩</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">字數</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 text-indigo-700 font-bold text-left px-4">
+                                            五絕 20字 / 七絕 28字<br>五律 40字 / 七律 56字
+                                        </td>
+                                        <td class="p-3 border-r border-amber-200 text-slate-700 text-left px-4">
+                                            小令58字以下<br>中調59~90字<br>長調91字以上
+                                        </td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">依曲牌規定</td>
+                                        <td class="p-3 font-medium">不限</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">句數</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-indigo-700">絕句4句<br>律詩8句</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">依詞牌規定</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">依曲牌規定</td>
+                                        <td class="p-3 font-medium">不限</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">句式</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium text-amber-700">多長短句<br>少數五、七言</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium text-amber-700">多五、七言<br>也有長短句</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-indigo-700">整齊<br>(五言或七言)</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-rose-700">長短句</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-green-700">長短句<br><span class="text-sm bg-green-100 px-1 rounded">(可加襯字)</span></td>
+                                        <td class="p-3 font-medium">不限</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">平仄</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-indigo-700">有一定格式</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium text-rose-700">有一定格式</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium text-green-700">有一定格式</td>
+                                        <td class="p-3 font-medium">不限</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">對仗</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium">不限</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-indigo-700">絕句：不限<br>律詩：頷、頸聯須對仗</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium text-slate-600">不限<br>(依詞牌)</td>
+                                        <td class="p-3 border-r border-amber-200 font-medium text-slate-600">不限<br>(依曲牌)</td>
+                                        <td class="p-3 font-medium">不限</td>
+                                    </tr>
+                                    <tr class="hover:bg-amber-50/50">
+                                        <td class="p-3 border-r border-amber-200 font-bold bg-amber-50/50">押韻</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-amber-600" colspan="2">偶數句押韻，<span class="underline">可換韻</span></td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-indigo-600">偶數句押韻，<span class="underline">不可換韻</span></td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-rose-600">可換韻<br>(依詞牌)</td>
+                                        <td class="p-3 border-r border-amber-200 font-bold text-green-700 underline bg-green-50">不可換韻<br>(一韻到底)</td>
+                                        <td class="p-3 font-medium">不限</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec3', title: '第三部分：格律範例分析(上) 📚', theme: 'rose',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-white p-8 md:p-10 rounded-[2.5rem] border border-rose-100 shadow-xl relative overflow-hidden">
+                        
+                        <h3 class="font-bold text-3xl md:text-4xl text-rose-800 mb-6 flex items-center"><span class="bg-rose-200 p-2 rounded-lg mr-3 shadow-sm">四</span>詩詞曲格律範例分析 (上) 🕵️‍♀️</h3>
+                        
+                        <!-- 範例一：樂府 -->
+                        <div class="mb-10 bg-amber-50 p-6 md:p-8 rounded-2xl border-2 border-amber-200 shadow-sm relative group hover:shadow-md transition-shadow">
+                            <div class="absolute top-0 right-0 bg-amber-200 text-amber-900 font-black px-4 py-2 rounded-bl-xl rounded-tr-xl text-xl">🎵 樂府詩</div>
+                            <h4 class="font-bold text-amber-900 text-2xl mb-4 border-b-2 border-amber-200/50 pb-2">〈上邪〉 佚名</h4>
+                            <p class="text-xl md:text-2xl text-slate-800 leading-loose font-serif mb-6 pl-4 border-l-4 border-amber-300">
+                                上邪！我欲與君相<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">知</span>，長命無絕<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">衰</span>。<br>
+                                山無陵，江水為<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">竭</span>，冬雷震震，夏雨<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">雪</span>，天地合，乃敢與君<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">絕</span>！
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg md:text-xl text-slate-700 bg-white p-5 rounded-xl border border-amber-100">
+                                <p><strong>📌 字數：</strong>35字。(樂府不限字數)</p>
+                                <p><strong>📌 句數：</strong>9句。(樂府不限句數)</p>
+                                <p><strong>📌 句式：</strong>長短句。(樂府多長短句)</p>
+                                <p><strong>📌 平仄：</strong>不限。(樂府平仄沒限制)</p>
+                                <p><strong>📌 對仗：</strong>沒有。(樂府不講究對仗)</p>
+                                <p><strong>📌 押韻：</strong><span class="font-bold text-rose-600">有換韻</span>。(知、衰為平聲韻；竭、雪、絕為入聲韻)。樂府可換韻。</p>
+                            </div>
+                        </div>
+
+                        <!-- 範例二：古詩 -->
+                        <div class="mb-10 bg-orange-50 p-6 md:p-8 rounded-2xl border-2 border-orange-200 shadow-sm relative group hover:shadow-md transition-shadow">
+                            <div class="absolute top-0 right-0 bg-orange-200 text-orange-900 font-black px-4 py-2 rounded-bl-xl rounded-tr-xl text-xl">📜 古詩</div>
+                            <h4 class="font-bold text-orange-900 text-2xl mb-4 border-b-2 border-orange-200/50 pb-2">〈涉江采芙蓉〉 古詩十九首</h4>
+                            <p class="text-xl md:text-2xl text-slate-800 leading-loose font-serif mb-6 pl-4 border-l-4 border-orange-300">
+                                涉江采芙蓉，蘭澤多芳<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">草</span>。采之欲遺誰？所思在遠<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">道</span>。<br>
+                                還顧望舊鄉，長路漫浩<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">浩</span>。同心而離居，憂傷以終<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">老</span>。
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg md:text-xl text-slate-700 bg-white p-5 rounded-xl border border-orange-100">
+                                <p><strong>📌 字數：</strong>40字。(古詩不限字數)</p>
+                                <p><strong>📌 句數：</strong>8句。(古詩不限句數)</p>
+                                <p><strong>📌 句式：</strong>整齊。(此為五言古詩)</p>
+                                <p><strong>📌 平仄：</strong>不限。(古詩平仄沒限制)</p>
+                                <p><strong>📌 對仗：</strong>沒有。(古詩不講究對仗)</p>
+                                <p><strong>📌 押韻：</strong><span class="font-bold text-rose-600">一韻到底</span>。(草、道、浩、老，同屬仄聲 ㄠ 韻)。古詩可換韻也可不換。</p>
+                            </div>
+                        </div>
+
+                        <!-- 範例三：絕句 -->
+                        <div class="mb-6 bg-indigo-50 p-6 md:p-8 rounded-2xl border-2 border-indigo-200 shadow-sm relative group hover:shadow-md transition-shadow">
+                            <div class="absolute top-0 right-0 bg-indigo-200 text-indigo-900 font-black px-4 py-2 rounded-bl-xl rounded-tr-xl text-xl">🏮 絕句 (近體詩)</div>
+                            <h4 class="font-bold text-indigo-900 text-2xl mb-4 border-b-2 border-indigo-200/50 pb-2">〈送別〉 王維</h4>
+                            <p class="text-xl md:text-2xl text-slate-800 leading-loose font-serif mb-6 pl-4 border-l-4 border-indigo-300">
+                                山中相送罷，日暮掩柴<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">扉</span>。<br>
+                                春草明年綠，王孫歸不<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">歸</span>。
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg md:text-xl text-slate-700 bg-white p-5 rounded-xl border border-indigo-100">
+                                <p><strong>📌 字數：</strong>20字。(五絕固定20字，七絕固定28字)</p>
+                                <p><strong>📌 句數：</strong><span class="text-indigo-600 font-bold">固定 4 句。</span></p>
+                                <p><strong>📌 句式：</strong>整齊。(五言)</p>
+                                <p><strong>📌 判斷要領：</strong>二、四句要押韻。每一聯(兩句)前句和後句的偶數字，平仄相反。</p>
+                                <p><strong>📌 對仗：</strong>沒有。(絕句不講究對仗)</p>
+                                <p><strong>📌 押韻：</strong><span class="font-bold text-indigo-600 underline">一韻到底，不能換韻</span>。(扉、歸 同屬平聲 ㄟ 韻)。</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec4', title: '第四部分：格律範例分析(下) 🧠', theme: 'indigo',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-white p-8 md:p-12 rounded-[2.5rem] border border-indigo-100 shadow-2xl relative overflow-hidden">
+                        
+                        <h3 class="font-bold text-3xl md:text-4xl text-indigo-800 mb-6 flex items-center"><span class="bg-indigo-200 p-2 rounded-lg mr-3 shadow-sm">五</span>詩詞曲格律範例分析 (下) 🕵️‍♂️</h3>
+                        
+                        <!-- 範例四：律詩 -->
+                        <div class="mb-10 bg-indigo-50 p-6 md:p-8 rounded-2xl border-2 border-indigo-200 shadow-sm relative group hover:shadow-md transition-shadow">
+                            <div class="absolute top-0 right-0 bg-indigo-200 text-indigo-900 font-black px-4 py-2 rounded-bl-xl rounded-tr-xl text-xl">🏮 律詩 (近體詩)</div>
+                            <h4 class="font-bold text-indigo-900 text-2xl mb-4 border-b-2 border-indigo-200/50 pb-2">〈春望〉 杜甫</h4>
+                            <p class="text-xl md:text-2xl text-slate-800 leading-loose font-serif mb-6 pl-4 border-l-4 border-indigo-300">
+                                國破山河在，城春草木<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">深</span>。<br>
+                                感時花濺淚，恨別鳥驚<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">心</span>。<span class="text-base text-rose-500 font-bold ml-2">(頷聯，需對仗)</span><br>
+                                烽火連三月，家書抵萬<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">金</span>。<span class="text-base text-rose-500 font-bold ml-2">(頸聯，需對仗)</span><br>
+                                白頭搔更短，渾欲不勝<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">簪</span>。
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg md:text-xl text-slate-700 bg-white p-5 rounded-xl border border-indigo-100">
+                                <p><strong>📌 字數：</strong>40字。(五律40字，七律56字)</p>
+                                <p><strong>📌 句數：</strong><span class="text-indigo-600 font-bold">固定 8 句。</span></p>
+                                <p><strong>📌 句式：</strong>整齊。(五言)</p>
+                                <p><strong>📌 平仄：</strong>每句偶數字平仄相反，每一聯前句和後句的偶數字，平仄相反。</p>
+                                <p><strong>📌 對仗：</strong><span class="text-rose-600 font-bold bg-rose-100 px-2 rounded">頷聯(3,4句)、頸聯(5,6句)一定要對仗！</span></p>
+                                <p><strong>📌 押韻：</strong><span class="font-bold text-indigo-600 underline">一韻到底，不能換韻</span>。(深、心、金、簪 押 ㄣ 韻)。律詩一、三、五、七句通常不押韻，所以句尾通常用仄聲字。</p>
+                            </div>
+                        </div>
+
+                        <!-- 範例五：詞 -->
+                        <div class="mb-10 bg-pink-50 p-6 md:p-8 rounded-2xl border-2 border-pink-200 shadow-sm relative group hover:shadow-md transition-shadow">
+                            <div class="absolute top-0 right-0 bg-pink-200 text-pink-900 font-black px-4 py-2 rounded-bl-xl rounded-tr-xl text-xl">🌸 詞</div>
+                            <h4 class="font-bold text-pink-900 text-2xl mb-4 border-b-2 border-pink-200/50 pb-2 flex items-center">〈蝶戀花〉 北宋 柳永 <span class="text-sm bg-pink-200 text-pink-800 ml-3 px-2 py-1 rounded">詞牌：蝶戀花</span></h4>
+                            <p class="text-xl md:text-2xl text-slate-800 leading-loose font-serif mb-6 pl-4 border-l-4 border-pink-300">
+                                佇倚危樓風細<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">細</span>，望極春愁，黯黯生天<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">際</span>。草色煙光殘照<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">裡</span>，無言誰會憑欄<span class="text-rose-600 font-bold bg-white px-1 rounded shadow-sm">意</span>。<br>
+                                擬把疏狂圖一<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">醉</span>，對酒當歌，強樂還無<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">味</span>。衣帶漸寬終不<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">悔</span>，為伊消得人憔<span class="text-indigo-600 font-bold bg-white px-1 rounded shadow-sm">悴</span>。
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg md:text-xl text-slate-700 bg-white p-5 rounded-xl border border-pink-100">
+                                <p><strong>📌 字數：</strong>60字。(59~90字為中調)</p>
+                                <p><strong>📌 句數：</strong>10句。(依照詞牌規定)</p>
+                                <p><strong>📌 句式：</strong>長短句。(詞多為長短句)</p>
+                                <p><strong>📌 平仄：</strong>有一定格式。(依照詞牌規定)</p>
+                                <p><strong>📌 對仗：</strong>沒有。(詞不講究對仗，依詞牌而定)</p>
+                                <p><strong>📌 押韻：</strong><span class="font-bold text-rose-600">有換韻</span>。(上半闋「細、際、裡、意」押韻，下半闋換韻為「醉、味、悔、悴」)。詞可換韻。</p>
+                            </div>
+                        </div>
+
+                        <!-- 範例六：曲 -->
+                        <div class="bg-green-50 p-6 md:p-8 rounded-2xl border-2 border-green-200 shadow-sm relative group hover:shadow-md transition-shadow">
+                            <div class="absolute top-0 right-0 bg-green-200 text-green-900 font-black px-4 py-2 rounded-bl-xl rounded-tr-xl text-xl">🎭 曲 (散曲小令)</div>
+                            <h4 class="font-bold text-green-900 text-2xl mb-4 border-b-2 border-green-200/50 pb-2 flex items-center">〈天淨沙·秋思〉 馬致遠 <span class="text-sm bg-green-200 text-green-800 ml-3 px-2 py-1 rounded">曲牌：天淨沙 / 題目：秋思</span></h4>
+                            <p class="text-xl md:text-2xl text-slate-800 leading-loose font-serif mb-6 pl-4 border-l-4 border-green-300">
+                                枯藤老樹昏<span class="text-green-700 font-bold bg-white px-1 rounded shadow-sm">鴉</span>。小橋流水人<span class="text-green-700 font-bold bg-white px-1 rounded shadow-sm">家</span>。古道西風瘦<span class="text-green-700 font-bold bg-white px-1 rounded shadow-sm">馬</span>。<br>
+                                夕陽西<span class="text-green-700 font-bold bg-white px-1 rounded shadow-sm">下</span>，斷腸人在天<span class="text-green-700 font-bold bg-white px-1 rounded shadow-sm">涯</span>。
+                            </p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg md:text-xl text-slate-700 bg-white p-5 rounded-xl border border-green-100">
+                                <p><strong>📌 字數：</strong>28字。(依照曲牌規定)</p>
+                                <p><strong>📌 句數：</strong>5句。(依照曲牌規定)</p>
+                                <p><strong>📌 句式：</strong>長短句。(曲多為長短句，<span class="text-rose-600 font-bold">可加襯字</span>)</p>
+                                <p><strong>📌 平仄：</strong>有一定格式。(依照曲牌規定)</p>
+                                <p><strong>📌 對仗：</strong>前三句對仗。(曲本不講究對仗，此為巧合或作者刻意安排)</p>
+                                <p class="col-span-1 md:col-span-2"><strong>📌 押韻：</strong><span class="font-bold text-green-700 bg-green-100 px-2 rounded">一韻到底，絕對不可換韻！</span>(鴉、家、馬、下、涯——平仄通押 ㄧㄚ 韻)。</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`
+            }
+        ];
+
+        // ==========================================
+        //  100題 會考級魔王題庫生成 (詩詞曲格律比較)
+        // ==========================================
+        const generate100Questions = () => {
+            const qList = [];
+            const addQ = (q, o0, o1, o2, o3, ans, exp) => qList.push({ q, opts:[o0,o1,o2,o3], ans, showExplanation: false, selectedAns: null, isCorrect: false, exp });
+
+            // 1-10: 古體詩 vs 近體詩 觀念
+            addQ("下列關於「古體詩」與「近體詩」的比較，何者敘述正確？", "古體詩必為五言或七言", "近體詩可以隨意變換韻腳", "兩者皆以唐代做為發展的分水嶺", "近體詩的字數、句數完全沒有限制", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 古體詩不限字數，長短句皆有。<br><span class="text-rose-500">❌ (B)</span> 近體詩規定必須「一韻到底，不可換韻」。<br><span class="text-emerald-600">✅ (C)</span> 文學史上以唐代作為古體詩與近體詩的分水嶺。<br><span class="text-rose-500">❌ (D)</span> 近體詩有嚴格的字數(五言/七言)與句數(絕句4句/律詩8句)限制。`);
+            addQ("小華在圖書館看到一本唐代詩集，請問下列哪一個特徵「不可能」出現在這本詩集中的「近體詩」裡？", "全首詩共四句，為五言絕句", "全首詩換了三次韻腳", "律詩的頷聯與頸聯對仗工整", "偶數字平仄嚴格相對", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 五言絕句是近體詩的標準格式。<br><span class="text-emerald-600">✅ (B)</span> 近體詩最嚴格的規定之一就是「一韻到底，不可換韻」。會換韻的只可能是古體詩、樂府或宋詞。<br><span class="text-rose-500">❌ (C)</span> 律詩的頷聯(3,4句)與頸聯(5,6句)必須對仗。<br><span class="text-rose-500">❌ (D)</span> 近體詩講究「一三五不論，二四六分明」，偶數字平仄相對。`);
+            addQ("國文老師常說「一三五不論，二四六分明」，這句口訣主要是用來判斷哪一種文學體裁的格律？", "樂府詩", "宋詞", "元曲", "近體詩", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 樂府詩不講究平仄。<br><span class="text-rose-500">❌ (B)(C)</span> 詞曲有自己的平仄規定(依詞牌曲牌)。<br><span class="text-emerald-600">✅ (D)</span> 這是「近體詩(絕句、律詩)」的平仄口訣，意思是每句的第1,3,5字平仄可以寬容，但第2,4,6字(偶數字)的平仄必須嚴格遵守相對的規定。`);
+            addQ("判斷一首詩是否為「律詩」，最關鍵的條件「不包含」下列何者？", "全詩必須為八句", "必須一韻到底，不可換韻", "所有句子都必須對仗工整", "必須遵守平仄格律", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 律詩固定八句。<br><span class="text-rose-500">❌ (B)</span> 律詩屬於近體詩，不可換韻。<br><span class="text-emerald-600">✅ (C)</span> 律詩只要求「頷聯(3,4句)」與「頸聯(5,6句)」必須對仗，首聯(1,2句)與尾聯(7,8句)不強制要求對仗。<br><span class="text-rose-500">❌ (D)</span> 律詩有嚴格的平仄規定。`);
+            addQ("李白的名作〈靜夜思〉：「床前明月光，疑是地上霜。舉頭望明月，低頭思故鄉。」關於此詩的格律分析，何者正確？", "這是一首五言律詩", "此詩有換韻，故為古體詩", "這是一首五言絕句", "第一、二句必須對仗", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 律詩要有八句，此詩只有四句。<br><span class="text-rose-500">❌ (B)</span> 光、霜、鄉 皆押 ㄤ 韻，一韻到底。<br><span class="text-emerald-600">✅ (C)</span> 全詩四句，每句五字，一韻到底，為標準的「五言絕句」。<br><span class="text-rose-500">❌ (D)</span> 絕句不要求對仗。`);
+            addQ("下列哪一種韻文體裁的句子，最常出現「長短句」的形式？", "絕句與律詩", "五言古詩與七言古詩", "樂府詩與宋詞", "現代詩與近體詩", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 絕句與律詩句式整齊(五言/七言)。<br><span class="text-rose-500">❌ (B)</span> 五/七言古詩句式整齊。<br><span class="text-emerald-600">✅ (C)</span> 「樂府詩」為了配合民間音樂，多為長短句；「宋詞」的別名正是「長短句」。這兩者最符合。<br><span class="text-rose-500">❌ (D)</span> 近體詩句式整齊。`);
+            addQ("唐代以前的詩作統稱為「古體詩」，下列何者「不是」古體詩的特色？", "沒有嚴格的字數與句數限制", "偶數句必須押韻", "可以根據作者心境自由換韻", "必須嚴格遵守平仄相對的規則", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 正確，古體詩不限長短。<br><span class="text-rose-500">❌ (B)</span> 正確，古體詩仍需在偶數句押韻。<br><span class="text-rose-500">❌ (C)</span> 正確，古體詩最大的自由就是可以換韻。<br><span class="text-emerald-600">✅ (D)</span> 錯誤。古體詩「不限平仄」，平仄格律是唐代「近體詩」才發展出來的嚴格規定。`);
+            addQ("李商隱的〈錦瑟〉：「錦瑟無端五十弦，一弦一柱思華年。莊生曉夢迷蝴蝶，望帝春心托杜鵑...」被歸類為七言律詩。判斷其為律詩的最佳依據為何？", "字數極多，超過四句", "使用了大量的歷史典故", "頷聯與頸聯對仗工整，且一韻到底", "情感哀傷，屬於婉約派", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 超過四句的也可能是古體詩。<br><span class="text-rose-500">❌ (B)</span> 典故多寡與格律無關。<br><span class="text-emerald-600">✅ (C)</span> 判斷近體詩(律詩)的兩大鐵證：1. 頷、頸聯對仗。2. 一韻到底不換韻。<br><span class="text-rose-500">❌ (D)</span> 婉約派是宋詞的流派。`);
+            addQ("王勃的〈滕王閣詩〉：「滕王高閣臨江渚，佩玉鳴鸞罷歌舞。畫棟朝飛南浦雲，珠簾暮卷西山雨...」雖然全詩八句且每句七字，為何不被歸類為「七言律詩」？", "因為它的平仄完全錯誤", "因為它在詩中換了三次韻腳", "因為它的首尾兩聯沒有對仗", "因為它是初唐時期的作品", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 并非完全錯誤，而是主要死在押韻。<br><span class="text-emerald-600">✅ (B)</span> 律詩最嚴格的死線就是「不可換韻」。〈滕王閣詩〉中途換了數次韻腳(渚舞/雲雨/悠秋/在流)，因此只能歸類為「七言古詩」。<br><span class="text-rose-500">❌ (C)</span> 律詩本來就不要求首尾聯對仗。<br><span class="text-rose-500">❌ (D)</span> 初唐已有近體詩(沈佺期、宋之問奠定)。`);
+            addQ("關於「絕句」，下列敘述何者正確？", "固定只有兩聯，共四句", "必須對仗才能稱為絕句", "只有五言絕句，沒有七言絕句", "第一句絕對不可以押韻", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 正確。絕句固定四句，每兩句為一聯，故共兩聯(首聯、尾聯)。<br><span class="text-rose-500">❌ (B)</span> 絕句「不要求對仗」(作者若想對仗也可以，但不強制)。<br><span class="text-rose-500">❌ (C)</span> 有五絕也有七絕。<br><span class="text-rose-500">❌ (D)</span> 第一句「可押可不押」，端看作者設計。`);
+
+            // 11-20: 平仄與入聲字判斷
+            addQ("在傳統音韻學中，哪一個聲調的字讀起來最為「急促」，且常被歸類為「仄聲」？", "陰平聲", "陽平聲", "上聲", "入聲", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(B)</span> 陰平與陽平(國語第一、二聲)皆屬於「平聲」，聲音悠長。<br><span class="text-rose-500">❌ (C)</span> 上聲雖是仄聲，但非最急促。<br><span class="text-emerald-600">✅ (D)</span> 「入聲」字發音短促、一發即收，是判斷平仄時最常考的「仄聲字」陷阱。`);
+            addQ("下列四個國字中，何者在國語注音中讀作平聲（一、二聲），但在古代卻是發音急促的「入聲字」（仄聲）？", "山", "花", "白", "流", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 山 (ㄕㄢ)，平聲。<br><span class="text-rose-500">❌ (B)</span> 花 (ㄏㄨㄚ)，平聲。<br><span class="text-emerald-600">✅ (C)</span> 白 (ㄅㄞˊ)，國語讀二聲(平)，但用台語/客語念會發現音短促且收尾，是經典的「入聲字(仄聲)」。<br><span class="text-rose-500">❌ (D)</span> 流 (ㄌㄧㄡˊ)，平聲。`);
+            addQ("判斷近體詩平仄時，常會遇到「國語讀平聲，古音為仄聲」的入聲字陷阱。下列哪一組字「全部」都是入聲字？", "天、地、玄、黃", "石、竹、菊、福", "春、夏、秋、冬", "江、河、湖、海", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 天(平)、地(仄)、玄(平)、黃(平)。<br><span class="text-emerald-600">✅ (B)</span> 石(ㄕˊ)、竹(ㄓㄨˊ)、菊(ㄐㄩˊ)、福(ㄈㄨˊ)。這四個字在國語都是二聲，但全都是發音急促的「入聲字(仄聲)」，為會考高頻陷阱字！<br><span class="text-rose-500">❌ (C)</span> 皆為平聲。<br><span class="text-rose-500">❌ (D)</span> 江、河、湖皆平聲，海(仄)。`);
+            addQ("國語的「第一聲」與「第二聲」，在古代四聲分類中通常對應到哪一種聲調？", "上聲", "去聲", "平聲", "入聲", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 上聲對應國語第三聲。<br><span class="text-rose-500">❌ (B)</span> 去聲對應國語第四聲。<br><span class="text-emerald-600">✅ (C)</span> 國語的第一聲(陰平)與第二聲(陽平)，在古代都統稱為「平聲」。<br><span class="text-rose-500">❌ (D)</span> 入聲在國語中已消失，散入一二三四聲中。`);
+            addQ("小美想寫一首七言律詩，請問她挑選韻腳字時，應該挑選下列哪一種聲調的字最適當？", "平聲字", "上聲字", "去聲字", "入聲字", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 近體詩(絕句、律詩)的格律規定，幾乎都要求押「平聲韻」。因此挑選平聲字(如：東、冬、江、陽)最正確。<br><span class="text-rose-500">❌ (B)(C)(D)</span> 上、去、入皆為仄聲，近體詩極少押仄韻。`);
+            addQ("下列哪一個字「不是」入聲字？", "十", "得", "屋", "飛", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 十 (ㄕˊ)，入聲。<br><span class="text-rose-500">❌ (B)</span> 得 (ㄉㄜˊ)，入聲。<br><span class="text-rose-500">❌ (C)</span> 屋 (ㄨ)，入聲。<br><span class="text-emerald-600">✅ (D)</span> 飛 (ㄈㄟ)，國語一聲，台語念起來也長長的不會急促，是標準的「平聲字」。`);
+            addQ("「國語四聲」與「平仄」的對應，何者敘述正確？", "國語一、二聲絕對是平聲，沒有例外", "國語三、四聲必定是仄聲", "入聲字在國語中統一念作第四聲", "「平仄」的「仄」只包含第三聲和第四聲", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 錯誤。國語一二聲「大部分」是平聲，但有很多「入聲字(仄聲)」在國語裡念一二聲(如：白、竹、十)。<br><span class="text-emerald-600">✅ (B)</span> 正確。國語的三(上聲)、四(去聲)聲，在古代也是仄聲，這點沒有例外。<br><span class="text-rose-500">❌ (C)</span> 入聲字在國語散入各聲調。<br><span class="text-rose-500">❌ (D)</span> 「仄」包含上聲、去聲、以及「入聲」。`);
+            addQ("「一三五不論，二四六分明」是指近體詩中哪些位置的字必須嚴格遵守平仄相對？", "每首詩的第二、四、六句", "每句的第二、四、六個字", "整首詩只有第二、四、六個字", "押韻的字", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 這是近體詩平仄的基本口訣。指的是「同一句」裡面的第1, 3, 5個字平仄可以通融；但「第2, 4, 6個字」的平仄必須嚴格遵守規定，且與下一句的2,4,6字平仄相反。`);
+            addQ("請利用方言（如台語、客語）或發音長短，判斷下列哪一個選項的字皆為「入聲字」？", "出、歇、宅、昔", "山、川、明、月", "風、雲、雨、露", "春、夏、秋、冬", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 出(ㄔㄨ)、歇(ㄒㄧㄝ)、宅(ㄓㄞˊ)、昔(ㄒㄧˊ)，這四個字用台語念(如：出ㄘㄨㄵ)都會有急促收尾的感覺，皆為入聲字。<br><span class="text-rose-500">❌ (B)(C)(D)</span> 裡面包含了大量平聲字(山、川、明、風、雲、春、秋、冬)。`);
+            addQ("下列對「平仄」的理解，何者有誤？", "平聲包含陰平與陽平", "仄聲包含上聲、去聲與入聲", "入聲字的特色是發音短促", "古代的平仄完全等同於現代國語的四聲", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(B)(C)</span> 敘述皆完全正確。<br><span class="text-emerald-600">✅ (D)</span> 錯誤。古代有「入聲」，但現代國語(北京話)中入聲已經消失，這才導致我們現在看古詩平仄時，常會遇到「國語讀平聲，古音實為入聲(仄)」的陷阱。`);
+
+            // 21-30: 詞曲觀念大比拼 (重點區)
+            addQ("國文老師在黑板上寫了「長短句」、「詩餘」、「倚聲」，請問這堂課的主題最可能是什麼？", "樂府詩", "近體詩", "宋詞", "元曲", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 樂府詩別稱為歌、行等。<br><span class="text-rose-500">❌ (B)</span> 近體詩別稱為今體詩。<br><span class="text-emerald-600">✅ (C)</span> 「詩餘(詩降格為詞)」、「長短句(配合樂譜句式不一)」、「倚聲(依附樂譜填詞)」皆為【宋詞】最經典的別稱。<br><span class="text-rose-500">❌ (D)</span> 元曲別稱為詞餘。`);
+            addQ("關於「詞牌」與「曲牌」的敘述，下列何者正確？", "決定了作品的思想與內容", "都是音樂的曲調名稱（樂譜）", "詞牌可以換韻，曲牌也可以換韻", "詞牌允許加襯字，曲牌不允許", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 牌名與內容絕對無關。<br><span class="text-emerald-600">✅ (B)</span> 兩者本質上都是當時的流行「樂譜」，規定了填詞時的字數、句數與平仄格律。<br><span class="text-rose-500">❌ (C)</span> 詞可換韻，但【曲絕對不可換韻】(一韻到底)。<br><span class="text-rose-500">❌ (D)</span> 寫反了，是【曲允許加襯字】，詞不允許。`);
+            addQ("小強在背誦詩詞曲的格律，他發現有一個體裁的押韻規定最為嚴格，被稱為「一韻到底，不可換韻」。這最有可能是指下列何者？", "古體詩", "宋詞", "元曲（散套）", "樂府詩", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(D)</span> 古體詩與樂府詩皆【可換韻】。<br><span class="text-rose-500">❌ (B)</span> 宋詞【可以換韻】(依詞牌規定)。<br><span class="text-emerald-600">✅ (C)</span> 會考大重點：元曲(無論小令或散套)必須「一韻到底，不可換韻」。`);
+            addQ("「詞」與「曲」在形式上非常相似，都是長短句，也都要配合音樂。但要如何快速分辨兩者？", "看有沒有對仗", "看句子的長度是否超過十個字", "看句子中是否出現了『襯字』", "看作者是男生還是女生", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 元曲為了讓民間演唱更通俗流暢，允許在正文之外添加「不限平仄與字數」的【襯字】。這是曲獨有而詞沒有的最大特色！<br><span class="text-rose-500">❌ (A)(B)(D)</span> 皆非區分詞曲的標準。`);
+            addQ("宋詞分為「婉約派」與「豪放派」。請問被譽為詞之正宗（正格），風格細膩柔美的是哪一派？", "豪放派", "田園派", "寫實派", "婉約派", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 豪放派(蘇軾)不拘音律，被視為詞的「變調」。<br><span class="text-rose-500">❌ (B)(C)</span> 此為唐詩流派。<br><span class="text-emerald-600">✅ (D)</span> 詞發源於青樓酒館，本來就是給歌妓柔聲演唱的，因此描寫閨閣相思、離愁別緒的「婉約派」(李清照、柳永)才是詞的正宗(正格)。`);
+            addQ("下列哪一位不是「宋詞」的代表作家？", "李清照", "蘇軾", "馬致遠", "辛棄疾", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 李清照為宋詞婉約派宗師。<br><span class="text-rose-500">❌ (B)(D)</span> 蘇軾、辛棄疾為宋詞豪放派大師。<br><span class="text-emerald-600">✅ (C)</span> 馬致遠是【元曲】前期三大家之一(代表作：天淨沙)。`);
+            addQ("元曲分為「小令」與「散套」，兩者的區分標準為何？", "字數是否超過58字", "是否可以加入襯字", "是由單一曲牌還是多個曲牌組成", "是否可以換韻", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 字數分界(58字)是「宋詞(小令/中調/長調)」的標準。<br><span class="text-rose-500">❌ (B)</span> 兩者皆可加襯字。<br><span class="text-emerald-600">✅ (C)</span> 【小令】是獨立的一支曲子(單一曲牌)；【散套】是由同一宮調的數支曲子串聯起來的長篇組曲。<br><span class="text-rose-500">❌ (D)</span> 兩者皆不可換韻。`);
+            addQ("詞的字數長短分類中，超過多少字被稱為「長調」？", "50字以上", "59字以上", "91字以上", "沒有字數限制", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 詞的字數分類：小令(58字以下)、中調(59~90字)、長調(91字含以上)。`);
+            addQ("「枯藤老樹昏鴉，小橋流水人家...夕陽西下，斷腸人在天涯。」這首作品的體裁為何？", "五言絕句", "宋詞（小令）", "元曲（散曲小令）", "樂府詩", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 句子長短不一，非絕句。<br><span class="text-rose-500">❌ (B)</span> 這首是一韻到底且帶有強烈民間俗語色彩，為馬致遠的名作。<br><span class="text-emerald-600">✅ (C)</span> 這是馬致遠的〈天淨沙·秋思〉，天淨沙是曲牌，全首為單一曲牌，故為【元曲(散曲)的小令】。`);
+            addQ("下列對「元曲」的敘述，何者有誤？", "別稱詞餘", "可以加襯字", "曲牌與內容無關", "散套可以中途變換韻腳", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)(B)(C)</span> 敘述皆完全正確。<br><span class="text-rose-500">❌ (D)</span> 錯誤。元曲的死穴規定就是【絕對不可換韻】！散套即使由多個曲牌組成，首尾也必須一韻到底。`);
+
+            // 31-40: 樂府與古詩細節
+            addQ("「樂府詩」原本是指漢代管理音樂的官署所採集的詩歌，因此它最大特色是什麼？", "句式必須全部為五言", "平仄規定極度嚴格", "可以配合音樂歌唱", "必須一韻到底，不可換韻", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 樂府詩多為長短句。<br><span class="text-rose-500">❌ (B)</span> 古體詩與樂府詩皆不限平仄。<br><span class="text-emerald-600">✅ (C)</span> 「樂府」本是音樂機構，因此樂府詩的最大特徵就是「入樂」，可以配合樂器歌唱。<br><span class="text-rose-500">❌ (D)</span> 樂府詩可以換韻。`);
+            addQ("〈古詩十九首〉是哪一種文學體裁的代表作？", "樂府詩", "五言古詩", "近體詩", "宋詞", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 〈古詩十九首〉(如：涉江采芙蓉、迢迢牽牛星)是東漢末年文人創作的【五言古詩】代表作，標誌著五言詩的成熟。`);
+            addQ("小華讀到一首詩，發現全詩有十句，每句都是五個字，且中途換了兩次韻腳。請問這首詩最可能屬於下列何者？", "五言律詩", "五言絕句", "五言古詩", "五言詞", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 律詩固定 8 句，且不可換韻。<br><span class="text-rose-500">❌ (B)</span> 絕句固定 4 句。<br><span class="text-emerald-600">✅ (C)</span> 十句(超過8句的限制) + 換韻 = 毫無疑問是不受格律拘束的【古體詩】。<br><span class="text-rose-500">❌ (D)</span> 詞多為長短句，無此稱呼。`);
+            addQ("下列哪一個文學體裁的名稱中，常帶有「歌、行、吟、弄」等字眼？", "近體詩", "樂府詩", "宋詞", "元曲", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 樂府詩因為是配合音樂演唱的歌曲，所以標題常帶有音樂性質的字眼，如〈長恨歌〉、〈琵琶行〉、〈游子吟〉、〈梅花弄〉等。`);
+            addQ("古詩與樂府詩的比較，何者正確？", "兩者皆可換韻", "古詩可入樂，樂府不可", "古詩句式多長短句，樂府多五七言", "兩者皆有嚴格平仄限制", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 正確，兩者皆為唐代以前的古體詩體系，押韻自由，皆可換韻。<br><span class="text-rose-500">❌ (B)</span> 寫反了。樂府可入樂，古詩多為徒誦(不入樂)。<br><span class="text-rose-500">❌ (C)</span> 寫反了。古詩句式較整齊(多五七言)，樂府多長短句。<br><span class="text-rose-500">❌ (D)</span> 兩者皆「不限平仄」。`);
+            addQ("〈上邪〉：「上邪！我欲與君相知，長命無絕衰...」此篇作品不限字數句數，且換了韻腳。它最可能是哪種體裁？", "絕句", "律詩", "樂府詩", "宋詞", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 〈上邪〉是著名的漢代民間情歌，屬於【樂府詩】，特色是長短句不一、不限字數句數、可換韻。`);
+            addQ("關於古體詩的對仗規定，何者正確？", "完全不需要對仗", "必須全篇對仗", "只有頷聯與頸聯需要對仗", "首句與末句必須對仗", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 古體詩(含樂府、古詩)完全沒有對仗的規定，非常自由。(有時候看似對仗，只是作者行文的巧合或修辭，並非格律要求)。<br><span class="text-rose-500">❌ (C)</span> 這是「律詩」的規定。`);
+            addQ("樂府詩與古詩在漢魏晉時期最主要的差異點在於什麼？", "平仄是否嚴格", "是否能配合音樂歌唱", "是否可以換韻", "是否有字數限制", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 兩者在格律上都很自由(不限字句、可換韻、不限平仄)。最大的差異在於音樂性：【樂府詩】可以配樂歌唱，【古詩】則主要用於朗誦(徒誦)。`);
+            addQ("下列哪一首詩的標題一看就知道「不是」樂府詩？", "白雪歌", "燕歌行", "登鸛雀樓", "關山月", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(B)</span> 有「歌」、「行」字，為樂府詩題。<br><span class="text-emerald-600">✅ (C)</span> 〈登鸛雀樓〉(白日依山盡)是王之渙的五言絕句(近體詩)。<br><span class="text-rose-500">❌ (D)</span> 「月、引、弄」等也是樂府常見曲調名。`);
+            addQ("「古風」通常是用來代稱哪一種文學體裁？", "樂府詩", "古詩", "近體詩", "現代詩", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 古詩又被別稱為「古風」。例如李白有〈古風五十九首〉，藉由古老的詩歌形式抒發情懷。`);
+
+            // 41-50: 近體詩 (絕句律詩) 深度格律
+            addQ("律詩的八個句子，每兩句組成一聯。請問要求「必須對仗」的是哪兩聯？", "首聯、尾聯", "首聯、頷聯", "頷聯、頸聯", "頸聯、尾聯", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 律詩八句共四聯：首聯(1,2)、頷聯(3,4)、頸聯(5,6)、尾聯(7,8)。會考大考點：中間的【頷聯】與【頸聯】必須嚴格對仗！`);
+            addQ("判斷近體詩是否押韻，主要是看哪裡的字？", "每句的第一個字", "奇數句的最後一個字", "偶數句的最後一個字", "整首詩的中間字", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 無論絕句或律詩，押韻的位置都在【偶數句的最後一個字】(第2,4,6,8句尾)。第一句的最後一個字則是「可押可不押」。`);
+            addQ("下列關於近體詩「押韻」的敘述，何者正確？", "可以隨意更換韻腳", "只能押仄聲韻", "第一句絕對不可押韻", "一韻到底，通常押平聲韻", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 絕對不可換韻。<br><span class="text-rose-500">❌ (B)</span> 近體詩極少押仄韻，幾乎都是平聲韻。<br><span class="text-rose-500">❌ (C)</span> 第一句「可押可不押」。<br><span class="text-emerald-600">✅ (D)</span> 正確。近體詩最嚴格的特徵就是一韻到底，且通篇通常押平聲韻。`);
+            addQ("杜甫的〈春望〉：「國破山河在，城春草木深。感時花濺淚，恨別鳥驚心。烽火連三月，家書抵萬金。白頭搔更短，渾欲不勝簪。」請問此詩的韻腳為何？", "在、淚、月、短", "深、心、金、簪", "在、深、淚、心", "國、城、感、恨", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 押韻字在偶數句尾：第2句(深)、第4句(心)、第6句(金)、第8句(簪)。皆押 ㄣ 韻。(第一句「在」不押韻)。`);
+            addQ("承上題〈春望〉，詩中的哪兩句構成了「頸聯」，並且符合對仗的要求？", "國破山河在，城春草木深", "感時花濺淚，恨別鳥驚心", "烽火連三月，家書抵萬金", "白頭搔更短，渾欲不勝簪", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 第1,2句為「首聯」。<br><span class="text-rose-500">❌ (B)</span> 第3,4句為「頷聯」(有對仗)。<br><span class="text-emerald-600">✅ (C)</span> 第5,6句為「頸聯」。烽火對家書(名詞)，連對抵(動詞)，三月對萬金(數詞+名詞)，對仗極為工整。<br><span class="text-rose-500">❌ (D)</span> 第7,8句為「尾聯」。`);
+            addQ("如果一首詩是「七言絕句」，它總共會有多少個字？", "20字", "28字", "40字", "56字", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 絕句固定4句，七言代表每句7字。 4 × 7 = 28字。`);
+            addQ("如果一首詩是「五言律詩」，它總共會有多少個字？", "20字", "28字", "40字", "56字", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 律詩固定8句，五言代表每句5字。 8 × 5 = 40字。`);
+            addQ("王維〈送別〉：「山中相送罷，日暮掩柴扉。春草明年綠，王孫歸不歸。」這首詩第一句的句尾「罷」字沒有和「扉、歸」押韻。這在近體詩中是否符合格律？", "不符合，近體詩每一句都要押韻", "不符合，第一句一定要押韻", "符合，近體詩第一句本來就「可押可不押」", "符合，因為這是一首古體詩", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 絕句或律詩的押韻規則是：偶數句必押，第一句【可押可不押】。因此「罷」(仄聲)不押韻，完全符合近體詩格律。`);
+            addQ("近體詩的平仄規定中，要求「偶數字平仄相對」。若第一句的平仄為「平平仄仄平」，則第二句的平仄最可能為何？", "平平仄仄平", "仄仄平平仄", "仄仄仄平平", "平平平仄仄", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 依據「一聯之內，平仄相對」的原則，第一句(出句)與第二句(對句)的第2, 4, 6字平仄必須相反。<br>第一句第2字「平」，第二句第2字須為「仄」。<br>第一句第4字「仄」，第二句第4字須為「平」。只有(B)符合此相反規則。`);
+            addQ("下列哪一項並非判斷一首詩為「近體詩」的必要條件？", "句數固定（4句或8句）", "字數整齊（五言或七言）", "全詩不可換韻", "全詩每句皆須對仗", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(B)(C)</span> 皆為近體詩的嚴格鐵律。<br><span class="text-emerald-600">✅ (D)</span> 錯誤。絕句完全不要求對仗；律詩也只要求中間兩聯(頷、頸聯)對仗，不要求「每句皆須對仗」。`);
+
+            // 51-60: 詞與曲的細節 (詞牌, 曲牌, 襯字)
+            addQ("詞的長度若為65個字，依據字數分類，它屬於下列何者？", "小令", "中調", "長調", "散套", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 詞的字數分類：小令(58字以下)、【中調(59~90字)】、長調(91字以上)。65字屬於中調。`);
+            addQ("宋詞中的「詞牌」（如《念奴嬌》、《水調歌頭》）主要功能是什麼？", "說明這首詞的創作背景", "規定這首詞的音樂曲調與字數平仄格式", "標示這首詞的作者身分", "暗示這首詞是婉約派還是豪放派", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 詞牌就是「樂譜」，它嚴格規定了這首歌要填多少字、幾句話、哪裡該平仄、哪裡該押韻。<br><span class="text-rose-500">❌ (A)</span> 說明內容背景的是詞牌後面的「題目」或「小序」。`);
+            addQ("馬致遠的〈天淨沙·秋思〉中，「天淨沙」與「秋思」分別代表什麼意義？", "天淨沙是作者，秋思是題目", "天淨沙是曲牌，秋思是題目", "天淨沙是題目，秋思是曲牌", "兩者都是曲牌名", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 元曲的標題格式通常是【曲牌名 + 題目】。「天淨沙」是規定音律的曲牌，「秋思」才是真正與這首曲子內容(秋天遊子思鄉)相關的題目。`);
+            addQ("元曲中特有的「襯字」，其最主要的功能與特色為何？", "用來滿足曲牌字數不足的規定", "必須遵守嚴格的平仄與對仗限制", "不拘平仄字數，使語言更加通俗活潑", "只能加在句子的最後面當作押韻", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 襯字是「額外加上去」的字，非為滿足曲牌。<br><span class="text-rose-500">❌ (B)</span> 襯字的最大特色就是「不拘平仄字數」，非常自由。<br><span class="text-emerald-600">✅ (C)</span> 元曲來自民間戲曲，加入口語化的襯字能讓語氣更生動活潑。<br><span class="text-rose-500">❌ (D)</span> 通常加在句首或句中，不加在句尾(會破壞押韻)。`);
+            addQ("下列關於「散曲」中「小令」與「散套」的敘述，何者正確？", "小令由多個曲牌組成", "散套必須一韻到底", "小令不可加襯字，散套可以", "散套可以隨意更換韻腳", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 小令是單一曲牌。<br><span class="text-emerald-600">✅ (B)</span> 散套(套數)雖然由多個曲牌組成，但元曲的鐵律是【一韻到底，不可換韻】。<br><span class="text-rose-500">❌ (C)</span> 兩者皆可加襯字。<br><span class="text-rose-500">❌ (D)</span> 絕對不可換韻。`);
+            addQ("宋代詞風分為兩大派，其中蘇軾與辛棄疾被歸類在哪一派？", "婉約派", "豪放派", "田園派", "邊塞派", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 蘇軾打破了詞專寫兒女柔情的傳統(詞之變調)，帶入豪邁氣象；辛棄疾承繼其風，兩人並稱「蘇辛」，是【豪放派】的代表。`);
+            addQ("「婉約派」被認為是宋詞的「正格」（正宗），下列哪一位是婉約派的代表作家？", "李白", "陸游", "李清照", "馬致遠", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 唐代詩人。<br><span class="text-rose-500">❌ (B)</span> 宋詞偏豪放派。<br><span class="text-emerald-600">✅ (C)</span> 李清照是宋代婉約派的巔峰女詞人，詞風細膩柔美、情感深摯。<br><span class="text-rose-500">❌ (D)</span> 元曲作家。`);
+            addQ("元曲在發展過程中，風格有前後期的轉變。前期風格為「質樸自然」，下列哪一位屬於前期代表？", "喬吉", "張可久", "關漢卿", "蘇軾", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(B)</span> 喬吉、張可久為後期代表，風格轉為典麗含蓄。<br><span class="text-emerald-600">✅ (C)</span> 關漢卿(元曲四大家之一)為前期代表，語言生動質樸，具民間色彩。<br><span class="text-rose-500">❌ (D)</span> 宋代人。`);
+            addQ("「詞」在文學發展史上是由哪一種體裁演變而來，因此被稱為「詩餘」？", "賦", "近體詩", "古體詩", "元曲", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 唐代近體詩發展至晚唐五代，為了配合新的燕樂曲調演唱，逐漸打破了五言七言的整齊句式，演變為長短不齊的「詞」。因此詞被視為詩(近體詩)的餘緒，稱「詩餘」。`);
+            addQ("下列文學體裁與其「別稱」的連線，何者錯誤？", "宋詞—長短句", "元曲—詞餘", "絕句—詩餘", "樂府—曲的別稱之一", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)(B)(D)</span> 皆為正確別稱。(詞和曲都可以配樂，所以都可別稱樂府)。<br><span class="text-rose-500">❌ (C)</span> 錯誤。「詩餘」是【宋詞】的別稱，絕句屬於近體詩，不叫詩餘。`);
+
+            // 61-70: 中國古典小說 (發展與流變)
+            addQ("中國古典小說的發展脈絡中，唐代流行的小說體裁稱為什麼？", "筆記小說", "傳奇", "話本", "章回小說", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 魏晉南北朝(漢魏六朝)。<br><span class="text-emerald-600">✅ (B)</span> 唐代小說已發展出完整結構與人物，稱為「傳奇」(傳述奇異之事)。<br><span class="text-rose-500">❌ (C)</span> 宋代。<br><span class="text-rose-500">❌ (D)</span> 元明清。`);
+            addQ("宋代城市經濟繁榮，出現了說書行業。說書人所使用的「故事底本」稱為什麼，它也是白話小說的雛形？", "筆記", "傳奇", "話本", "套數", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 說書人講述故事的腳本稱為「話本」，為了讓大眾聽懂，多使用白話文，促成了後世明清白話章回小說的發展。`);
+            addQ("下列哪一本古典名著屬於魏晉南北朝的「筆記小說」，且是用文言文寫成的？", "《水滸傳》", "《聊齋志異》", "《紅樓夢》", "《世說新語》", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(C)</span> 明清的白話章回小說。<br><span class="text-rose-500">❌ (B)</span> 雖為文言文短篇，但為「清代」作品。<br><span class="text-emerald-600">✅ (D)</span> 《世說新語》由南朝宋劉義慶編撰，是魏晉志人筆記小說的代表，以文言文撰寫。`);
+            addQ("《三國演義》是中國最著名的歷史小說，其成書的年代背景為何？", "漢代", "唐代", "元末明初", "清代", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 《三國演義》(羅貫中 著)與《水滸傳》(施耐庵 著) 皆成書於【元末明初】，為長篇白話章回小說的先驅。`);
+            addQ("中國古典小說的分類中，《西遊記》被歸類為哪一種小說？", "俠義小說", "神怪小說", "言情小說", "諷刺小說", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 俠義代表：《水滸傳》。<br><span class="text-emerald-600">✅ (B)</span> 神怪代表：《西遊記》(吳承恩 著)，充滿妖魔神仙鬥法。<br><span class="text-rose-500">❌ (C)</span> 言情代表：《紅樓夢》。<br><span class="text-rose-500">❌ (D)</span> 諷刺代表：《儒林外史》。`);
+            addQ("《老殘遊記》的作者劉鶚，在書中獨排眾議，強烈譴責了哪一種人的「罪尤（罪惡）」，認為他們剛愎自用造成的傷害比貪官還大？", "土匪強盜", "清官", "落第書生", "外國侵略者", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 會考大考點！《老殘遊記》最特別的就是「揭發清官之罪尤為獨到」。劉鶚認為自以為清廉的官員，往往固執己見、不通人情，製造了無數冤案。`);
+            addQ("被譽為中國古典「言情小說」的巔峰之作，以賈寶玉、林黛玉為主角的是哪一本書？", "《紅樓夢》", "《聊齋志異》", "《世說新語》", "《儒林外史》", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 清代曹雪芹的《紅樓夢》以賈、王、史、薛四大家族的興衰為背景，深刻描寫了賈寶玉與金陵十二釵的悲劇，是言情小說最高傑作。`);
+            addQ("下列古典小說與其作者的配對，何者「錯誤」？", "《三國演義》—羅貫中", "《水滸傳》—施耐庵", "《西遊記》—蒲松齡", "《儒林外史》—吳敬梓", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)(B)(D)</span> 皆正確。<br><span class="text-rose-500">❌ (C)</span> 錯誤。《西遊記》作者為明代【吳承恩】；蒲松齡是清代《聊齋志異》的作者。`);
+            addQ("小華想要了解魏晉南北朝時期，文人雅士的機智對答與生活軼事（如「七步成詩」）。他應該閱讀哪一本書？", "《水滸傳》", "《聊齋志異》", "《老殘遊記》", "《世說新語》", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (D)</span> 《世說新語》是專門記錄東漢至東晉間名士言行軼事的「志人」小說。`);
+            addQ("《聊齋志異》是一本充滿仙狐鬼魅故事的奇書，關於此書的敘述何者正確？", "是一部長篇白話章回小說", "作者為清代的蒲松齡", "內容主要揭露科舉制度的弊端", "全書以宋代話本為基礎改編", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 它是「短篇、文言文」小說。<br><span class="text-emerald-600">✅ (B)</span> 正確，清代蒲松齡所著。<br><span class="text-rose-500">❌ (C)</span> 揭露科舉弊端的是《儒林外史》。《聊齋》主要寫花妖狐魅情意深摯。<br><span class="text-rose-500">❌ (D)</span> 作者自行蒐集民間傳說創作，非宋話本。`);
+
+            // 71-80: 現代作家與新詩
+            addQ("在民國八年，大力提倡「我手寫我口」，推動白話文運動，引發五四文學革命的關鍵人物是誰？", "徐志摩", "賴和", "胡適", "余光中", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 胡適是近代中國提倡白話文、推翻文言文束縛的先驅，著有《白話文學史》。`);
+            addQ("現代詩人徐志摩的詩風最為突出的特色為何？", "充滿強烈的反日與抗爭意識", "詞采華美，具有強烈的浪漫思想", "具有濃厚的中國歷史文化鄉愁", "以樸素的語言描寫台灣農村生活", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 此為賴和的特色。<br><span class="text-emerald-600">✅ (B)</span> 徐志摩是「新月詩社」的代表，作品(如〈再別康橋〉)熱情洋溢，充滿浪漫派色彩。<br><span class="text-rose-500">❌ (C)</span> 此為余光中的特色。<br><span class="text-rose-500">❌ (D)</span> 此為吳晟的特色。`);
+            addQ("哪一位現代作家同時身兼醫師身分，常免費為窮人治病，被尊稱為「彰化媽祖」，並且是「臺灣新文學之父」？", "胡適", "余光中", "吳晟", "賴和", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (D)</span> 賴和在日治時期以文學作為對抗殖民的武器(反日、反迷信)，同時醫德高尚，故有「臺灣新文學之父」與「彰化媽祖(仁醫)」的美譽。`);
+            addQ("「以左手寫散文、右手寫詩」是哪一位文學大師對自己雙重文學成就的自喻？", "徐志摩", "賴和", "余光中", "吳晟", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 余光中在現代詩(如〈鄉愁〉、〈白玉苦瓜〉)與散文(如〈聽聽那冷雨〉)上皆有極高成就，故以此自喻。`);
+            addQ("若想閱讀深刻反映台灣農村社會面對工業化衝擊、充滿鄉土情感的新詩，最適合挑選哪一位作家的作品？", "徐志摩", "胡適", "余光中", "吳晟", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (D)</span> 吳晟身兼農夫與教師，詩風樸素、語言鄉土，是台灣田園詩、鄉土詩的最具代表性作家(如《吾鄉印象》)。`);
+            addQ("〈再別康橋〉與〈我所知道的康橋〉，分別是哪一位作家的名詩與散文？", "胡適", "徐志摩", "余光中", "賴和", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 康橋即英國劍橋大學，徐志摩曾在此遊學，深受其浪漫氣息影響，留下這些傳世名作。`);
+            addQ("下列作家與其「文學主張或特色」的配對，何者錯誤？", "胡適：開創新文學，提倡白話文", "賴和：反日、反迷信", "余光中：詩風質樸，專寫台灣農民", "徐志摩：創新月詩社，熱情浪漫", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)(B)(D)</span> 皆正確。<br><span class="text-rose-500">❌ (C)</span> 錯誤。余光中的特色是「中國意識濃厚、陽剛之美」；專寫台灣農民、詩風質樸的是「吳晟」。`);
+            addQ("〈聽聽那冷雨〉是現代文學中極具聲韻之美的散文名篇，其作者是誰？", "徐志摩", "賴和", "余光中", "吳晟", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 余光中。這篇散文展現了他「以詩為文」的功力，文字充滿節奏與感性。`);
+            addQ("「現代詩」又稱為新詩或白話詩，它與古典「近體詩」最大的不同點在於？", "現代詩完全不能押韻", "現代詩不再有字數、句數與平仄的嚴格限制", "現代詩只能描寫現代科技生活", "現代詩必須配合西方樂器演唱", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 民國以來的現代詩打破了傳統近體詩的格律束縛，不限字數句數、不要求平仄對仗，形式極度自由。<br><span class="text-rose-500">❌ (A)</span> 現代詩「可押可不押」，並非不能押韻。`);
+            addQ("若要研究日治時期台灣底層人民的苦難與思想啟蒙，哪一本書是必讀的經典？", "《白話文學史》", "《翡冷翠山居閒話》", "《賴和先生全集》", "《白玉苦瓜》", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 胡適，文學理論。<br><span class="text-rose-500">❌ (B)</span> 徐志摩，歐洲遊記。<br><span class="text-emerald-600">✅ (C)</span> 賴和(台灣新文學之父)，作品強烈反抗日本殖民與舊迷信，最符合題意。<br><span class="text-rose-500">❌ (D)</span> 余光中，現代詩。`);
+
+            // 81-100: 混合與進階實戰應用
+            addQ("【綜合判斷】小明讀到一首詩，格式為四句，每句七個字。他發現這首詩第一句押了平聲韻，第二句與第四句也押了同一個平聲韻，且符合「一三五不論，二四六分明」的規律。這首詩最可能是？", "七言古詩", "七言絕句", "七言律詩", "宋詞小令", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 古詩不講究平仄規律。<br><span class="text-emerald-600">✅ (B)</span> 四句(絕句) + 七字(七言) + 押平聲韻 + 符合平仄(近體詩特徵) = 七言絕句。<br><span class="text-rose-500">❌ (C)</span> 律詩必須有八句。<br><span class="text-rose-500">❌ (D)</span> 詞多為長短句。`);
+            addQ("【綜合判斷】某部中國古典文學作品，內容以文言文撰寫，篇幅短小，描寫狐妖與書生的愛情故事，藉此諷刺當時社會的黑暗。這部作品是？", "《世說新語》", "《紅樓夢》", "《老殘遊記》", "《聊齋志異》", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (D)</span> 關鍵字：文言文、短篇、狐妖愛情(神怪)、諷刺。這正是清代蒲松齡《聊齋志異》的特色。<br><span class="text-rose-500">❌ (A)</span> 記魏晉名士。<br><span class="text-rose-500">❌ (B)(C)</span> 為白話章回長篇小說。`);
+            addQ("【綜合判斷】李白〈將進酒〉：「君不見黃河之水天上來，奔流到海不復回...」此詩句法長短不一，豪放不羈，且中途換韻。請問這屬於何種體裁？", "近體詩", "宋詞", "樂府詩", "散套", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 近體詩句式整齊、不可換韻。<br><span class="text-rose-500">❌ (B)</span> 李白為唐代人，宋詞尚未完全成形。<br><span class="text-emerald-600">✅ (C)</span> 這是唐代詩人沿用漢代【樂府詩】舊題(將進酒)所作的古體詩系作品。特徵：長短句、可換韻、不拘格律。<br><span class="text-rose-500">❌ (D)</span> 散套為元曲，不可換韻。`);
+            addQ("【平仄實戰】下列哪一個國語讀音為「第二聲（陽平）」的字，在古代其實是「入聲字」（仄聲），寫律詩時絕對不能放在要求平聲的位置？", "時", "菊", "明", "寒", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 時(ㄕˊ)，平聲。<br><span class="text-emerald-600">✅ (B)</span> 菊(ㄐㄩˊ)，國語二聲，但用台語念(ㄍㄧㄛㆶ)極為短促，是標準的「入聲字(仄聲)」。這是平仄判斷的大魔王陷阱！<br><span class="text-rose-500">❌ (C)</span> 明(ㄇㄧㄥˊ)，平聲。<br><span class="text-rose-500">❌ (D)</span> 寒(ㄏㄢˊ)，平聲。`);
+            addQ("【流派比較】同為描寫戰場與邊疆，唐代「邊塞派」詩人（如王昌齡）與宋代「豪放派」詞人（如辛棄疾）最大的不同可能在於？", "邊塞派受格律限制較少，豪放派受詞牌嚴格限制", "邊塞派以文言文創作，豪放派以白話文創作", "使用的文學體裁不同（詩 vs 詞）", "邊塞派只能寫五言，豪放派只能寫七言", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 邊塞派多寫近體詩，格律限制也很嚴格。<br><span class="text-rose-500">❌ (B)</span> 皆為文言(古典文學)。<br><span class="text-emerald-600">✅ (C)</span> 最明顯的不同就是體裁：唐代盛行「詩」(句式整齊)；宋代盛行「詞」(長短句配合詞牌)。<br><span class="text-rose-500">❌ (D)</span> 皆無此限制。`);
+            addQ("【小說知識】「章回小說」是明清時代的主流。下列哪一本書「不屬於」白話章回小說？", "《水滸傳》", "《三國演義》", "《世說新語》", "《儒林外史》", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 《世說新語》是魏晉時代的作品，屬於短篇的「文言筆記小說」。其餘三本皆為明清的白話章回小說。`);
+            addQ("【古典常識】下列對「詞牌」與「曲牌」的敘述，何者正確？", "兩者皆可中途變換韻腳", "兩者的標題即代表該篇作品的內容", "曲牌允許作者自由添加「襯字」以補足語氣", "詞牌只能用於小令，曲牌只能用於散套", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 曲牌絕對【不可換韻】。<br><span class="text-rose-500">❌ (B)</span> 牌名只是樂譜，與內容【無關】。<br><span class="text-emerald-600">✅ (C)</span> 正確。元曲(曲牌)最大的特色就是允許加【襯字】(不拘平仄字數)。<br><span class="text-rose-500">❌ (D)</span> 詞曲皆有小令等各種長短形式。`);
+            addQ("【綜合判斷】「范進中舉」與「劉姥姥進大觀園」分別出自哪兩部古典小說？", "《儒林外史》、《水滸傳》", "《老殘遊記》、《紅樓夢》", "《聊齋志異》、《西遊記》", "《儒林外史》、《紅樓夢》", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (D)</span> 「范進中舉」諷刺科舉，出自吳敬梓《儒林外史》。「劉姥姥」是逛大觀園(賈府)的經典鄉下老嫗，出自曹雪芹《紅樓夢》。`);
+            addQ("【文學常識】下列四位作家，按照他們活躍的歷史年代先後順序排列，何者正確？", "屈原 → 杜甫 → 蘇軾 → 關漢卿", "杜甫 → 屈原 → 關漢卿 → 蘇軾", "屈原 → 蘇軾 → 杜甫 → 關漢卿", "關漢卿 → 杜甫 → 蘇軾 → 屈原", 0, `【正確解答】(A) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (A)</span> 屈原(戰國 楚辭) ➔ 杜甫(唐代 詩) ➔ 蘇軾(宋代 詞) ➔ 關漢卿(元代 曲)。順序完全對應了中國韻文演變的歷史脈絡。`);
+            addQ("【綜合判斷】有一種文學體裁，它興起於漢魏晉時期，不講究平仄對仗，但必須在偶數句押韻，且最大的特色是「作者可以自由變換韻腳」。這是什麼體裁？", "絕句", "律詩", "古體詩", "散套", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(B)</span> 絕句律詩(近體詩)不可換韻，且平仄嚴格。<br><span class="text-emerald-600">✅ (C)</span> 興起於漢魏晉(唐代以前)、不限平仄對仗、【可換韻】，這是典型的「古體詩(包含古詩與樂府)」。<br><span class="text-rose-500">❌ (D)</span> 散套為元曲，不可換韻。`);
+            addQ("【小說比較】同樣是明清著名小說，《西遊記》與《三國演義》最大的差異在於？", "前者是文言文，後者是白話文", "前者為神怪小說，後者為歷史小說", "前者不分章回，後者有分章回", "前者為短篇，後者為長篇", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)(C)(D)</span> 兩者皆為明清長篇的「白話章回小說」。<br><span class="text-emerald-600">✅ (B)</span> 《西遊記》寫唐僧取經遇妖，為【神怪】；《三國演義》寫魏蜀吳爭霸，為【歷史】。`);
+            addQ("【詞曲實戰】「對仗」在不同的韻文中要求不同。下列哪一種體裁的某個部分，是格律上「強制規定」一定要對仗的？", "五言絕句的第一、二句", "七言古詩的最後兩句", "七言律詩的頷聯與頸聯", "元曲小令的每一句", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 絕句不要求對仗。<br><span class="text-rose-500">❌ (B)</span> 古體詩不要求對仗。<br><span class="text-emerald-600">✅ (C)</span> 會考大鐵律 🚨：律詩的中間兩聯(頷聯3,4句 / 頸聯5,6句)「必須對仗」！<br><span class="text-rose-500">❌ (D)</span> 曲依曲牌規定，不強制每一句對仗。`);
+            addQ("【現代作家】下列哪一句話最能代表胡適在文學史上的最大貢獻？", "寫下無數華美浪漫的康橋情詩", "以醫者仁心對抗日本殖民體制", "提倡白話文，掀起五四文學革命", "將台灣農村的鄉土之美化為詩篇", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 徐志摩。<br><span class="text-rose-500">❌ (B)</span> 賴和。<br><span class="text-emerald-600">✅ (C)</span> 胡適倡導「白話文運動」，是中國現代文學的啟蒙者。<br><span class="text-rose-500">❌ (D)</span> 吳晟。`);
+            addQ("【現代作家】「他的文字充滿著對中國歷史與文化的深厚情感，時而陽剛時而感性，並自詡能左右開弓寫詩與散文。」這是在描述誰？", "徐志摩", "胡適", "余光中", "賴和", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 余光中的兩大特徵標籤：1. 中國意識濃厚(鄉愁)；2. 以左手寫散文、右手寫詩。`);
+            addQ("【平仄應用】在判斷近體詩平仄時，若遇到字音為「一、二聲」的字，我們應該要注意什麼陷阱？", "它一定是平聲字，沒有例外", "它可能是發音急促的入聲字，實為仄聲", "它不能用來押韻", "它只能放在句子的開頭", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 因為現代國語已經沒有「入聲」，很多古代的入聲字(短促音，屬仄聲)在現代被念成一、二聲(如：白、竹、福、節)。這是考試最愛出的陷阱！`);
+            addQ("【文學總複習】下列哪一個文學流變的配對是「正確」的？", "漢代 → 詞", "唐代 → 傳奇小說", "宋代 → 章回小說", "明清 → 樂府詩", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 漢代代表為「賦」。宋代才是詞。<br><span class="text-emerald-600">✅ (B)</span> 唐代的小說發展成熟，稱為「傳奇」。<br><span class="text-rose-500">❌ (C)</span> 宋代小說代表為「話本」。明清才是章回小說。<br><span class="text-rose-500">❌ (D)</span> 漢魏晉盛行樂府詩。`);
+            addQ("【詞曲實戰】詞與曲都可稱為「長短句」，也都要配合「詞牌/曲牌」，但如果一篇文章中出現了破壞字數限制的「襯字」，這篇文章必定是？", "宋詞", "元曲", "古體詩", "現代詩", 1, `【正確解答】(B) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (B)</span> 【襯字】是元曲的專利！為了讓歌唱更生活化、通俗化而加入的額外字眼，是區分詞與曲的終極密碼。`);
+            addQ("【古典小說】這本小說以寫實的手法，深刻描寫了清代官場的百態，特別是揭發了「清官的剛愎自用」。這是哪一本書？", "《水滸傳》", "《儒林外史》", "《紅樓夢》", "《老殘遊記》", 3, `【正確解答】(D) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (D)</span> 劉鶚的《老殘遊記》最獨特之處，就是抨擊那些自以為是不通人情的「清官」，這在古典小說中極為罕見，是必考重點。`);
+            addQ("【詩的比較】一首詩如果是「七言古詩」，它和「七言律詩」在形式上最大的差異可能出現在哪裡？", "古詩每句八個字，律詩每句七個字", "古詩只能寫四句，律詩可以寫八句", "古詩可以換韻且不限平仄，律詩一韻到底且平仄嚴格", "古詩必須對仗，律詩完全不用對仗", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-rose-500">❌ (A)</span> 兩者皆為七字(七言)。<br><span class="text-rose-500">❌ (B)</span> 古詩不限句數，律詩固定八句。<br><span class="text-emerald-600">✅ (C)</span> 最核心的差異：古體詩(古詩)自由，可換韻、不限平仄；近體詩(律詩)嚴謹，不可換韻、平仄嚴格。<br><span class="text-rose-500">❌ (D)</span> 寫反了。律詩中間兩聯必對仗，古詩不強制。`);
+            addQ("【終極魔王題】大明在閱讀一本古書，發現裡面有一篇文章：長度為40字（五言八句），中間兩聯對仗工整，偶數字平仄嚴格相對，且首尾一韻到底。請問大明讀到的最可能是？", "五言古詩", "五言絕句", "五言律詩", "元曲小令", 2, `【正確解答】(C) ✨<br><br>【選項深度剖析】🔍<br><span class="text-emerald-600">✅ (C)</span> 條件核對：1. 五言八句(40字) ➔ 律詩規格。2. 中間兩聯對仗、平仄嚴格、一韻到底 ➔ 完美的近體詩(律詩)特徵。故答案為【五言律詩】。大滿貫！💯`);
+
+            return qList;
+        };
+
+        // ==========================================
+        //  應用程式狀態與邏輯
+        // ==========================================
+        let currentTab = 'login';
+        let learnSubTab = 'sec1';
+        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+        let isLearnMenuOpen = false;
+
+        const el = id => document.getElementById(id);
+
+        window.toggleLearnMenu = (show) => {
+            isLearnMenuOpen = typeof show === 'boolean' ? show : !isLearnMenuOpen;
+            const drawer = el('learn-drawer');
+            const overlay = el('learn-overlay');
+            if(drawer && overlay) {
+                if(isLearnMenuOpen) {
+                    drawer.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                }
+            }
+        };
+
+        // 監聽全域使用者名單 (Quick Login 用)
+        const listenToGlobalUsers = () => {
+            if (!isFirebaseInitialized || !currentUser) return;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+            
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            
+            unsubscribeGlobal = onSnapshot(globalRef, (snap) => {
+                if(snap.exists()) {
+                    recentUsers = snap.data().users || [];
+                } else {
+                    recentUsers = [];
+                }
+                if(currentTab === 'login') renderLogin();
+            });
+        };
+
+        // ==========================================
+        //  核心資料儲存與跨裝置同步
+        // ==========================================
+        
+        // 1. 監聽當前使用者的個人檔案
+        const listenToUserDocument = (name) => {
+            if (!isFirebaseInitialized || !currentUser) {
+                loadLocalData(name);
+                return;
+            }
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, name);
+            
+            if(unsubscribeUser) unsubscribeUser();
+            
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, data);
+                    saveLocalData(name);
+                    
+                    if (userData.quizState) {
+                        const cloudStateStr = JSON.stringify(userData.quizState);
+                        const localStateStr = JSON.stringify(quizState);
+                        if (cloudStateStr !== localStateStr) {
+                            quizState = userData.quizState;
+                            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, cloudStateStr); } catch(e) {}
+                            
+                            if(currentTab === 'quiz') {
+                                let scrollPos = 0;
+                                const scrollContainer = document.getElementById('quiz-scroll-container');
+                                if (scrollContainer) scrollPos = scrollContainer.scrollTop;
+
+                                renderQuizView(document.getElementById('main-content'));
+                                
+                                setTimeout(() => {
+                                    const newScrollContainer = document.getElementById('quiz-scroll-container');
+                                    if (newScrollContainer && scrollPos > 0) {
+                                        newScrollContainer.scrollTop = scrollPos;
+                                    }
+                                }, 10);
+
+                                const navStats = document.getElementById('nav-quiz-stats');
+                                if (navStats) {
+                                    if (quizState.active) {
+                                        navStats.classList.remove('hidden');
+                                        navStats.classList.add('flex');
+                                        updateQuizStats();
+                                    } else {
+                                        navStats.classList.add('hidden');
+                                        navStats.classList.remove('flex');
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                } else {
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()], quizState: null };
+                    setDoc(userRef, userData, { merge: true });
+                }
+                
+                if(currentTab === 'favorites') renderFavorites();
+                else if(currentTab === 'mistakes') renderMistakes();
+                else if(currentTab === 'history') renderHistory();
+                
+            }, (error) => console.error("Listen user error", error));
+        };
+
+        // 2. 儲存資料至雲端
+        const saveUserDataToCloud = async () => {
+            saveLocalData(username);
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+            try {
+                await setDoc(userRef, userData, { merge: true });
+            } catch(e) {
+                console.error("Firebase save error:", e);
+            }
+        };
+
+        // 3. LocalStorage 備用系統
+        const loadLocalData = (name) => {
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
+                if (localData) {
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, JSON.parse(localData));
+                }
+            } catch(e) {}
+        };
+
+        const saveLocalData = (name) => {
+            try {
+                if (name) localStorage.setItem(`${COLLECTION_NAME}_${name}_data`, JSON.stringify(userData));
+            } catch(e) {}
+        };
+
+        const saveQuizState = () => {
+            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            userData.quizState = quizState;
+            saveUserDataToCloud();
+        };
+
+        const loadLocalQuizState = () => {
+            if (userData.quizState) {
+                quizState = userData.quizState;
+                return;
+            }
+            try {
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = q;
+                }
+            } catch(e) {}
+        };
+
+        const initApp = async () => {
+            renderApp();
+            
+            const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_user`);
+            
+            if (isFirebaseInitialized) {
+                await initAuth(); 
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        listenToGlobalUsers();
+                        
+                        if (lastUser) {
+                            username = lastUser;
+                            setTimeout(() => listenToUserDocument(username), 200);
+                            loadLocalQuizState();
+                            renderMain();
+                        } else {
+                            renderLogin();
+                        }
+                    } else renderLogin();
+                });
+            } else {
+                if (lastUser) {
+                    username = lastUser;
+                    loadLocalData(username);
+                    loadLocalQuizState();
+                    renderMain();
+                } else {
+                    renderLogin();
+                }
+            }
+        };
+
+        window.handleLogin = async (name) => {
+            if(!name.trim()) {
+                const inputEl = document.getElementById('usernameInput');
+                inputEl.classList.add('border-red-500', 'bg-red-50');
+                inputEl.placeholder = "名稱不能為空！";
+                setTimeout(() => {
+                    inputEl.classList.remove('border-red-500', 'bg-red-50');
+                    inputEl.placeholder = "✍️ 請輸入您的姓名/座號";
+                }, 2000);
+                return;
+            }
+            
+            username = name;
+            localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
+            
+            if (isFirebaseInitialized && currentUser) {
+                const now = new Date().toISOString();
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                
+                try {
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
+                        if (userData.quizState) {
+                            quizState = userData.quizState;
+                            try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
+                        }
+                    } else {
+                        loadLocalData(username);
+                    }
+                    
+                    if (!userData.loginHistory) userData.loginHistory = [];
+                    userData.loginHistory.push(now);
+                    if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50);
+                    
+                    await setDoc(userRef, userData, { merge: true });
+                    
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username);
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10);
+                    await setDoc(globalRef, { users }, { merge: true });
+                    
+                } catch(e) {
+                    console.error("Login data sync error:", e);
+                }
+                
+                listenToUserDocument(username);
+            } else {
+                loadLocalData(username);
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(new Date().toISOString());
+                saveLocalData(username);
+            }
+            
+            renderMain();
+        };
+
+        window.toggleFavorite = async (itemId) => {
+            if (!userData.favorites) userData.favorites = [];
+            const idx = userData.favorites.indexOf(itemId);
+            if (idx > -1) userData.favorites.splice(idx, 1);
+            else userData.favorites.push(itemId);
+            
+            saveUserDataToCloud();
+            
+            if(currentTab === 'learn') renderLearnContent();
+            if(currentTab === 'favorites') renderFavorites();
+        };
+
+        const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col bg-amber-50"></div>`; };
+
+        window.renderLogin = () => {
+            currentTab = 'login';
+            el('view-container').innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-6 z-0">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 -z-20"></div>
+                    <div class="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-r from-indigo-300 to-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10"></div>
+                    <div class="absolute top-40 -right-20 w-80 h-80 bg-gradient-to-r from-purple-300 to-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 1s;"></div>
+                    <div class="absolute -bottom-32 left-1/3 w-80 h-80 bg-gradient-to-r from-rose-300 to-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 2s;"></div>
+                    
+                    <div class="absolute top-6 right-6 z-20">
+                        <div class="flex flex-col items-end gap-3 w-full md:w-auto">
+                            <div class="glass-card px-4 py-2 rounded-full shadow-sm text-sm font-bold text-indigo-800 flex items-center border border-white/50">
+                                <span class="status-dot ${connectionStatus === 'loading' ? 'status-loading' : connectionStatus === 'success' ? 'status-success' : 'status-error'}"></span>
+                                ${connectionStatus === 'loading' ? '雲端讀取中... ⏳' : connectionStatus === 'success' ? '雲端已同步 ☁️✨' : '雲端連線失敗 ❌'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl z-10 w-[32rem] max-w-[95vw] text-center border border-white/60">
+                        <div class="w-24 h-24 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-6">
+                            <span class="text-6xl text-white">📜</span>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-indigo-950 mb-4 tracking-widest leading-tight">詩詞曲格律比較<br>大挑戰 ✨🌈</h1>
+                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 100題 會考魔王版 👑</p>
+                        
+                        <div class="space-y-6">
+                            <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-indigo-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
+                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                                進入學習系統 🚀🌈🎉
+                            </button>
+                        </div>
+                        
+                        <div class="mt-10 border-t border-indigo-200/50 pt-6">
+                            <p class="text-base text-indigo-700/60 mb-4 font-bold tracking-wide">☁️ 雲端最近登入 👥</p>
+                            <div class="flex flex-wrap justify-center gap-3">
+                                ${recentUsers.length > 0 
+                                    ? recentUsers.slice().reverse().slice(0, 8).map(u => `<button onclick="handleLogin('${u.name}')" class="text-base font-bold bg-white/80 border-2 border-indigo-200 text-indigo-800 hover:bg-indigo-100 hover:text-indigo-900 hover:border-indigo-400 px-5 py-2.5 rounded-xl shadow-sm transition-all">${u.name}</button>`).join('')
+                                    : `<span class="text-base text-indigo-700/60 bg-white/50 px-5 py-2.5 rounded-xl">尚無紀錄或尚未連線</span>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderMain = () => {
+            el('view-container').innerHTML = `
+                <nav class="glass-nav text-white shadow-lg z-20 shrink-0" style="background: rgba(79, 70, 229, 0.9);">
+                    <div class="w-full px-2 sm:px-4 md:px-6 lg:px-8 mx-auto">
+                        <div class="flex justify-between items-center h-20 w-full overflow-x-auto scrollbar-hide gap-2 md:gap-4">
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <span class="font-extrabold text-xl md:text-2xl lg:text-xl xl:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
+                                    <span class="bg-white/20 p-2 rounded-xl mr-2 xl:mr-3 shadow-sm">📖</span>文學高手 🎓✨🚀
+                                </span>
+                                <div class="flex items-center bg-white/20 px-2 py-1.5 md:px-3 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
+                                    <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
+                                    <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
+                                </div>
+                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-2 animate-fade-in shrink-0 gap-2 md:gap-3">
+                                    <div class="flex items-center bg-white px-3 py-1.5 md:px-4 md:py-1.5 rounded-xl shadow-md text-sm md:text-lg font-bold shrink-0 text-indigo-950">
+                                        <span class="text-emerald-600 flex items-center"><span class="mr-1 md:mr-2">✅</span><span id="nav-stat-correct">0</span></span>
+                                        <div class="w-px bg-slate-300 h-4 md:h-5 mx-2 md:mx-3"></div>
+                                        <span class="text-rose-600 flex items-center"><span class="mr-1 md:mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
+                                    </div>
+                                    <div class="hidden xl:flex flex-col w-24 lg:w-32 shrink-0">
+                                        <div class="w-full bg-indigo-950/40 rounded-full h-3.5 overflow-hidden shadow-inner border border-white/20">
+                                            <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-amber-300 to-amber-500 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
+                                                <div class="absolute inset-0 bg-white/30 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.2) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.2) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(100)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
+                                
+                                <div class="ml-1 sm:ml-2 lg:ml-4 flex items-center pl-2 sm:pl-3 lg:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-1 md:gap-2">
+                                    <div class="text-sm md:text-base lg:text-lg xl:text-xl font-bold bg-white/20 px-2 py-1.5 md:px-3 lg:px-4 lg:py-2 rounded-xl text-white shadow-inner flex items-center">
+                                        <span class="mr-1 lg:mr-2">👤</span>${username}
+                                    </div>
+                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="刪除帳號紀錄">🗑️</button>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="登出">🚪</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+                <div id="main-content" class="flex-1 overflow-hidden flex flex-col w-full z-10 relative">
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+CjxyZWN0IHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgZmlsbD0ibm9uZSIvPgo8Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIxIiBmaWxsPSIjZjVjNWMyIi8+Cjwvc3ZnPg==')] opacity-50 z-0"></div>
+                </div>
+            `;
+            switchTab('learn');
+        };
+
+        window.deleteUserData = async () => {
+            if(!confirm(`確定要從雲端刪除選手 ${username} 的所有資料？此操作無法復原！`)) return;
+            if(!confirm(`⚠️ 再次警告：這將永久刪除 ${username} 的所有進度、錯題與紀錄！\n\n您真的確定要執行刪除嗎？`)) return;
+            
+            try {
+                if (isFirebaseInitialized && currentUser) {
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const snap = await getDoc(globalRef);
+                    if(snap.exists()) {
+                        let users = snap.data().users || [];
+                        users = users.filter(u => u.name !== username);
+                        await setDoc(globalRef, { users }, { merge: true });
+                    }
+                    const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                    await setDoc(userRef, { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, { merge: true });
+                }
+                
+                localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+                userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+                if(unsubscribeUser) unsubscribeUser();
+                username = '';
+                renderLogin();
+            } catch(e) {
+                console.error("Delete user error:", e);
+                alert("刪除失敗，請稍後再試");
+            }
+        };
+
+        window.logout = () => {
+            username = '';
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+            quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+            if(unsubscribeUser) unsubscribeUser();
+            renderLogin();
+        };
+
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
+                const btn = el(`nav-${t}`);
+                if(btn) {
+                    if(t === tab) {
+                        btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                    } else {
+                        btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                    }
+                }
+            });
+
+            const navStats = el('nav-quiz-stats');
+            if (navStats) {
+                if (tab === 'quiz' && quizState.active) {
+                    navStats.classList.remove('hidden');
+                    navStats.classList.add('flex');
+                    updateQuizStats();
+                } else {
+                    navStats.classList.add('hidden');
+                    navStats.classList.remove('flex');
+                }
+            }
+
+            const content = el('main-content');
+            if(tab === 'learn') renderLearnView(content);
+            if(tab === 'quiz') renderQuizView(content);
+            if(tab === 'mistakes') renderMistakes(content);
+            if(tab === 'favorites') renderFavorites(content);
+            if(tab === 'history') renderHistory(content);
+        };
+
+        const renderLearnView = (container) => {
+            const currentData = learnData.find(d => d.id === learnSubTab);
+            const themeColors = {
+                'orange': 'text-orange-900 bg-orange-50 border-orange-200',
+                'amber': 'text-amber-900 bg-amber-50 border-amber-200',
+                'rose': 'text-rose-900 bg-rose-50 border-rose-200',
+                'indigo': 'text-indigo-900 bg-indigo-50 border-indigo-200'
+            };
+            const activeTheme = currentData && currentData.theme ? themeColors[currentData.theme] : 'text-indigo-900 bg-indigo-50 border-indigo-200';
+
+            container.innerHTML = `
+                <div class="w-full ${activeTheme} border-b p-4 flex items-center shadow-sm z-10 shrink-0 overflow-hidden transition-colors duration-300">
+                    <button onclick="toggleLearnMenu(true)" class="text-indigo-800 hover:text-rose-600 focus:outline-none flex items-center px-4 py-2 bg-white/80 rounded-xl border border-white shadow-sm mr-4 transition-all hover:shadow">
+                        <i class="fas fa-bars text-xl md:mr-3"></i>
+                        <span class="font-bold text-lg hidden md:inline tracking-wide">單元選單</span>
+                    </button>
+                    <span class="font-extrabold text-xl md:text-2xl lg:text-3xl truncate drop-shadow-sm" id="current-learn-title">${currentData ? currentData.title : ''}</span>
+                </div>
+                <div id="learn-overlay" onclick="toggleLearnMenu(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden transition-opacity duration-300"></div>
+                <div id="learn-drawer" class="fixed inset-y-0 left-0 w-[24rem] max-w-[85vw] bg-white border-r border-indigo-100 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl flex flex-col">
+                    <div class="p-6 bg-indigo-50 flex justify-between items-center border-b border-indigo-100 shrink-0">
+                        <span class="font-extrabold text-2xl text-indigo-900">📑 學習目錄 🗺️</span>
+                        <button onclick="toggleLearnMenu(false)" class="text-indigo-400 hover:text-rose-500 transition-colors bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-indigo-100"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                    <ul class="py-4 flex-1 px-3 space-y-1">
+                        ${learnData.map(d => {
+                            const isSelected = learnSubTab === d.id;
+                            const themeConfig = {
+                                'orange': isSelected ? 'bg-orange-50 text-orange-900 border-orange-500' : 'hover:bg-orange-50/50',
+                                'amber': isSelected ? 'bg-amber-50 text-amber-900 border-amber-500' : 'hover:bg-amber-50/50',
+                                'rose': isSelected ? 'bg-rose-50 text-rose-900 border-rose-500' : 'hover:bg-rose-50/50',
+                                'indigo': isSelected ? 'bg-indigo-50 text-indigo-900 border-indigo-500' : 'hover:bg-indigo-50/50',
+                            };
+                            const defaultClass = isSelected ? 'bg-indigo-50 text-indigo-900 border-indigo-500 shadow-sm' : 'text-slate-600 border-transparent hover:bg-indigo-50';
+                            const activeClass = d.theme ? themeConfig[d.theme] : defaultClass;
+                            return `
+                            <li>
+                                <button onclick="selectLearnTab('${d.id}')" id="ltab-${d.id}" class="w-full text-left px-5 py-4 text-lg md:text-xl font-bold rounded-xl transition-all border-l-4 ${isSelected ? activeClass + ' shadow-sm' : 'text-slate-600 border-transparent hover:bg-indigo-50 hover:pl-6 hover:text-indigo-800'}">
+                                    ${d.title}
+                                </button>
+                            </li>
+                        `}).join('')}
+                    </ul>
+                </div>
+                <div class="flex-1 p-4 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden w-full relative z-10" id="learn-content-area"></div>
+            `;
+            renderLearnContent();
+        };
+
+        window.selectLearnTab = (id) => {
+            learnSubTab = id;
+            renderLearnView(el('main-content')); 
+            toggleLearnMenu(false);
+        };
+
+        window.renderLearnContent = () => {
+            const area = el('learn-content-area');
+            if(!area) return;
+            const data = learnData.find(d => d.id === learnSubTab);
+            area.innerHTML = `
+                <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto animate-fade-in pb-12">
+                    ${data.content}
+                </div>
+            `;
+            setTimeout(() => {
+                document.querySelectorAll('.fav-btn').forEach(btn => {
+                    const id = btn.getAttribute('data-id');
+                    if(userData.favorites && userData.favorites.includes(id)) {
+                        btn.classList.remove('text-gray-300', 'text-white/50');
+                        btn.classList.add('text-rose-500');
+                        btn.innerHTML = '❤️';
+                    }
+                });
+            }, 0);
+        };
+
+        const renderQuizView = (container) => {
+            if(!quizState.active) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto relative z-10">
+                        <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-4xl lg:max-w-5xl w-full border border-white/60 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-40 h-40 bg-indigo-100 rounded-bl-full -z-10 opacity-50"></div>
+                            
+                            <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
+                                <span class="text-6xl md:text-7xl text-white">🧠</span>
+                            </div>
+                            
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-indigo-950 tracking-wide">詩詞曲格律 100題挑戰 🏆🔥</h2>
+                            <p class="text-indigo-800/80 mb-10 text-xl md:text-2xl leading-loose">
+                                從古體詩到近體詩，從唐詩宋詞到元曲，驗收您的格律精熟度！<br>
+                                <span class="bg-indigo-100 text-indigo-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-indigo-200 shadow-sm">🌊 瀑布流模式</span><br>
+                                <span class="text-lg md:text-xl text-indigo-700/60 mt-3 block font-bold">點擊選項後立即顯示詳解，無須換頁，快速複習最有效率！ ✨💡</span>
+                            </p>
+                            <button onclick="startQuiz()" class="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-5 px-16 text-2xl md:text-3xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl">
+                                開始挑戰 🚀🔥
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                renderQuizWaterfall(container);
+            }
+        };
+
+        window.startQuiz = () => {
+            const qList = [...generate100Questions()].sort(() => 0.5 - Math.random()).map(q => ({
+                ...q,
+                selectedAns: null,
+                showExplanation: false,
+                isCorrect: false
+            }));
+            quizState = { active: true, isFinished: false, questions: qList };
+            saveQuizState();
+            renderQuizView(el('main-content'));
+            
+            const navStats = el('nav-quiz-stats');
+            if (navStats) {
+                navStats.classList.remove('hidden');
+                navStats.classList.add('flex');
+            }
+            updateQuizStats();
+        };
+
+        window.updateQuizStats = () => {
+            if (!quizState.active) return;
+            let correct = 0; let incorrect = 0; let answered = 0;
+            const total = quizState.questions.length;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answered++;
+                    if (q.isCorrect) correct++; else incorrect++;
+                }
+            });
+            const progressPercent = (answered / total) * 100;
+            const elCorrect = document.getElementById('nav-stat-correct');
+            const elIncorrect = document.getElementById('nav-stat-incorrect');
+            const elBar = document.getElementById('nav-stat-progress-bar');
+            if (elCorrect) elCorrect.innerText = correct;
+            if (elIncorrect) elIncorrect.innerText = incorrect;
+            if (elBar) elBar.style.width = progressPercent + '%';
+        };
+
+        window.restartQuizWithConfirm = () => {
+            if(confirm('確定要重新開始挑戰嗎？這將會清除目前的畫面，並產生全新的測驗題目！')) {
+                startQuiz();
+            }
+        };
+
+        const renderQuizWaterfall = (container) => {
+            const total = quizState.questions.length;
+            const isFinished = quizState.isFinished;
+            
+            let headerHtml = isFinished 
+                ? ` <div class="glass-card flex flex-col md:flex-row justify-between items-center rounded-2xl p-5 md:p-6 shadow-lg border border-amber-300 mb-10 sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="text-5xl mr-4 drop-shadow-md">🏆✨</span>
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900">測驗結算完成 🎉</h2>
+                                <p class="text-indigo-700 font-bold text-lg mt-1">總分：<span class="text-3xl md:text-4xl text-rose-600 font-black">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="switchTab('mistakes')" class="text-base md:text-lg text-indigo-600 hover:text-white hover:bg-indigo-500 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border-2 border-indigo-200 hover:border-indigo-500 bg-white"><span class="mr-2">🩹</span>錯題本</button>
+                            <button onclick="restartQuizWithConfirm()" class="text-base md:text-lg text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 px-4 py-2 rounded-xl font-bold transition-colors flex items-center shadow-md hover:shadow-lg"><span class="mr-2">🔄</span>重新挑戰</button>
+                        </div>
+                    </div>`
+                : ` <div class="glass-card flex justify-between items-center rounded-2xl p-5 md:p-6 shadow-sm border border-white/60 mb-10 sticky top-0 z-50 backdrop-blur-xl">
+                        <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900 flex items-center"><span class="mr-3 text-indigo-600 bg-indigo-100 p-2 rounded-lg">📝</span>測驗進行中 ⏳💪</h2>
+                        <button onclick="clearQuizHistory()" class="text-base md:text-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-transparent hover:border-rose-200"><span class="mr-2">🚪</span>放棄作答</button>
+                    </div>`;
+
+            let html = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto relative">
+                        ${headerHtml}
+                        <div id="questions-list" class="space-y-10 w-full">
+            `;
+            quizState.questions.forEach((_, qIdx) => {
+                html += `<div id="q-block-${qIdx}" class="bg-white rounded-3xl shadow-lg overflow-hidden border border-indigo-100 transition-all w-full">${generateSingleQuestionHtml(qIdx)}</div>`;
+            });
+            html += `
+                        </div>
+            `;
+            
+            if (!isFinished) {
+                html += `
+                        <button onclick="finishQuizWaterfall()" class="w-full mt-16 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-purple-700">
+                            🏁 完成測驗並結算成績 📊🎉
+                        </button>
+                `;
+            } else {
+                 html += `
+                        <button onclick="restartQuizWithConfirm()" class="w-full mt-16 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-pink-700">
+                            🔄 重新開始挑戰 🚀💪
+                        </button>
+                `;               
+            }
+
+            html += `
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        };
+
+        const generateSingleQuestionHtml = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            let optionsHtml = '';
+            
+            q.opts.forEach((opt, i) => {
+                let btnClass = "w-full text-left p-4 md:p-6 text-2xl md:text-[1.65rem] rounded-2xl border-2 transition-all duration-200 flex items-center group relative overflow-hidden ";
+                let iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 md:mr-6 font-extrabold text-2xl md:text-3xl transition-colors shrink-0 shadow-inner group-hover:bg-indigo-100 group-hover:text-indigo-700">${String.fromCharCode(65+i)}</span>`;
+                
+                if (!q.showExplanation) {
+                    btnClass += "border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/50 bg-white cursor-pointer hover:shadow-md";
+                } else {
+                    if (i === q.ans) {
+                        btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 font-bold shadow-md z-10 ring-2 ring-emerald-400/20";
+                        iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-4 md:mr-6 font-bold text-3xl md:text-4xl shrink-0 shadow-sm">✅</span>`;
+                    } else if (i === q.selectedAns) {
+                        btnClass += "border-rose-400 bg-rose-50 text-rose-900 font-bold";
+                        iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-rose-500 text-white flex items-center justify-center mr-4 md:mr-6 font-bold text-3xl md:text-4xl shrink-0 shadow-sm">❌</span>`;
+                    } else {
+                        btnClass += "border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed";
+                    }
+                }
+
+                optionsHtml += `
+                    <button ${q.showExplanation ? 'disabled' : `onclick="answerWaterfallQuestion(${qIdx}, ${i})"`} class="${btnClass}">
+                        ${iconHtml}
+                        <span class="flex-1 leading-relaxed break-words z-10 text-slate-800 group-hover:text-indigo-950 font-medium">${opt}</span>
+                    </button>
+                `;
+            });
+
+            let explanationHtml = '';
+            if (q.showExplanation) {
+                const isCorrect = q.selectedAns === q.ans;
+                const isUnanswered = q.selectedAns === -1;
+                
+                let boxClass = isCorrect ? 'bg-emerald-50/50 border-emerald-200' : (isUnanswered ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50/50 border-rose-200');
+                let borderClass = isCorrect ? 'border-emerald-200/50' : (isUnanswered ? 'border-amber-200/50' : 'border-rose-200/50');
+                let iconBg = isCorrect ? 'bg-emerald-100 text-emerald-600' : (isUnanswered ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600');
+                let iconEmoji = isCorrect ? '🎉' : (isUnanswered ? '⚠️' : '😲');
+                let titleColor = isCorrect ? 'text-emerald-800' : (isUnanswered ? 'text-amber-800' : 'text-rose-800');
+                let titleText = isCorrect ? '太棒了，答對了！ ✨' : (isUnanswered ? '結算時未作答 💦' : '哎呀，答錯了！ 💔');
+                let ansColor = isCorrect ? 'text-emerald-600' : (isUnanswered ? 'text-amber-600' : 'text-rose-600');
+
+                explanationHtml = `
+                    <div class="mt-10 p-6 md:p-8 rounded-3xl border ${boxClass} animate-fade-in w-full">
+                        <div class="flex items-center mb-6 border-b ${borderClass} pb-5">
+                            <div class="w-16 h-16 rounded-full ${iconBg} flex items-center justify-center mr-5 shrink-0 text-4xl">
+                                ${iconEmoji}
+                            </div>
+                            <span class="font-extrabold text-3xl md:text-4xl ${titleColor}">${titleText}</span>
+                        </div>
+                        <div class="w-full">
+                            <p class="font-bold mb-4 text-xl md:text-2xl text-slate-700 flex items-center"><span class="mr-3">🔍</span>完整題目解析</p>
+                            <p class="mt-3 text-xl md:text-2xl break-words text-slate-700 bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm font-medium">正確答案為 <strong class="${ansColor} text-2xl md:text-3xl ml-2">(${String.fromCharCode(65+q.ans)}) ${q.opts[q.ans]}</strong></p>
+                            <div class="mt-6 p-6 md:p-8 bg-indigo-50/50 border border-indigo-200/60 rounded-2xl text-indigo-950 w-full relative overflow-hidden">
+                                <div class="absolute left-0 top-0 bottom-0 w-2 bg-indigo-400"></div>
+                                <p class="font-bold text-xl md:text-2xl mb-3 flex items-center"><span class="mr-3 text-2xl">💡</span>深度解析 🧠</p>
+                                <p class="text-xl md:text-2xl leading-loose break-words whitespace-pre-wrap pl-2 font-medium">${q.exp}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const isFav = userData.favorites && userData.favorites.includes(q.q);
+            const favIconHtml = isFav 
+                ? '<i class="fa-solid fa-heart text-rose-500"></i>' 
+                : '<i class="fa-regular fa-heart text-rose-500"></i>';
+
+            let statusTag = '';
+            let bgGradient = '';
+            if (q.showExplanation) {
+                if (q.selectedAns === q.ans) {
+                    statusTag = '<span class="text-emerald-600 font-bold text-xl md:text-2xl flex items-center bg-emerald-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">✅</span>答對 🎉</span>';
+                    bgGradient = 'bg-gradient-to-r from-emerald-50 to-white';
+                } else if (q.selectedAns === -1) {
+                    statusTag = '<span class="text-amber-600 font-bold text-xl md:text-2xl flex items-center bg-amber-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">⚠️</span>未作答</span>';
+                    bgGradient = 'bg-gradient-to-r from-amber-50 to-white';
+                } else {
+                    statusTag = '<span class="text-rose-600 font-bold text-xl md:text-2xl flex items-center bg-rose-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯 💦</span>';
+                    bgGradient = 'bg-gradient-to-r from-rose-50 to-white';
+                }
+            } else {
+                statusTag = '<span class="text-indigo-400 font-bold text-lg md:text-xl flex items-center bg-indigo-100/50 px-4 py-1.5 rounded-full border border-indigo-200"><span class="mr-2">✍️</span>作答區</span>';
+                bgGradient = 'bg-indigo-50/30';
+            }
+
+            return `
+                <div class="px-6 md:px-10 py-5 border-b border-indigo-100 flex justify-between items-center transition-colors ${bgGradient}">
+                    <div class="flex items-center">
+                        <span class="font-extrabold text-indigo-500 text-xl md:text-2xl bg-white px-4 py-1.5 rounded-xl border border-indigo-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
+                        <button onclick="toggleQuizFavorite(${qIdx})" class="ml-5 text-[1.75rem] md:text-4xl hover:scale-110 transition-transform focus:outline-none drop-shadow-sm" title="加入/取消最愛">
+                            ${favIconHtml}
+                        </button>
+                    </div>
+                    ${statusTag}
+                </div>
+                <div class="p-6 md:p-10 w-full overflow-hidden">
+                    <h3 class="text-3xl md:text-4xl font-extrabold text-slate-800 mb-10 leading-loose break-words">${q.q}</h3>
+                    <div class="space-y-5 w-full">
+                        ${optionsHtml}
+                    </div>
+                    ${explanationHtml}
+                </div>
+            `;
+        };
+
+        window.toggleQuizFavorite = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            const qText = q.q;
+            if (!userData.favorites) userData.favorites = [];
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) {
+                userData.favorites.splice(idx, 1);
+            } else {
+                userData.favorites.push(qText);
+            }
+            saveUserDataToCloud();
+            
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) {
+                block.innerHTML = generateSingleQuestionHtml(qIdx);
+            }
+        };
+
+        window.answerWaterfallQuestion = (qIdx, optIdx) => {
+            const q = quizState.questions[qIdx];
+            if(q.showExplanation) return; 
+
+            const isCorrect = optIdx === q.ans;
+            
+            q.selectedAns = optIdx;
+            q.showExplanation = true;
+            q.isCorrect = isCorrect;
+            
+            if (isCorrect) {
+                playCorrectSound();
+                confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 }, zIndex: 10000, colors: ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#3b82f6'] });
+            } else {
+                playWrongSound();
+                const mistakeId = q.q; 
+                if(!userData.mistakes) userData.mistakes = [];
+                const exists = userData.mistakes.find(m => m.id === mistakeId);
+                if(!exists) {
+                    userData.mistakes.push({
+                        id: mistakeId, q: q.q, opts: q.opts, ans: q.ans, time: new Date().toISOString()
+                    });
+                    saveUserDataToCloud();
+                }
+            }
+            saveQuizState();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) {
+                block.innerHTML = generateSingleQuestionHtml(qIdx);
+            }
+            updateQuizStats();
+        };
+
+        window.finishQuizWaterfall = async () => {
+            let correctCount = 0;
+            let answeredCount = 0;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answeredCount++;
+                    if (q.isCorrect) correctCount++;
+                }
+            });
+
+            if (answeredCount < quizState.questions.length) {
+                if(!confirm(`您還有 ${quizState.questions.length - answeredCount} 題尚未作答，確定要直接交卷結算嗎？未作答的題目將以錯誤計算。`)) {
+                    return;
+                }
+            }
+
+            // 標記未作答的題目
+            quizState.questions.forEach(q => {
+                if (!q.showExplanation) {
+                    q.showExplanation = true;
+                    q.isCorrect = false;
+                    q.selectedAns = -1; // -1 代表未作答
+                }
+            });
+
+            quizState.isFinished = true;
+            quizState.correctCount = correctCount;
+            quizState.answeredCount = answeredCount;
+            
+            const total = quizState.questions.length;
+            const scorePercent = Math.round((correctCount / total) * 100);
+            quizState.scorePercent = scorePercent;
+            
+            saveQuizState();
+            
+            if (!userData.quizHistory) userData.quizHistory = [];
+            userData.quizHistory.push({
+                date: new Date().toLocaleString(),
+                score: scorePercent,
+                total: total,
+                correct: correctCount
+            });
+            if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
+            saveUserDataToCloud();
+
+            // 重新渲染瀑布流 (呈現結算結果版頭)
+            renderQuizView(el('main-content'));
+            
+            confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 }, zIndex: 10000, colors: ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#3b82f6'] });
+            
+            // 自動捲動到最上方觀看成績
+            setTimeout(() => {
+                const scrollContainer = document.getElementById('quiz-scroll-container');
+                if (scrollContainer) {
+                    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 100);
+        };
+
+        window.clearQuizHistory = () => {
+            if(confirm('警告：確定要清除目前的作答紀錄嗎？\n(此動作將會遺失目前所有測驗進度)')) {
+                if(confirm('【第二次確認】真的要清除作答紀錄並放棄目前測驗嗎？\n按下「確定」將會清空並返回測驗首頁。')) {
+                    quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                    saveQuizState();
+                    const navStats = el('nav-quiz-stats');
+                    if (navStats) {
+                        navStats.classList.add('hidden');
+                        navStats.classList.remove('flex');
+                    }
+                    renderQuizView(el('main-content'));
+                }
+            }
+        };
+
+        window.renderMistakes = (container) => {
+            if(!container) container = el('main-content');
+            if(!userData.mistakes || userData.mistakes.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-indigo-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-emerald-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-emerald-200 text-7xl">🥳</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-indigo-950 mb-4">太棒了！✨</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-indigo-800/60">目前沒有任何錯題紀錄 🎉</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">🩹</span>錯題本 📚</h2>
+                                <p class="text-rose-900/50 mt-3 ml-20 font-bold text-lg md:text-xl">收錄您在測驗中答錯的題目，溫故知新 🔄💡</p>
+                            </div>
+                            <button onclick="clearMistakes()" class="text-base md:text-xl text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 px-5 py-3 rounded-xl border-2 border-rose-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${userData.mistakes.map((m, i) => `
+                                <div class="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-indigo-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-indigo-400"></div>
+                                    <h3 class="font-extrabold text-indigo-950 mb-10 text-2xl md:text-3xl break-words leading-loose flex items-start">
+                                        <span class="text-rose-500 mr-4 text-3xl font-black bg-rose-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
+                                    </h3>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6 text-2xl md:text-[1.65rem] w-full font-medium">
+                                        ${m.opts.map((opt, idx) => `
+                                            <div class="p-5 md:p-6 rounded-2xl break-words transition-all ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-indigo-50 text-slate-600 border border-indigo-100'}">
+                                                <span class="inline-block w-10 font-bold ${idx === m.ans ? 'text-emerald-600' : 'text-indigo-400'}">${String.fromCharCode(65+idx)}.</span> ${opt}
+                                                ${idx === m.ans ? '<span class="float-right text-emerald-500 text-3xl">✅</span>' : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.clearMistakes = () => {
+            if(confirm('警告：確定要清空所有錯題紀錄嗎？\n(此動作無法復原)')) {
+                if(confirm('【第二次確認】真的要徹底清空錯題本嗎？\n按下「確定」將會刪除所有錯題資料。')) {
+                    userData.mistakes = [];
+                    saveUserDataToCloud();
+                    renderMistakes();
+                }
+            }
+        };
+
+        window.renderFavorites = (container) => {
+            if(!container) container = el('main-content');
+            if(!userData.favorites || userData.favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-indigo-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-rose-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-rose-100 text-7xl">💔</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-indigo-950 mb-4">暫無收藏</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-indigo-800/60 mb-10">在測驗中點擊愛心圖示即可收藏題目！ 📌✨</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            // 比對全題庫以抓取完整題目內容
+            const allQList = generate100Questions();
+            const favQuestions = userData.favorites.map(favText => {
+                return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exp: '題目資料已遺失或不存在' };
+            });
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">💖</span>我的最愛 🌟</h2>
+                            <p class="text-rose-900/50 mt-3 ml-8 font-bold text-lg md:text-xl hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${favQuestions.map((qObj, i) => {
+                                if (qObj.opts.length === 0) return '';
+                                return `
+                                <div class="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-rose-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-rose-600"></div>
+                                    <div class="flex justify-between items-start mb-10">
+                                        <h3 class="font-extrabold text-indigo-950 text-2xl md:text-3xl break-words leading-loose flex items-start pr-6 flex-1">
+                                            <span class="text-rose-500 mr-4 text-3xl font-black bg-rose-50 px-3 py-1 rounded-xl">📌 Q</span>${qObj.q}
+                                        </h3>
+                                        <button onclick="toggleFavoritePage('${qObj.q}')" class="text-[2rem] md:text-4xl hover:scale-110 transition-transform shrink-0 mt-1 focus:outline-none drop-shadow-sm" title="移除最愛">
+                                            <i class="fa-solid fa-heart text-rose-500"></i>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6 text-2xl md:text-[1.65rem] w-full font-medium">
+                                        ${qObj.opts.map((opt, idx) => `
+                                            <div class="p-5 md:p-6 rounded-2xl break-words transition-all ${idx === qObj.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <span class="inline-block w-10 font-bold ${idx === qObj.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> ${opt}
+                                                ${idx === qObj.ans ? '<span class="float-right text-emerald-500 text-3xl">✅</span>' : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    <div class="mt-8 p-6 bg-rose-50/50 border border-rose-200/60 rounded-2xl relative overflow-hidden">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-rose-400"></div>
+                                        <p class="font-bold text-rose-800 text-xl md:text-2xl mb-3 flex items-center"><span class="mr-3 text-2xl">💡</span>深度解析 🧠</p>
+                                        <p class="text-xl md:text-2xl text-slate-700 leading-loose break-words whitespace-pre-wrap pl-2 font-medium">${qObj.exp}</p>
+                                    </div>
+                                </div>
+                                `;
+                            }).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.toggleFavoritePage = (qText) => {
+            if (!userData.favorites) return;
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) {
+                if(confirm('確定要從最愛中移除此題嗎？')) {
+                    userData.favorites.splice(idx, 1);
+                    saveUserDataToCloud();
+                    renderFavorites();
+                }
+            }
+        };
+
+        window.renderHistory = (container) => {
+            if(!container) container = el('main-content');
+            if((!userData.quizHistory || userData.quizHistory.length === 0) && (!userData.loginHistory || userData.loginHistory.length === 0)) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-indigo-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-slate-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-slate-200 text-7xl">📜</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-indigo-950 mb-4">暫無紀錄</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-indigo-800/60 mb-10">您還沒有完成任何測驗或留下足跡喔！</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-amber-300 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-amber-800 flex items-center"><span class="bg-amber-100 text-amber-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">📜</span>作答與登入紀錄</h2>
+                                <p class="text-amber-900/60 mt-3 ml-20 font-bold text-lg md:text-xl">追蹤您的學習軌跡，跨裝置同步更新 ☁️</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <!-- 作答紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+                                <div class="bg-amber-50 p-6 border-b border-amber-200">
+                                    <h3 class="text-3xl font-bold text-amber-900 flex items-center"><span class="mr-3 text-3xl">🎯</span>最近作答成績</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                                    ${(userData.quizHistory || []).slice().reverse().map((h, i) => `
+                                        <div class="flex justify-between items-center p-5 rounded-2xl border-2 border-slate-100 ${h.score >= 80 ? 'bg-emerald-50/50 border-emerald-100' : (h.score < 60 ? 'bg-rose-50/50 border-rose-100' : 'bg-slate-50')} transition-all hover:shadow-md">
+                                            <div>
+                                                <div class="font-bold text-slate-800 text-xl md:text-2xl">${h.date}</div>
+                                                <div class="text-lg text-slate-500 mt-2 font-medium">共 ${h.total} 題，答對 <span class="font-bold text-slate-700">${h.correct}</span> 題</div>
+                                            </div>
+                                            <div class="text-5xl font-black ${h.score >= 80 ? 'text-emerald-600' : (h.score < 60 ? 'text-rose-500' : 'text-amber-500')}">${h.score}<span class="text-2xl ml-1 font-bold">分</span></div>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">目前還沒有測驗紀錄喔</p>'}
+                                </div>
+                            </div>
+
+                            <!-- 登入紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden h-fit">
+                                <div class="bg-slate-50 p-6 border-b border-slate-200">
+                                    <h3 class="text-3xl font-bold text-slate-800 flex items-center"><span class="mr-3 text-3xl">👣</span>最近登入足跡</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-4 max-h-[40vh] overflow-y-auto">
+                                    ${(userData.loginHistory || []).slice().reverse().map((time, i) => `
+                                        <div class="flex items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors">
+                                            <span class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 mr-4 text-lg font-bold shadow-inner">${i+1}</span>
+                                            <span class="font-bold text-slate-700 text-xl">${new Date(time).toLocaleString()}</span>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">無登入紀錄</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        initApp();
+
+    </script>
+</body>
+</html>
