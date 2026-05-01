@@ -24,7 +24,8 @@
         .knowledge-table th, .knowledge-table td { border: 1px solid #fed7aa; padding: 0.75rem; }
         .knowledge-table th { background-color: #ffedd5; color: #9a3412; font-weight: bold; }
         .knowledge-table tr:nth-child(even) { background-color: #fffbeb; }
-        .tag-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: bold; font-size: 0.875rem; margin-right: 0.5rem; margin-bottom: 0.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .tag-badge { display: inline-block; padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: bold; font-size: 1.25rem; line-height: 1.75rem; margin-right: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .tag-badge { font-size: 1.5rem; line-height: 2rem; padding: 0.75rem 1.5rem; margin-right: 1rem; margin-bottom: 1rem; } }
     </style>
 </head>
 <body class="h-screen w-full flex flex-col overflow-hidden bg-amber-50">
@@ -588,41 +589,41 @@
                         <!-- 🌟 新增：作家專屬 Hashtag 記憶法 -->
                         <div class="bg-purple-50 p-6 md:p-10 rounded-3xl shadow-sm border border-purple-200 hover:shadow-md transition-shadow mt-10 animate-fade-in">
                             <h4 class="font-bold text-purple-800 text-3xl md:text-4xl mb-8 flex items-center"><span class="text-4xl mr-3">🏷️</span> 作家專屬 Hashtag (考前速記標籤)</h4>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xl md:text-2xl">
-                                <div class="bg-white p-6 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
-                                    <div class="font-black text-indigo-800 mb-3 text-2xl">👤 胡適</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 text-xl md:text-2xl">
+                                <div class="bg-white p-6 md:p-8 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
+                                    <div class="font-black text-indigo-800 mb-4 text-3xl md:text-4xl">👤 胡適</div>
                                     <div class="flex flex-wrap">
                                         <span class="tag-badge bg-rose-100 text-rose-700 border border-rose-200">#白話文運動</span>
                                         <span class="tag-badge bg-rose-100 text-rose-700 border border-rose-200">#五四文學革命</span>
                                         <span class="tag-badge bg-rose-100 text-rose-700 border border-rose-200">#開創新文學</span>
                                     </div>
                                 </div>
-                                <div class="bg-white p-6 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
-                                    <div class="font-black text-indigo-800 mb-3 text-2xl">👤 徐志摩</div>
+                                <div class="bg-white p-6 md:p-8 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
+                                    <div class="font-black text-indigo-800 mb-4 text-3xl md:text-4xl">👤 徐志摩</div>
                                     <div class="flex flex-wrap">
                                         <span class="tag-badge bg-pink-100 text-pink-700 border border-pink-200">#新月詩社</span>
                                         <span class="tag-badge bg-pink-100 text-pink-700 border border-pink-200">#浪漫派</span>
                                         <span class="tag-badge bg-pink-100 text-pink-700 border border-pink-200">#再別康橋</span>
                                     </div>
                                 </div>
-                                <div class="bg-white p-6 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
-                                    <div class="font-black text-indigo-800 mb-3 text-2xl">👤 賴和</div>
+                                <div class="bg-white p-6 md:p-8 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
+                                    <div class="font-black text-indigo-800 mb-4 text-3xl md:text-4xl">👤 賴和</div>
                                     <div class="flex flex-wrap">
                                         <span class="tag-badge bg-green-100 text-green-700 border border-green-200">#臺灣新文學之父</span>
                                         <span class="tag-badge bg-green-100 text-green-700 border border-green-200">#彰化媽祖(仁醫)</span>
                                         <span class="tag-badge bg-green-100 text-green-700 border border-green-200">#反日反迷信</span>
                                     </div>
                                 </div>
-                                <div class="bg-white p-6 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
-                                    <div class="font-black text-indigo-800 mb-3 text-2xl">👤 余光中</div>
+                                <div class="bg-white p-6 md:p-8 rounded-2xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
+                                    <div class="font-black text-indigo-800 mb-4 text-3xl md:text-4xl">👤 余光中</div>
                                     <div class="flex flex-wrap">
                                         <span class="tag-badge bg-blue-100 text-blue-700 border border-blue-200">#左手寫散文右手寫詩</span>
                                         <span class="tag-badge bg-blue-100 text-blue-700 border border-blue-200">#中國意識濃厚</span>
                                         <span class="tag-badge bg-blue-100 text-blue-700 border border-blue-200">#聽聽那冷雨</span>
                                     </div>
                                 </div>
-                                <div class="bg-white p-6 rounded-2xl border-2 border-purple-100 shadow-sm md:col-span-2 flex flex-col justify-center">
-                                    <div class="font-black text-indigo-800 mb-3 text-2xl">👤 吳晟</div>
+                                <div class="bg-white p-6 md:p-8 rounded-2xl border-2 border-purple-100 shadow-sm md:col-span-2 flex flex-col justify-center">
+                                    <div class="font-black text-indigo-800 mb-4 text-3xl md:text-4xl">👤 吳晟</div>
                                     <div class="flex flex-wrap">
                                         <span class="tag-badge bg-amber-100 text-amber-700 border border-amber-200">#臺灣鄉土詩</span>
                                         <span class="tag-badge bg-amber-100 text-amber-700 border border-amber-200">#田園作家</span>
@@ -1305,7 +1306,7 @@
                 showExplanation: false,
                 isCorrect: false
             }));
-            quizState = { active: true, questions: qList };
+            quizState = { active: true, isFinished: false, questions: qList };
             saveQuizState();
             renderQuizView(el('main-content'));
             
@@ -1322,7 +1323,7 @@
             let correct = 0; let incorrect = 0; let answered = 0;
             const total = quizState.questions.length;
             quizState.questions.forEach(q => {
-                if (q.showExplanation) {
+                if (q.showExplanation && q.selectedAns !== -1) {
                     answered++;
                     if (q.isCorrect) correct++; else incorrect++;
                 }
@@ -1336,15 +1337,39 @@
             if (elBar) elBar.style.width = progressPercent + '%';
         };
 
+        window.restartQuizWithConfirm = () => {
+            if(confirm('確定要重新開始挑戰嗎？這將會清除目前的畫面，並產生全新的測驗題目！')) {
+                startQuiz();
+            }
+        };
+
         const renderQuizWaterfall = (container) => {
             const total = quizState.questions.length;
+            const isFinished = quizState.isFinished;
+            
+            let headerHtml = isFinished 
+                ? ` <div class="glass-card flex flex-col md:flex-row justify-between items-center rounded-2xl p-5 md:p-6 shadow-lg border border-amber-300 mb-10 sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="text-5xl mr-4 drop-shadow-md">🏆</span>
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900">測驗結算完成</h2>
+                                <p class="text-indigo-700 font-bold text-lg mt-1">總分：<span class="text-3xl md:text-4xl text-rose-600 font-black">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="switchTab('mistakes')" class="text-base md:text-lg text-indigo-600 hover:text-white hover:bg-indigo-500 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border-2 border-indigo-200 hover:border-indigo-500 bg-white"><span class="mr-2">🩹</span>錯題本</button>
+                            <button onclick="restartQuizWithConfirm()" class="text-base md:text-lg text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 px-4 py-2 rounded-xl font-bold transition-colors flex items-center shadow-md hover:shadow-lg"><span class="mr-2">🔄</span>重新挑戰</button>
+                        </div>
+                    </div>`
+                : ` <div class="glass-card flex justify-between items-center rounded-2xl p-5 md:p-6 shadow-sm border border-white/60 mb-10 sticky top-0 z-50 backdrop-blur-xl">
+                        <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900 flex items-center"><span class="mr-3 text-indigo-600 bg-indigo-100 p-2 rounded-lg">📝</span>測驗進行中 ⏳</h2>
+                        <button onclick="clearQuizHistory()" class="text-base md:text-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-transparent hover:border-rose-200"><span class="mr-2">🚪</span>放棄作答</button>
+                    </div>`;
+
             let html = `
                 <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
                     <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto relative">
-                        <div class="glass-card flex justify-between items-center rounded-2xl p-5 md:p-6 shadow-sm border border-white/60 mb-10 sticky top-0 z-50 backdrop-blur-xl">
-                            <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900 flex items-center"><span class="mr-3 text-indigo-600 bg-indigo-100 p-2 rounded-lg">📝</span>測驗進行中 ⏳</h2>
-                            <button onclick="clearQuizHistory()" class="text-base md:text-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-transparent hover:border-rose-200"><span class="mr-2">🚪</span>放棄作答</button>
-                        </div>
+                        ${headerHtml}
                         <div id="questions-list" class="space-y-10 w-full">
             `;
             quizState.questions.forEach((_, qIdx) => {
@@ -1352,9 +1377,23 @@
             });
             html += `
                         </div>
+            `;
+            
+            if (!isFinished) {
+                html += `
                         <button onclick="finishQuizWaterfall()" class="w-full mt-16 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-purple-700">
                             🏁 完成測驗並結算成績 📊
                         </button>
+                `;
+            } else {
+                 html += `
+                        <button onclick="restartQuizWithConfirm()" class="w-full mt-16 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-pink-700">
+                            🔄 重新開始挑戰 🚀
+                        </button>
+                `;               
+            }
+
+            html += `
                     </div>
                 </div>
             `;
@@ -1394,17 +1433,27 @@
             let explanationHtml = '';
             if (q.showExplanation) {
                 const isCorrect = q.selectedAns === q.ans;
+                const isUnanswered = q.selectedAns === -1;
+                
+                let boxClass = isCorrect ? 'bg-emerald-50/50 border-emerald-200' : (isUnanswered ? 'bg-amber-50/50 border-amber-200' : 'bg-rose-50/50 border-rose-200');
+                let borderClass = isCorrect ? 'border-emerald-200/50' : (isUnanswered ? 'border-amber-200/50' : 'border-rose-200/50');
+                let iconBg = isCorrect ? 'bg-emerald-100 text-emerald-600' : (isUnanswered ? 'bg-amber-100 text-amber-600' : 'bg-rose-100 text-rose-600');
+                let iconEmoji = isCorrect ? '🎉' : (isUnanswered ? '⚠️' : '😲');
+                let titleColor = isCorrect ? 'text-emerald-800' : (isUnanswered ? 'text-amber-800' : 'text-rose-800');
+                let titleText = isCorrect ? '太棒了，答對了！' : (isUnanswered ? '結算時未作答' : '哎呀，答錯了！');
+                let ansColor = isCorrect ? 'text-emerald-600' : (isUnanswered ? 'text-amber-600' : 'text-rose-600');
+
                 explanationHtml = `
-                    <div class="mt-10 p-6 md:p-8 rounded-3xl border ${isCorrect ? 'bg-emerald-50/50 border-emerald-200' : 'bg-rose-50/50 border-rose-200'} animate-fade-in w-full">
-                        <div class="flex items-center mb-6 border-b ${isCorrect ? 'border-emerald-200/50' : 'border-rose-200/50'} pb-5">
-                            <div class="w-16 h-16 rounded-full ${isCorrect ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'} flex items-center justify-center mr-5 shrink-0 text-4xl">
-                                ${isCorrect ? '🎉' : '😲'}
+                    <div class="mt-10 p-6 md:p-8 rounded-3xl border ${boxClass} animate-fade-in w-full">
+                        <div class="flex items-center mb-6 border-b ${borderClass} pb-5">
+                            <div class="w-16 h-16 rounded-full ${iconBg} flex items-center justify-center mr-5 shrink-0 text-4xl">
+                                ${iconEmoji}
                             </div>
-                            <span class="font-extrabold text-3xl md:text-4xl ${isCorrect ? 'text-emerald-800' : 'text-rose-800'}">${isCorrect ? '太棒了，答對了！' : '哎呀，答錯了！'}</span>
+                            <span class="font-extrabold text-3xl md:text-4xl ${titleColor}">${titleText}</span>
                         </div>
                         <div class="w-full">
                             <p class="font-bold mb-4 text-xl md:text-2xl text-slate-700 flex items-center"><span class="mr-3">🔍</span>完整題目解析</p>
-                            <p class="mt-3 text-xl md:text-2xl break-words text-slate-700 bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm font-medium">正確答案為 <strong class="${isCorrect ? 'text-emerald-600' : 'text-rose-600'} text-2xl md:text-3xl ml-2">(${String.fromCharCode(65+q.ans)}) ${q.opts[q.ans]}</strong></p>
+                            <p class="mt-3 text-xl md:text-2xl break-words text-slate-700 bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm font-medium">正確答案為 <strong class="${ansColor} text-2xl md:text-3xl ml-2">(${String.fromCharCode(65+q.ans)}) ${q.opts[q.ans]}</strong></p>
                             <div class="mt-6 p-6 md:p-8 bg-indigo-50/50 border border-indigo-200/60 rounded-2xl text-indigo-950 w-full relative overflow-hidden">
                                 <div class="absolute left-0 top-0 bottom-0 w-2 bg-indigo-400"></div>
                                 <p class="font-bold text-xl md:text-2xl mb-3 flex items-center"><span class="mr-3 text-2xl">💡</span>深度解析</p>
@@ -1420,19 +1469,33 @@
                 ? '<i class="fa-solid fa-heart text-rose-500"></i>' 
                 : '<i class="fa-regular fa-heart text-rose-500"></i>';
 
+            let statusTag = '';
+            let bgGradient = '';
+            if (q.showExplanation) {
+                if (q.selectedAns === q.ans) {
+                    statusTag = '<span class="text-emerald-600 font-bold text-xl md:text-2xl flex items-center bg-emerald-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">✅</span>答對</span>';
+                    bgGradient = 'bg-gradient-to-r from-emerald-50 to-white';
+                } else if (q.selectedAns === -1) {
+                    statusTag = '<span class="text-amber-600 font-bold text-xl md:text-2xl flex items-center bg-amber-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">⚠️</span>未作答</span>';
+                    bgGradient = 'bg-gradient-to-r from-amber-50 to-white';
+                } else {
+                    statusTag = '<span class="text-rose-600 font-bold text-xl md:text-2xl flex items-center bg-rose-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯</span>';
+                    bgGradient = 'bg-gradient-to-r from-rose-50 to-white';
+                }
+            } else {
+                statusTag = '<span class="text-indigo-400 font-bold text-lg md:text-xl flex items-center bg-indigo-100/50 px-4 py-1.5 rounded-full border border-indigo-200"><span class="mr-2">✍️</span>作答區</span>';
+                bgGradient = 'bg-indigo-50/30';
+            }
+
             return `
-                <div class="px-6 md:px-10 py-5 border-b border-indigo-100 flex justify-between items-center transition-colors ${q.showExplanation ? (q.selectedAns === q.ans ? 'bg-gradient-to-r from-emerald-50 to-white' : 'bg-gradient-to-r from-rose-50 to-white') : 'bg-indigo-50/30'}">
+                <div class="px-6 md:px-10 py-5 border-b border-indigo-100 flex justify-between items-center transition-colors ${bgGradient}">
                     <div class="flex items-center">
                         <span class="font-extrabold text-indigo-500 text-xl md:text-2xl bg-white px-4 py-1.5 rounded-xl border border-indigo-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
                         <button onclick="toggleQuizFavorite(${qIdx})" class="ml-5 text-[1.75rem] md:text-4xl hover:scale-110 transition-transform focus:outline-none drop-shadow-sm" title="加入/取消最愛">
                             ${favIconHtml}
                         </button>
                     </div>
-                    ${q.showExplanation 
-                        ? (q.selectedAns === q.ans 
-                            ? '<span class="text-emerald-600 font-bold text-xl md:text-2xl flex items-center bg-emerald-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">✅</span>答對</span>' 
-                            : '<span class="text-rose-600 font-bold text-xl md:text-2xl flex items-center bg-rose-100 px-4 py-1.5 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯</span>') 
-                        : '<span class="text-indigo-400 font-bold text-lg md:text-xl flex items-center bg-indigo-100/50 px-4 py-1.5 rounded-full border border-indigo-200"><span class="mr-2">✍️</span>作答區</span>'}
+                    ${statusTag}
                 </div>
                 <div class="p-6 md:p-10 w-full overflow-hidden">
                     <h3 class="text-3xl md:text-4xl font-extrabold text-slate-800 mb-10 leading-loose break-words">${q.q}</h3>
@@ -1499,23 +1562,36 @@
             let correctCount = 0;
             let answeredCount = 0;
             quizState.questions.forEach(q => {
-                if (q.showExplanation) {
+                if (q.showExplanation && q.selectedAns !== -1) {
                     answeredCount++;
                     if (q.isCorrect) correctCount++;
                 }
             });
 
             if (answeredCount < quizState.questions.length) {
-                if(!confirm(`您還有 ${quizState.questions.length - answeredCount} 題尚未作答，確定要直接交卷結算嗎？`)) {
+                if(!confirm(`您還有 ${quizState.questions.length - answeredCount} 題尚未作答，確定要直接交卷結算嗎？未作答的題目將以錯誤計算。`)) {
                     return;
                 }
             }
 
-            quizState.active = false;
-            saveQuizState();
+            // 標記未作答的題目
+            quizState.questions.forEach(q => {
+                if (!q.showExplanation) {
+                    q.showExplanation = true;
+                    q.isCorrect = false;
+                    q.selectedAns = -1; // -1 代表未作答
+                }
+            });
+
+            quizState.isFinished = true;
+            quizState.correctCount = correctCount;
+            quizState.answeredCount = answeredCount;
             
             const total = quizState.questions.length;
             const scorePercent = Math.round((correctCount / total) * 100);
+            quizState.scorePercent = scorePercent;
+            
+            saveQuizState();
             
             if (!userData.quizHistory) userData.quizHistory = [];
             userData.quizHistory.push({
@@ -1527,44 +1603,18 @@
             if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
             saveUserDataToCloud();
 
-            const navStats = el('nav-quiz-stats');
-            if (navStats) {
-                navStats.classList.add('hidden');
-                navStats.classList.remove('flex');
-            }
-
-            const container = el('main-content');
-            container.innerHTML = `
-                <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto pb-24 relative z-10">
-                    <div class="glass-card p-10 md:p-16 rounded-3xl shadow-2xl text-center max-w-4xl w-full border border-white/60 relative overflow-hidden">
-                        <div class="absolute -top-20 -left-20 w-64 h-64 bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70 -z-10"></div>
-                        
-                        <div class="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-indigo-300 to-purple-500 rounded-full mx-auto mb-8 flex items-center justify-center shadow-2xl border-4 border-white text-7xl md:text-8xl">
-                            🏆
-                        </div>
-                        
-                        <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 text-indigo-950">🎉 測驗完成！ 🎊</h2>
-                        <div class="my-10 relative inline-block">
-                            <span class="text-8xl md:text-9xl lg:text-[12rem] font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600 drop-shadow-md leading-none">${scorePercent}</span>
-                            <span class="text-3xl md:text-4xl text-indigo-600 font-bold absolute bottom-4 -right-12">分</span>
-                        </div>
-                        <div class="bg-indigo-50/80 rounded-3xl p-8 mb-10 border border-indigo-100 shadow-inner inline-block">
-                            <p class="text-indigo-900 text-2xl md:text-3xl font-medium">答對 🎯 <span class="text-rose-600 font-black text-3xl md:text-4xl mx-2">${correctCount}</span> 題 / 共作答 📝 ${answeredCount} 題</p>
-                            <p class="text-lg md:text-xl mt-3 text-indigo-700/60 font-bold tracking-widest">(總題數 ${total} 題)</p>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-6 w-full max-w-2xl mx-auto">
-                            <button onclick="switchTab('mistakes')" class="flex-1 bg-white border-4 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-700 font-extrabold py-5 px-6 text-2xl rounded-2xl shadow-sm hover:shadow-md transition-all">
-                                🩹 查看錯題
-                            </button>
-                            <button onclick="startQuiz()" class="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-extrabold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 border-b-4 border-purple-800">
-                                🔄 重新挑戰
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            // 重新渲染瀑布流 (呈現結算結果版頭)
+            renderQuizView(el('main-content'));
             
             confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 }, zIndex: 10000, colors: ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#3b82f6'] });
+            
+            // 自動捲動到最上方觀看成績
+            setTimeout(() => {
+                const scrollContainer = document.getElementById('quiz-scroll-container');
+                if (scrollContainer) {
+                    scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }, 100);
         };
 
         window.clearQuizHistory = () => {
@@ -1650,6 +1700,7 @@
                 return;
             }
 
+            // 比對全題庫以抓取完整題目內容
             const allQList = generate100Questions();
             const favQuestions = userData.favorites.map(favText => {
                 return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exp: '題目資料已遺失或不存在' };
