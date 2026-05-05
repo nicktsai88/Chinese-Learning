@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>善用修辭一 part1 - 互動學習系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: #fffbeb; color: #431407; font-size: 1.125rem; line-height: 1.8; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-loading { background-color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; box-shadow: 0 0 8px #fbbf24; }
+        .status-success { background-color: #34d399; box-shadow: 0 0 8px #34d399; }
+        .status-error { background-color: #f87171; box-shadow: 0 0 8px #f87171; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-nav { background: rgba(194, 65, 12, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .knowledge-table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; font-size: 1rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .knowledge-table th, .knowledge-table td { border: 1px solid #fed7aa; padding: 0.75rem; }
+        .knowledge-table th { background-color: #ffedd5; color: #9a3412; font-weight: bold; text-align: center; }
+        .knowledge-table tr:nth-child(even) { background-color: #fffbeb; }
+        .knowledge-table tr:hover { background-color: #ffedd5; transition: background-color 0.2s; }
+        .tag-badge { display: inline-block; padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: bold; font-size: 1.25rem; line-height: 1.75rem; margin-right: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .tag-badge { font-size: 1.5rem; line-height: 2rem; padding: 0.75rem 1.5rem; margin-right: 1rem; margin-bottom: 1rem; } }
+        .text-highlight { position: relative; display: inline-block; z-index: 1; }
+        .text-highlight::after { content: ''; position: absolute; left: 0; bottom: 0.2em; width: 100%; height: 0.4em; background-color: rgba(251, 191, 36, 0.5); z-index: -1; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden bg-amber-50">
+
+    <div id="app" class="w-full h-full flex flex-col overflow-hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        //  Firebase Configuration & Constants
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const ORIGINAL_PREFIX = 'Chinese-Learning-36-1'; 
+        const COLLECTION_NAME = 'Chinese-Learning-36-1'; 
+        const DOC_GLOBAL = 'Global_Users';      
+        
+        let app, auth, db;
+        let isFirebaseInitialized = false;
+        let currentUser = null;
+        let username = '';
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+        let connectionStatus = 'loading';
+        let recentUsers = [];
+        let unsubscribeUser = null;
+        let unsubscribeGlobal = null;
+        
+        // ==========================================
+        //  Audio System
+        // ==========================================
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        const playTone = (freq, type, duration) => {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        };
+        const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
+        const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
+
+        // ==========================================
+        //  Firebase Initialization
+        // ==========================================
+        try {
+            const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+            if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
+                app = initializeApp(actualConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isFirebaseInitialized = true;
+                connectionStatus = 'success';
+            } else { connectionStatus = 'error'; }
+        } catch (error) { connectionStatus = 'error'; }
+
+        const initAuth = async () => {
+            if (!isFirebaseInitialized) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) { connectionStatus = 'error'; }
+        };
+
+        // ==========================================
+        //  Course Content (Learn Data)
+        // ==========================================
+        const learnData = [
+            {
+                id: 'sec1', title: '一、譬喻 💎', theme: 'orange',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-10 rounded-3xl border-l-8 border-orange-500 shadow-lg">
+                        <div class="text-center font-black text-4xl md:text-5xl text-orange-950 mb-8 border-b-2 border-orange-200 pb-4 flex justify-center items-center gap-4">
+                            <span class="text-5xl">🐱</span> 善用修辭一：讓語意表達更生動 <span class="text-5xl">✨</span>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-8">
+                            <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-4 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">一</span> 譬喻的定義與四種變化 🔍</h3>
+                            <p class="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium mb-6">
+                                <strong class="text-rose-600">定義：</strong>運用相類似的事物，來打比方說明所要表達的主題，就叫做「譬喻」。<br>
+                                由於<strong class="text-blue-600">喻體</strong>、<strong class="text-green-600">喻詞</strong>、<strong class="text-purple-600">喻依</strong>的不同變化，可將譬喻分為四種：
+                            </p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-orange-50 p-5 rounded-xl border border-orange-200 shadow-sm relative">
+                                    <span class="absolute top-2 right-3 text-3xl">🔆</span>
+                                    <h4 class="font-black text-2xl text-orange-900 mb-2">1. 明喻</h4>
+                                    <div class="flex items-center gap-2 text-xl font-bold bg-white p-2 rounded-lg border border-orange-100 justify-center">
+                                        <span class="text-blue-600">喻體</span> + <span class="text-green-600">喻詞</span> + <span class="text-purple-600">喻依</span>
+                                    </div>
+                                    <p class="text-center mt-2 text-lg text-slate-600">喬丹 <strong class="text-green-600">像</strong> 空中飛人</p>
+                                </div>
+                                <div class="bg-indigo-50 p-5 rounded-xl border border-indigo-200 shadow-sm relative">
+                                    <span class="absolute top-2 right-3 text-3xl">🌫️</span>
+                                    <h4 class="font-black text-2xl text-indigo-900 mb-2">2. 隱喻</h4>
+                                    <div class="flex items-center gap-2 text-xl font-bold bg-white p-2 rounded-lg border border-indigo-100 justify-center">
+                                        <span class="text-blue-600">喻體</span> + <span class="text-green-600">喻詞(是/為)</span> + <span class="text-purple-600">喻依</span>
+                                    </div>
+                                    <p class="text-center mt-2 text-lg text-slate-600">喬丹 <strong class="text-green-600">是</strong> 空中飛人</p>
+                                </div>
+                                <div class="bg-teal-50 p-5 rounded-xl border border-teal-200 shadow-sm relative">
+                                    <span class="absolute top-2 right-3 text-3xl">✂️</span>
+                                    <h4 class="font-black text-2xl text-teal-900 mb-2">3. 略喻</h4>
+                                    <div class="flex items-center gap-2 text-xl font-bold bg-white p-2 rounded-lg border border-teal-100 justify-center">
+                                        <span class="text-blue-600">喻體</span> + <span class="text-slate-400 line-through">喻詞(X)</span> + <span class="text-purple-600">喻依</span>
+                                    </div>
+                                    <p class="text-center mt-2 text-lg text-slate-600">喬丹，空中飛人</p>
+                                </div>
+                                <div class="bg-rose-50 p-5 rounded-xl border border-rose-200 shadow-sm relative">
+                                    <span class="absolute top-2 right-3 text-3xl">🎭</span>
+                                    <h4 class="font-black text-2xl text-rose-900 mb-2">4. 借喻</h4>
+                                    <div class="flex items-center gap-2 text-xl font-bold bg-white p-2 rounded-lg border border-rose-100 justify-center">
+                                        <span class="text-slate-400 line-through">喻體(X)</span> + <span class="text-slate-400 line-through">喻詞(X)</span> + <span class="text-purple-600">喻依</span>
+                                    </div>
+                                    <p class="text-center mt-2 text-lg text-slate-600">空中飛人，世界第一</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-100 p-6 rounded-2xl shadow-sm border border-amber-300 mb-8">
+                            <h3 class="font-black text-3xl text-amber-900 mb-4 flex items-center"><span class="text-4xl mr-2">🗝️</span> 重點開通碼：諺語中的譬喻</h3>
+                            <p class="text-xl text-amber-800 font-medium mb-4">在中文諺語中，保留了許多略喻、借喻的用法喔！</p>
+                            
+                            <div class="bg-white p-5 rounded-xl mb-4 border border-amber-200">
+                                <h4 class="font-bold text-2xl text-amber-700 border-b-2 border-amber-100 pb-2 mb-3">1. 略喻諺語 (省略喻詞) ✂️</h4>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-y-2 gap-x-6 text-lg text-slate-700">
+                                    <p>(1) 女人心，海底針。</p>
+                                    <p>(2) 人怕出名，豬怕肥。</p>
+                                    <p>(3) 人心不足，蛇吞象。</p>
+                                    <p>(4) 人要衣裝，佛要金裝。</p>
+                                    <p>(5) 人死留名，豹死留皮。</p>
+                                    <p>(6) 做人要磨，做牛要拖。</p>
+                                    <p>(7) 人善被人欺，馬善被人騎。</p>
+                                    <p>(8) 人無千日好，花無百日紅。</p>
+                                    <p>(9) 路遙知馬力，日久見人心。<strong class="text-rose-500">(喻體在後)</strong></p>
+                                    <p>(10) 惜花連盆，惜子連孫。<strong class="text-rose-500">(喻體在後)</strong></p>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-5 rounded-xl border border-amber-200">
+                                <h4 class="font-bold text-2xl text-amber-700 border-b-2 border-amber-100 pb-2 mb-3">2. 借喻諺語 (直接用喻依取代) 🎭</h4>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-y-2 gap-x-6 text-lg text-slate-700">
+                                    <p>(1) 好酒沉甕底。</p>
+                                    <p>(2) 羊毛出在羊身上。</p>
+                                    <p>(3) 一山不能藏二虎。</p>
+                                    <p>(4) 不看僧面看佛面。</p>
+                                    <p>(5) 一個巴掌拍不響。</p>
+                                    <p>(6) 一朵鮮花插在牛糞上。</p>
+                                    <p>(7) 一朝被蛇咬，十年怕草繩。</p>
+                                    <p>(8) 一顆老鼠屎，攪壞一鍋粥。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-pink-50 p-6 rounded-2xl shadow-sm border border-pink-200 relative">
+                            <div class="absolute -top-6 -left-4 text-7xl transform -rotate-12">🐱</div>
+                            <h3 class="font-black text-3xl text-pink-900 mb-6 flex items-center pl-16"><span class="bg-pink-200 px-3 py-1 rounded-full text-rose-600 mr-3 text-xl shadow-sm">迷思澄清 1</span> 假喻 vs. 明喻 🕵️‍♀️</h3>
+                            
+                            <div class="bg-white rounded-xl border border-pink-100 overflow-hidden shadow-sm">
+                                <table class="w-full text-left text-lg">
+                                    <thead>
+                                        <tr class="bg-pink-100 text-pink-900">
+                                            <th class="p-4 border-b border-pink-200 w-1/4 text-center font-black">判別</th>
+                                            <th class="p-4 border-b border-pink-200 font-bold">「假喻」往往沒有「喻依」。</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="border-b border-slate-100">
+                                            <td class="p-4 bg-slate-50 font-bold text-center text-slate-700">假喻<br><span class="text-sm font-normal text-slate-500">(僅是猜測/狀態)</span></td>
+                                            <td class="p-4 text-slate-700">
+                                                <p class="mb-2">天空陰沉沉的，<strong class="text-rose-500">好像</strong>要崩塌下來了。</p>
+                                                <p>他痴痴地望著天際的流雲，<strong class="text-rose-500">好像</strong>很悲傷的樣子。</p>
+                                                <div class="mt-3 p-3 bg-rose-50 rounded-lg text-rose-800 text-base font-medium">
+                                                    👉 這只是描寫悲傷的狀態/猜測情況，<strong class="text-rose-600 underline">沒有譬喻的對象(喻依)</strong>，只是假喻。雖然句中有喻詞「好像」，但不算譬喻！
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-4 bg-indigo-50 font-bold text-center text-indigo-700">明喻<br><span class="text-sm font-normal text-indigo-500">(有明確喻依)</span></td>
+                                            <td class="p-4 text-slate-700">
+                                                <p class="mb-2">天空陰沉沉的，<strong class="text-indigo-600">好像</strong>巨大的山岩要崩塌<strong class="text-indigo-600">似的</strong>。</p>
+                                                <p>他痴痴地望著天空，一幕幕往事<strong class="text-indigo-600">就像</strong>流雲<strong class="text-indigo-600">一般</strong>，掠過他的眼睛，只留下一絲一絲的傷痛。</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec2', title: '二、誇飾與轉化 🚀', theme: 'teal',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-teal-50 to-emerald-50 p-6 md:p-10 rounded-3xl border-l-8 border-teal-500 shadow-lg">
+                        
+                        <!-- 誇飾 -->
+                        <div class="mb-12">
+                            <h3 class="font-bold text-3xl md:text-4xl text-teal-800 mb-4 flex items-center"><span class="bg-teal-200 p-2 rounded-lg mr-3 shadow-sm">二</span> 誇飾 🚀</h3>
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-teal-100 mb-6">
+                                <p class="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium">
+                                    <strong class="text-teal-700">定義：</strong>語文中使用超過客觀事實的詞語來誇張鋪飾，以加深讀者印象的修辭法，稱為「誇飾」。
+                                </p>
+                            </div>
+                            
+                            <div class="bg-teal-100/50 p-6 rounded-2xl border border-teal-200">
+                                <h4 class="font-black text-2xl text-teal-900 mb-4 border-b-2 border-teal-200 pb-2">📖 經典舉例</h4>
+                                <ul class="space-y-4 text-lg md:text-xl text-slate-700 font-serif leading-loose">
+                                    <li class="bg-white p-3 rounded-lg shadow-sm">1. <span class="text-highlight">千山</span>鳥飛<span class="text-highlight">絕</span>，<span class="text-highlight">萬徑</span>人蹤<span class="text-highlight">滅</span>。（柳宗元〈江雪〉）</li>
+                                    <li class="bg-white p-3 rounded-lg shadow-sm">2. 朝辭白帝彩雲間，<span class="text-highlight">千里</span>江陵<span class="text-highlight">一日還</span>。（李白〈早發白帝城〉）</li>
+                                    <li class="bg-white p-3 rounded-lg shadow-sm">3. 君不見高堂明鏡悲白髮，<span class="text-highlight">朝如青絲暮成雪</span>。（李白〈將進酒〉）</li>
+                                    <li class="bg-white p-3 rounded-lg shadow-sm">4. <span class="text-highlight">夏蚊成雷</span>，私擬作群鶴舞空。（沈復〈兒時記趣〉）</li>
+                                    <li class="bg-white p-3 rounded-lg shadow-sm">5. 與生俱來人中首，唯吾與天<span class="text-highlight">同齊壽</span>。<span class="text-highlight">雙腳踢翻塵世浪，一肩擔盡古今愁</span>。（霹靂布袋戲非凡公子出場詩）</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 轉化 -->
+                        <div>
+                            <h3 class="font-bold text-3xl md:text-4xl text-emerald-800 mb-4 flex items-center"><span class="bg-emerald-200 p-2 rounded-lg mr-3 shadow-sm">三</span> 轉化 🦋</h3>
+                            
+                            <div class="flex justify-center gap-4 mb-8 flex-wrap">
+                                <div class="bg-white px-6 py-3 rounded-full border-2 border-rose-300 text-rose-700 font-bold text-xl shadow-sm flex flex-col items-center">
+                                    <span class="text-sm text-slate-500 mb-1">把物當人</span>
+                                    <span>人性化 (擬人) 🏃</span>
+                                </div>
+                                <div class="bg-white px-6 py-3 rounded-full border-2 border-blue-300 text-blue-700 font-bold text-xl shadow-sm flex flex-col items-center">
+                                    <span class="text-sm text-slate-500 mb-1">把人當物</span>
+                                    <span>物性化 (擬物) 🪨</span>
+                                </div>
+                                <div class="bg-white px-6 py-3 rounded-full border-2 border-purple-300 text-purple-700 font-bold text-xl shadow-sm flex flex-col items-center">
+                                    <span class="text-sm text-slate-500 mb-1">化抽象為具體</span>
+                                    <span>形象化 (擬虛為實) 🪄</span>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-emerald-200 mb-8 bg-white">
+                                <table class="knowledge-table w-full text-lg m-0 border-none">
+                                    <thead class="bg-emerald-100 text-emerald-900">
+                                        <tr>
+                                            <th class="p-3 w-24">類別</th>
+                                            <th class="p-3 w-5/12">舉例</th>
+                                            <th class="p-3">說明</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-emerald-100 text-slate-700 font-medium">
+                                        <!-- 人性化 -->
+                                        <tr>
+                                            <td class="p-4 font-black text-center text-rose-700 bg-rose-50 align-middle">人性化</td>
+                                            <td class="p-4 leading-relaxed">
+                                                1. 只有綠色的小河還<span class="text-rose-600 font-bold">醒著</span>。<br>
+                                                2. 夢想讓世界<span class="text-rose-600 font-bold">舞蹈</span>起來。<br>
+                                                3. <span class="text-rose-600 font-bold">嫵媚</span>的康河也望不見蹤跡。
+                                            </td>
+                                            <td class="p-4 text-base leading-relaxed">
+                                                1. 將人類清醒的狀態，強加在小河上。<br>
+                                                2. 將人類律動的特質，強加在世界之上。<br>
+                                                3. 將女子嬌美可愛的姿態，強加在康河之上。
+                                            </td>
+                                        </tr>
+                                        <!-- 物性化 -->
+                                        <tr>
+                                            <td class="p-4 font-black text-center text-blue-700 bg-blue-50 align-middle">物性化</td>
+                                            <td class="p-4 leading-relaxed">
+                                                1. 在圖書館裡，請把你的喉嚨<span class="text-blue-600 font-bold">關上</span>。<br>
+                                                2. 自從被週刊爆出醜聞後，他就從人間<span class="text-blue-600 font-bold">蒸發</span>了。<br>
+                                                3. 她總是<span class="text-blue-600 font-bold">燃燒</span>自己，<span class="text-blue-600 font-bold">照亮</span>別人。
+                                            </td>
+                                            <td class="p-4 text-base leading-relaxed">
+                                                1. 將物體關閉的狀態，強加在人的身上。<br>
+                                                2. 將水蒸發的特質，強加在人的身上。<br>
+                                                3. 將蠟燭燃燒及照明的特質，強加在人的身上。
+                                            </td>
+                                        </tr>
+                                        <!-- 形象化 -->
+                                        <tr>
+                                            <td class="p-4 font-black text-center text-purple-700 bg-purple-50 align-middle">形象化</td>
+                                            <td class="p-4 leading-relaxed">
+                                                1. 好銳利的喜悅<span class="text-purple-600 font-bold">刺</span>上我的心頭。<br>
+                                                2. 我沒有誇父的荒誕，但晚景的溫存卻被我這樣<span class="text-purple-600 font-bold">偷嘗</span>了不少。<br>
+                                                3. 我的日子<span class="text-purple-600 font-bold">滴</span>在時間的<span class="text-purple-600 font-bold">流</span>裡，沒有聲音，也沒有影子。
+                                            </td>
+                                            <td class="p-4 text-base leading-relaxed">
+                                                1. 「刺」將抽象的「喜悅」由虛擬實，是形象化。<br>
+                                                2. 「溫存」(溫柔)屬於人的特質，是人性化；「偷嘗」將「晚景的溫存」由虛擬實，是形象化。<br>
+                                                3. 將抽象的「日子(消逝)」具體化為可見的「滴」；將抽象的「時間」具體化為可見的「水流」。
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="bg-indigo-50 p-6 rounded-2xl shadow-sm border border-indigo-200 relative">
+                                <div class="absolute -top-6 -left-4 text-7xl transform rotate-12">🐱</div>
+                                <h3 class="font-black text-3xl text-indigo-900 mb-6 flex items-center pl-16"><span class="bg-indigo-200 px-3 py-1 rounded-full text-indigo-700 mr-3 text-xl shadow-sm">迷思澄清 4</span> 轉化 VS. 譬喻 🕵️‍♂️</h3>
+                                
+                                <div class="bg-white rounded-xl border border-indigo-100 overflow-hidden shadow-sm">
+                                    <table class="w-full text-left text-lg">
+                                        <thead>
+                                            <tr class="bg-indigo-100 text-indigo-900 text-center">
+                                                <th class="p-3 border-b border-indigo-200 w-1/2">判別</th>
+                                                <th class="p-3 border-b border-indigo-200 w-1/2">舉例</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="border-b border-slate-100">
+                                                <td class="p-4 text-slate-700 font-medium">1. 譬喻是就兩件不同事物的「<strong class="text-indigo-600">相似點</strong>」著筆。</td>
+                                                <td class="p-4 text-slate-700 bg-slate-50">譬喻：愛情就<strong class="text-rose-500">像</strong>鳥兒飛走了。</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="p-4 text-slate-700 font-medium">2. 轉化是就兩件不同事物的「<strong class="text-emerald-600">可變處</strong>」著筆。</td>
+                                                <td class="p-4 text-slate-700 bg-slate-50">轉化：愛情<strong class="text-emerald-600">飛</strong>走了。 / 愛情的鳥兒<strong class="text-emerald-600">飛</strong>走了。</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec3', title: '三、借代語一覽表 🪪', theme: 'purple',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-purple-50 to-fuchsia-50 p-6 md:p-10 rounded-3xl border-l-8 border-purple-500 shadow-lg">
+                        <div class="mb-8">
+                            <h3 class="font-bold text-3xl md:text-4xl text-purple-800 mb-4 flex items-center"><span class="bg-purple-200 p-2 rounded-lg mr-3 shadow-sm">四</span> 借代 🪪</h3>
+                            <div class="bg-white p-5 rounded-xl shadow-sm border border-purple-100">
+                                <p class="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium">
+                                    <strong class="text-purple-700">定義：</strong>「借代」是指放棄通常使用的本名或語句，而另找其他名稱或語句來代替。
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="bg-rose-50 p-6 rounded-2xl shadow-sm border border-rose-200 mb-8 relative">
+                            <div class="absolute -top-6 -left-4 text-7xl transform -rotate-6">🐱</div>
+                            <h3 class="font-black text-3xl text-rose-900 mb-4 flex items-center pl-16"><span class="bg-rose-200 px-3 py-1 rounded-full text-rose-700 mr-3 text-xl shadow-sm">迷思澄清 3</span> 借喻 VS. 借代 🕵️‍♂️</h3>
+                            <div class="bg-white rounded-xl border border-rose-100 p-5 shadow-sm text-lg text-slate-700 space-y-4">
+                                <p><strong class="text-rose-700">判別：</strong>(1) 借喻因為省略喻體、喻詞，很容易和「借代」相混淆。<br>(2) 判別借喻與借代的原則：<strong class="bg-yellow-200 px-1 rounded text-slate-900">凡借喻都可還原為明喻，而借代不行。</strong></p>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                    <div class="bg-amber-50 p-4 rounded-lg border border-amber-200">
+                                        <h4 class="font-bold text-xl text-amber-900 mb-2 border-b border-amber-200 pb-1 text-center">借喻 🎭</h4>
+                                        <p>撒了滿天的「<strong class="text-rose-600">珍珠</strong>」和一枚又大又亮的「<strong class="text-blue-600">銀幣</strong>」</p>
+                                        <p class="mt-2 text-base text-slate-600">➡️ 句中的「珍珠」可還原為「星星<strong class="text-amber-600">像</strong>珍珠」；「銀幣」可還原為「月亮<strong class="text-amber-600">像</strong>銀幣」。</p>
+                                    </div>
+                                    <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                        <h4 class="font-bold text-xl text-purple-900 mb-2 border-b border-purple-200 pb-1 text-center">借代 🪪</h4>
+                                        <p>無「<strong class="text-purple-600">絲竹</strong>」之亂耳。</p>
+                                        <p class="mt-2 text-base text-slate-600">➡️ 「絲竹」借代音樂。無法寫成：「無如絲竹之音樂亂耳」。(因「絲竹」是弦樂和管樂的總稱，它直接代替音樂，非譬喻。)</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4 class="font-black text-2xl text-purple-900 mb-4 border-b-2 border-purple-200 pb-2">📚 常用借代語一覽表 (會考必考 40 招)</h4>
+                        
+                        <!-- 借代大表 (1-20) -->
+                        <div class="overflow-x-auto rounded-xl shadow-sm border border-purple-200 mb-6 bg-white">
+                            <table class="knowledge-table w-full text-base lg:text-lg m-0 border-none">
+                                <thead class="bg-purple-100 text-purple-900">
+                                    <tr>
+                                        <th class="p-3 w-16 text-center">編號</th>
+                                        <th class="p-3 w-24">詞語</th>
+                                        <th class="p-3 w-28 text-rose-700">借代意思</th>
+                                        <th class="p-3">解說</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-purple-50 text-slate-700 font-medium">
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">1</td><td class="font-bold text-center">絲竹</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">音樂</td><td>絲，弦樂器；竹，管樂器。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">2</td><td class="font-bold text-center">九州</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">中國</td><td>中國古分九州。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">3</td><td class="font-bold text-center">丹青</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">史籍</td><td>丹，丹冊，記載功勳；青，青史，記載史事。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">4</td><td class="font-bold text-center">汗青</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">史冊</td><td>寫書前，先將竹板烤乾，水分滲出如汗，故名。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">5</td><td class="font-bold text-center">殺青</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">作品完成</td><td>古時在竹簡上書寫文字的製作程序：先用火烤青竹使它出水如汗，再刮去青皮，以方便書寫，可防蟲。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">6</td><td class="font-bold text-center">黃花</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">菊花</td><td>菊花色黃，又稱「黃花」。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">7</td><td class="font-bold text-center">朱門</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">豪貴人家</td><td>豪貴人家門上多漆朱紅色。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">8</td><td class="font-bold text-center">王謝</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">豪門望族</td><td>原指晉代宰相王導和謝安。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">9</td><td class="font-bold text-center">廟堂</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">朝廷</td><td>原指宗廟，常用來借代朝廷。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">10</td><td class="font-bold text-center">形骸</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">身體</td><td>形體、骨骼，借指身體。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">11</td><td class="font-bold text-center">東風</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">春風</td><td>春配東，夏配南，秋配西，冬配北。等同楊柳風。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">12</td><td class="font-bold text-center">南風</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">夏風</td><td>等同薰風。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">13</td><td class="font-bold text-center">西風</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">秋風</td><td>等同金風。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">14</td><td class="font-bold text-center">北風</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">冬風</td><td>等同朔風。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">15</td><td class="font-bold text-center leading-tight">楊柳風</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">春風</td><td>春天楊柳丰姿最美，故稱楊柳風為春風。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">16</td><td class="font-bold text-center leading-tight">杏花雨</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">春雨</td><td>杏花於二月盛開，故稱杏花雨為春雨。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">17</td><td class="font-bold text-center">紅顏</td><td class="text-rose-600 font-bold text-center bg-rose-50/50 leading-tight">少年<br>美女</td><td>借紅潤的容顏來代替青春或美女。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">18</td><td class="font-bold text-center">嬋娟</td><td class="text-rose-600 font-bold text-center bg-rose-50/50 leading-tight">月亮<br><span class="text-sm font-normal">(亦指美女)</span></td><td>出自蘇東坡詞：「但願人長久，千里共嬋娟。」</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">19</td><td class="font-bold text-center">韋編</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">書籍</td><td>古代削竹為簡，用牛皮(韋)編纂成冊。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">20</td><td class="font-bold text-center">臨池</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">寫書法</td><td>相傳東漢張芝學書勤苦，常臨池學書，池水變黑。</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 借代大表 (21-40) -->
+                        <div class="overflow-x-auto rounded-xl shadow-sm border border-purple-200 bg-white">
+                            <table class="knowledge-table w-full text-base lg:text-lg m-0 border-none">
+                                <thead class="bg-purple-100 text-purple-900">
+                                    <tr>
+                                        <th class="p-3 w-16 text-center">編號</th>
+                                        <th class="p-3 w-24">詞語</th>
+                                        <th class="p-3 w-28 text-rose-700">借代意思</th>
+                                        <th class="p-3">解說</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-purple-50 text-slate-700 font-medium">
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">21</td><td class="font-bold text-center">東市</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">刑場</td><td>古代處決犯人必於市，以其在長安東方，故稱東市。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">22</td><td class="font-bold text-center">東宮</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">太子</td><td>東宮為太子所居住的地方。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">23</td><td class="font-bold text-center">西席</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">教師</td><td>古人尊師，坐席以西為尊。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">24</td><td class="font-bold text-center">祝融</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">火災</td><td>火神之名。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">25</td><td class="font-bold text-center">回祿</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">火災</td><td>火神之名。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">26</td><td class="font-bold text-center">巾幗</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">女子</td><td>古代婦女用以覆髮的頭巾。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">27</td><td class="font-bold text-center">方寸</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">內心</td><td>原指長寬各一寸的面積。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">28</td><td class="font-bold text-center">布衣</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">平民</td><td>布製的衣服。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">29</td><td class="font-bold text-center">社稷</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">國家</td><td>本指土神和穀神。因社稷為帝王所祭拜，後泛指稱國家。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">30</td><td class="font-bold text-center">烽火</td><td class="text-rose-600 font-bold text-center bg-rose-50/50 leading-tight">戰火<br>兵亂</td><td>在高臺上燒柴報警。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">31</td><td class="font-bold text-center">干戈</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">戰爭</td><td>干，盾牌。戈，兵器，作為武器的通稱。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">32</td><td class="font-bold text-center">杜康</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">酒</td><td>杜康為周人，善於造酒。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">33</td><td class="font-bold text-center leading-tight">杯中物</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">酒</td><td>以「杯中」的「物」作為稱代。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">34</td><td class="font-bold text-center">羽觴</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">酒杯</td><td>古時爵形的器皿，有頭尾、羽翼。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">35</td><td class="font-bold text-center">陛下</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">皇帝</td><td>「陛」原指古代宮殿中的最高階，為天子聽政所在的地方。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">36</td><td class="font-bold text-center">折柳</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">送別</td><td>長安東有灞橋，橋邊有柳，漢人送客到此，折柳相贈。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">37</td><td class="font-bold text-center">桑梓</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">故鄉</td><td>古代桑樹和梓樹是住宅邊常栽種的樹木。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">38</td><td class="font-bold text-center">桑麻</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">農事</td><td>桑麻為農家養蠶、紡織所需作物。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">39</td><td class="font-bold text-center leading-tight">烏紗帽</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">官職</td><td>以烏紗製成的帽子。原為便帽，明代始定為官帽。</td></tr>
+                                    <tr><td class="text-center bg-slate-50 text-slate-400">40</td><td class="font-bold text-center">魚雁</td><td class="text-rose-600 font-bold text-center bg-rose-50/50">書信</td><td>取自魚雁傳書的典故。</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                    </div>
+                </div>`
+            }
+        ];
+
+        const generate100Questions = () => {
+            const qList = [];
+            const addQ = (q, opts, ans, exps, generalExp = "") => qList.push({ q, opts, ans, exps, generalExp, showExplanation: false, selectedAns: null, isCorrect: false });
+            
+            // ============== Topic 1: 譬喻 (Questions 1-25) ==============
+            addQ("下列何者是「明喻」的正確結構？", ["喻體＋喻依", "喻體＋喻詞（像、如）＋喻依", "喻詞＋喻依", "喻體＋喻詞（是、為）＋喻依"], 1, ["這是略喻的結構，省略了喻詞。", "正確。明喻包含喻體、喻詞（像、如、好比等）、喻依三個完整部分。", "這是借喻的結構，省略了喻體和喻詞。", "這是隱喻的結構，喻詞通常是「是、為、成了」。"]);
+            addQ("「那女孩的臉蛋是紅紅的蘋果。」這句話屬於何種譬喻？", ["明喻", "隱喻", "略喻", "借喻"], 1, ["明喻的喻詞通常為「像、如」。", "正確。句中有喻體（臉蛋）、喻詞（是）、喻依（蘋果），使用「是」為隱喻的特徵。", "略喻會省略喻詞。", "借喻會省略喻體和喻詞。"]);
+            addQ("下列哪一句諺語屬於「略喻」？", ["一朵鮮花插在牛糞上", "好酒沉甕底", "女人心，海底針", "一顆老鼠屎，攪壞一鍋粥"], 2, ["這是借喻，省略了喻體(好女孩配差男孩)和喻詞。", "這是借喻，省略了喻體(好東西在後頭)和喻詞。", "正確。還原後為「女人心（喻體）『像』海底針（喻依）」，省略了喻詞，故為略喻。", "這是借喻，省略了喻體和喻詞。"]);
+            addQ("下列哪一句諺語屬於「借喻」？", ["人怕出名，豬怕肥", "羊毛出在羊身上", "人死留名，豹死留皮", "路遙知馬力，日久見人心"], 1, ["這是略喻，人怕出名(就像)豬怕肥。", "正確。這句話表面上講羊毛，實際上是「借喻」所有利益或成本最終都由承受者自行承擔，完全省略了喻體和喻詞。", "這是略喻，人死留名(就像)豹死留皮。", "這是略喻(喻體在後)。"]);
+            addQ("「天空陰沉沉的，好像要崩塌下來了。」這句話為何「不是」譬喻（明喻）？", ["因為缺少了喻詞", "因為它屬於轉化", "因為「好像」後面沒有具體的「喻依」", "因為它是借代"], 2, ["句中有「好像」這個詞，所以不缺喻詞。", "並沒有賦予人性或物性。", "正確。這只是對天氣狀態的猜測與形容（假喻），「要崩塌下來了」是個動作狀態，不是一個被拿來比喻的實體事物（喻依）。", "沒有使用替代名稱。"]);
+            addQ("「他痴痴地望著天空，一幕幕往事就像流雲一般，掠過他的眼睛。」這句話中的「喻體」是什麼？", ["天空", "往事", "就像", "流雲"], 1, ["天空只是背景場景。", "正確。「往事」是主體（喻體），被拿來和「流雲」做比較。", "「就像」是喻詞。", "「流雲」是用來比喻的對象（喻依）。"]);
+            addQ("「噪音是耳朵吃進去的毒藥」這句話使用了何種修辭？", ["借代", "隱喻", "判斷句", "略喻"], 1, ["沒有使用替代詞語。", "正確。噪音(喻體) + 是(喻詞) + 毒藥(喻依)。且噪音與毒藥本質不同，成立隱喻。", "雖然有「是」，但噪音和毒藥本質不同，所以是隱喻而非判斷句。", "略喻沒有喻詞。"]);
+            addQ("下列何者是單純的「判斷句」，而「不是」隱喻？", ["紀政是飛躍的羚羊", "母親是最愛我們的天使", "自私是囚禁靈魂的監獄", "自私是最缺德的行為"], 3, ["紀政(人)和羚羊(動物)本質不同，是隱喻。", "母親(人)和天使(神靈)本質不同，是隱喻。", "自私(觀念)和監獄(建築)本質不同，是隱喻。", "正確。自私本身就是一種「行為」，兩者性質相同，這只是單純的判斷與說明，沒有譬喻關係。"]);
+            addQ("「撒了滿天的珍珠和一枚又大又亮的銀幣」使用了借喻。關於「借喻」與「借代」的差別，下列敘述何者正確？", ["借喻可以還原為明喻，借代則不行", "借代可以還原為明喻，借喻則不行", "兩者都會出現喻體", "兩者都有喻詞"], 0, ["正確。借喻（如：珍珠借喻星星）可還原為「星星像珍珠」；但借代（如：絲竹借代音樂）不能還原為「音樂像絲竹」。", "完全相反。", "兩者通常都不會出現本體/喻體。", "兩者都沒有喻詞。"]);
+            addQ("「無絲竹之亂耳」中的「絲竹」是借代音樂。為何它不能算是「借喻」？", ["因為絲竹和音樂沒有相似點", "因為絲竹就是音樂的總稱，無法造出「音樂像絲竹」這樣的明喻句子", "因為它省略了喻依", "因為它是轉化"], 1, ["有相關性，但非相似點。", "正確。借代是利用事物的部分或特徵來代替全體，「絲竹」是樂器的材質，直接代指音樂，兩者不是「相似」關係，不能還原為明喻。", "借代沒有喻依的概念。", "不具備轉化的特徵。"]);
+            addQ("「人心不足，蛇吞象」這句諺語，若要將其還原為完整的明喻句，下列何者最恰當？", ["人心不足是蛇吞象", "人心不足好像蛇吞象一樣", "蛇吞象就是人心不足", "人心像蛇，不足像象"], 1, ["使用「是」，這是還原成隱喻。", "正確。加上喻詞「好像」與「一樣」，使喻體（人心不足）與喻依（蛇吞象）的關係明確化，這就是明喻。", "句型顛倒且使用了「就是」（隱喻）。", "拆解錯誤，破壞了原意。"]);
+            addQ("「喬丹，空中飛人」這句話的譬喻結構屬於：", ["喻體＋喻詞＋喻依", "喻體＋喻依", "喻詞＋喻依", "只有喻依"], 1, ["這是明喻或隱喻。", "正確。喬丹（喻體）＋（省略喻詞）＋空中飛人（喻依），此為略喻。", "這是錯誤的結構。", "這是借喻的結構。"]);
+            addQ("「這道數學題，簡直就是我的夢魘！」此句的修辭為：", ["明喻", "隱喻", "略喻", "借喻"], 1, ["明喻需要「像、如」。", "正確。「這道數學題（喻體）」＋「就是（喻詞）」＋「夢魘（喻依）」，因為有「是」，所以屬於隱喻。", "略喻沒有喻詞。", "借喻會省略喻體和喻詞。"]);
+            addQ("下列選項中，何者「沒有」使用譬喻修辭？", ["他生氣時，臉紅得像一顆蘋果", "時間是無情的盜賊", "這孩子長得真像他爸爸", "她，一朵帶刺的玫瑰"], 2, ["明喻：臉（喻體）像（喻詞）蘋果（喻依）。", "隱喻：時間（喻體）是（喻詞）盜賊（喻依）。", "正確。這只是單純的事實比較（判斷），兩者都是人，本質相同，沒有「借彼喻此」的譬喻關係。", "略喻：她（喻體）＋一朵帶刺的玫瑰（喻依）。"]);
+            addQ("「一山不能藏二虎」這句借喻諺語，其背後隱含的「喻體」（想表達的本意）最可能是？", ["動物園的籠子太小", "兩個強勢的人無法共存於同一個領域", "老虎是獨居動物", "山林保育的重要性"], 1, ["這是字面解釋，非喻意。", "正確。借喻是用「喻依」(一山不藏二虎)直接取代「喻體」(兩強不共存)。", "這是生物學知識，非諺語想表達的人事理。", "與原意無關。"]);
+            addQ("「做人要磨，做牛要拖」這句諺語的譬喻類型是？", ["明喻", "隱喻", "略喻", "借喻"], 2, ["無「像」等喻詞。", "無「是」等喻詞。", "正確。還原為「做人要磨（就像）做牛要拖」，省略了喻詞，故為略喻。", "借喻會連「做人要磨」這個喻體都省略。"]);
+            addQ("下列何者是「借喻」？", ["他是一頭凶猛的獅子", "他，一頭凶猛的獅子", "他發脾氣時像一頭凶猛的獅子", "那頭凶猛的獅子又在辦公室咆哮了"], 3, ["隱喻（有「是」）。", "略喻（省略喻詞）。", "明喻（有「像」）。", "正確。直接用「那頭凶猛的獅子（喻依）」來稱呼某個脾氣暴躁的人（省略了喻體和喻詞），這就是借喻。"]);
+            addQ("「舊事如天遠，新愁似海深」這句詩中包含了哪一種譬喻？", ["明喻", "隱喻", "略喻", "借喻"], 0, ["正確。「舊事（喻體）『如』（喻詞）天遠（喻依）」；「新愁（喻體）『似』（喻詞）海深（喻依）」。如、似皆表明為明喻。", "沒有「是、為」。", "沒有省略喻詞。", "沒有省略喻體和喻詞。"]);
+            addQ("「你這顆老鼠屎，攪壞一鍋粥！」請問「老鼠屎」在這裡作為什麼？", ["喻體", "喻詞", "喻依", "借代"], 2, ["喻體是被指責的那個人（你）。", "喻詞被省略了（你是像...）。", "正確。「老鼠屎」是用來比喻那個搞破壞的人，所以它是「喻依」。", "這是借喻，不是借代（可還原為：你像老鼠屎）。"]);
+            addQ("「人無千日好，花無百日紅」屬於略喻，其省略了哪一個部分？", ["喻體", "喻詞", "喻依", "全部省略"], 1, ["喻體是「人無千日好」。", "正確。還原應為「人無千日好（就像）花無百日紅」，句中省略了聯繫兩者的喻詞。", "喻依是「花無百日紅」。", "有保留喻體和喻依。"]);
+            addQ("關於「假喻」，下列敘述何者正確？", ["它是譬喻修辭的一種", "它具備完整的喻體、喻詞和喻依", "它只是帶有『好像』等詞的猜測或想像，沒有真正的比喻對象", "它可以用來代替借代修辭"], 2, ["假喻「不是」修辭上的譬喻。", "假喻缺乏真正的喻依。", "正確。假喻只是外表長得像明喻（有「好像」），但實際上只是一種狀態的猜測或描述，沒有具體拿另一件事物來比方。", "兩者無關。"]);
+            addQ("下列何者屬於「假喻」？", ["他跑得好像一陣風", "這雨下得好像倒水一樣", "我看他臉色發白，好像生病了", "她的笑容好像冬日暖陽"], 2, ["明喻（喻依：風）。", "明喻（喻依：倒水）。", "正確。這只是對他身體狀況的「猜測」，並沒有拿別的東西來比喻他的臉色，因此是假喻。", "明喻（喻依：冬日暖陽）。"]);
+            addQ("「母親是最愛我們的人」為何不是隱喻？", ["因為缺少喻依", "因為母親和人是相同的本質，屬判斷句", "因為缺少喻詞", "因為它是明喻"], 1, ["句型完整，但非譬喻。", "正確。隱喻的條件是「喻體和喻依本質必須不同」。母親本來就是人，這是陳述事實的判斷句，而非譬喻。", "有「是」，若為隱喻則為喻詞。", "沒有「像」等喻詞。"]);
+            addQ("「不看僧面看佛面」這句借喻諺語，其「喻依」是什麼？", ["人情世故", "看在某人的面子上", "僧面與佛面", "以上皆非"], 2, ["這是喻意（背後的意義）。", "這是喻體（想表達的主體）。", "正確。借喻是直接把「喻依」拿出來用，「僧面與佛面」就是用來打比方的事物本身。", "選項C為正確答案。"]);
+            addQ("「我的心是一座空城」屬於何種譬喻？", ["明喻", "隱喻", "略喻", "借喻"], 1, ["沒有「像、如」。", "正確。心（喻體）＋是（喻詞）＋空城（喻依）。", "沒有省略喻詞。", "沒有省略喻體。"]);
+
+            // ============== Topic 2: 誇飾 (Questions 26-35) ==============
+            addQ("「千山鳥飛絕，萬徑人蹤滅」使用了何種修辭？", ["譬喻", "誇飾", "轉化", "借代"], 1, ["沒有打比方。", "正確。用「千山」、「萬徑」、「絕」、「滅」極度誇大下雪時天寒地凍、毫無生氣的景象，以加深印象。", "沒有擬人或擬物。", "沒有使用替代詞。"]);
+            addQ("下列何者「沒有」使用誇飾修辭？", ["朝辭白帝彩雲間，千里江陵一日還", "夏蚊成雷，私擬作群鶴舞空", "雙腳踢翻塵世浪，一肩擔盡古今愁", "白日依山盡，黃河入海流"], 3, ["千里之路一日到達，誇大船行之快。", "蚊子聲音像雷聲一樣大，誇大聽覺。", "雙腳踢翻浪、一肩擔盡愁，誇大能力與氣勢。", "正確。這只是寫實的自然景觀描寫，沒有誇大客觀事實。"]);
+            addQ("「君不見高堂明鏡悲白髮，朝如青絲暮成雪。」這句詩中，哪一個部分最能體現「誇飾」的手法？", ["高堂明鏡", "悲白髮", "朝如青絲暮成雪", "君不見"], 2, ["只是場景物件。", "只是情緒反應。", "正確。早上還是黑髮，到了傍晚就變成白髮，極度誇大了時間流逝與老去的速度。", "只是發語詞。"]);
+            addQ("誇飾修辭的主要作用是什麼？", ["讓文章看起來字數更多", "用超過客觀事實的詞語來鋪飾，加深讀者印象", "用另一種事物來代替本名", "賦予無生命事物人類的感情"], 1, ["這不是修辭的目的。", "正確。誇飾就是故意言過其實（誇大或縮小），讓讀者產生強烈的感受與印象。", "這是借代的作用。", "這是轉化（人性化）的作用。"]);
+            addQ("「他的膽子比老鼠還小」這句話使用了誇飾法中的哪一種技巧？", ["空間誇飾", "數量誇飾", "縮小誇飾", "時間誇飾"], 2, ["沒有描述空間。", "沒有描述數量。", "正確。故意把事物說得比實際情況更小、更微弱（膽子比老鼠還小），這也是誇飾的一種（縮小誇飾）。", "沒有描述時間。"]);
+            addQ("下列選項中，何者使用了「誇飾」修辭？", ["這座山高達三千公尺", "他氣得火冒三丈，頭頂都要燒起來了", "春天的花朵開滿了整個山坡", "微風輕輕吹過樹梢"], 1, ["客觀的事實數據。", "正確。人不可能真的「火冒三丈」甚至「頭頂燒起來」，這是為了凸顯生氣的程度而故意誇大。", "客觀景象描述。", "客觀景象描述。"]);
+            addQ("「怒髮衝冠」這個成語使用了什麼修辭？", ["借代", "譬喻", "誇飾", "轉化"], 2, ["沒有代替本名。", "沒有打比方。", "正確。頭髮生氣到直立起來，甚至把帽子頂上去，極度誇張了憤怒的樣子。", "沒有擬人或擬物。"]);
+            addQ("「一日不見，如隔三秋」結合了哪兩種修辭？", ["誇飾、譬喻", "轉化、借代", "譬喻、借代", "誇飾、轉化"], 0, ["正確。「如」是譬喻（明喻）；將「一日」的感覺誇大為「三秋（三年）」，是時間上的誇飾。", "沒有轉化與借代。", "有譬喻，無借代。", "有誇飾，無轉化。"]);
+            addQ("「那聲音大得連耳膜都要震破了」屬於何種修辭？", ["譬喻", "誇飾", "借代", "轉化"], 1, ["無比喻關係。", "正確。故意誇大聲音的威力，以凸顯聲音之大。", "無替代關係。", "無擬人/物。"]);
+            addQ("在戲劇或動漫角色的出場詩中（如：雙腳踢翻塵世浪，一肩擔盡古今愁），最常使用哪一種修辭來營造氣勢？", ["譬喻", "借代", "誇飾", "轉化"], 2, ["非主要氣勢來源。", "非主要氣勢來源。", "正確。武俠或戲劇常利用「誇飾」（踢翻塵世、擔盡古今）來極度凸顯角色的武功高強與狂傲氣勢。", "非主要氣勢來源。"]);
+
+            // ============== Topic 3: 轉化 (Questions 36-55) ==============
+            addQ("轉化修辭分為哪三種類別？", ["明喻、隱喻、借喻", "人性化、物性化、形象化", "空間誇飾、時間誇飾、數量誇飾", "借代、借喻、假喻"], 1, ["這是譬喻的分類。", "正確。轉化包含：把物當人（人性化）、把人當物（物性化）、化抽象為具體（形象化）。", "這是誇飾的分類。", "這是不同修辭的混搭。"]);
+            addQ("「只有綠色的小河還醒著」這句話使用了轉化中的哪一種技巧？", ["物性化", "形象化", "人性化", "神格化"], 2, ["不是把人當物。", "不是化抽象為具體（河是具體的）。", "正確。「醒著」是人類或動物的清醒狀態，這裡將無生命的小河賦予了生命特質，是「把物當人」的人性化（擬人）。", "沒有賦予神明特質。"]);
+            addQ("「在圖書館裡，請把你的喉嚨關上」屬於何種轉化？", ["人性化", "物性化", "形象化", "抽象化"], 1, ["人本來就是人。", "正確。喉嚨是人體器官，不能像門窗機器一樣「關上」。「關上」是物品的狀態，這是「把人當物」的物性化（擬物）。", "喉嚨是具體的。", "修辭中沒有抽象化。"]);
+            addQ("「好銳利的喜悅刺上我的心頭」這句使用了「形象化」，其原因為何？", ["將具體的刺轉換為抽象的感覺", "將人當成帶刺的物品", "將抽象的『喜悅』賦予具體物品『刺』的動作與銳利感", "將喜悅擬人化了"], 2, ["方向錯誤，形象化是抽象轉具體。", "沒有把人當物。", "正確。喜悅是「抽象的情感」，無法碰觸；「銳利、刺」是具體物品（如刀劍）的特質。將抽象情感具體化，即為形象化。", "喜悅沒有做出人的專屬動作。"]);
+            addQ("「夢想讓世界舞蹈起來」使用了哪一種修辭法？", ["譬喻", "轉化", "誇飾", "借代"], 1, ["沒有喻詞與喻依。", "正確。世界（無生命）不會「舞蹈」（人類特有的律動），這是將世界「人性化」的轉化修辭。", "沒有誇大數據。", "沒有使用替代詞。"]);
+            addQ("關於「轉化」與「譬喻」的區別，下列何者正確？", ["轉化是找兩事物的相似點，譬喻是找兩事物的可變處", "轉化是找兩事物的可變處，譬喻是找兩事物的相似點", "轉化必定有喻詞，譬喻則無", "兩者完全相同，只是名稱不同"], 1, ["完全寫反了。", "正確。譬喻強調兩者的「相似」（如：愛情像鳥）；轉化則是將A的事物特性「改變」套用在B上（如：愛情飛走了）。", "譬喻才有喻詞。", "兩者機制完全不同。"]);
+            addQ("「自從被週刊爆出醜聞後，他就從人間蒸發了。」句中的「蒸發」是將人當作什麼來看待？", ["人類", "神明", "水等會氣化的物質（物性化）", "抽象概念"], 2, ["人本來就是人，這不是人性化。", "沒有神明特質。", "正確。人不可能真的「蒸發」，這是水的物理特性。將人當作水來看待，屬於「把人當物」的物性化。", "人是具體的。"]);
+            addQ("「我的日子滴在時間的流裡」這句話使用了什麼修辭？", ["形象化", "人性化", "借代", "物性化"], 0, ["正確。「日子（消逝）」與「時間」都是抽象看不見的概念。用「滴」和「流」這兩個具體的水的動作與形態來描寫，是標準的形象化。", "時間和日子沒有人的特質。", "沒有使用替代名稱。", "不是把人當物。"]);
+            addQ("「她總是燃燒自己，照亮別人」屬於轉化中的：", ["人性化", "物性化", "形象化", "以上皆非"], 1, ["人本來就是人。", "正確。將人當作「蠟燭」或「火把」等物品，賦予其「燃燒、照亮」的物理特性，是為物性化。", "人是具體的，不是化抽象為具體。", "B為正解。"]);
+            addQ("「嫵媚的康河也望不見蹤跡」這句話將康河：", ["物性化", "形象化", "人性化", "神格化"], 2, ["康河本來就是物。", "康河是具體的。", "正確。「嫵媚」通常用來形容女子的嬌美姿態。將無生命的康河賦予了女子的特質，是人性化。", "無神仙特質。"]);
+            addQ("下列哪一個選項使用了「形象化（擬虛為實）」？", ["春風撫摸著我的臉頰", "他是一塊不可雕的朽木", "我把滿腹的委屈，一口氣全吐了出來", "太陽公公生氣了"], 2, ["春風(物)撫摸(人)，是人性化。", "他(喻體)是(喻詞)朽木(喻依)，是隱喻。", "正確。「委屈」是抽象情緒，不能真的用嘴巴「吐」出來。把委屈當作具體食物一樣吐出，是形象化。", "太陽(物)生氣(人)，是人性化。"]);
+            addQ("下列哪一個選項使用了「人性化（擬人）」？", ["愛情是一場重感冒", "時間無情地在我的臉上刻下痕跡", "他把我的尊嚴踩在腳底下", "那女人真是一隻母老虎"], 1, ["愛情是感冒，隱喻。", "正確。時間（無生命/抽象）被賦予了人類「無情」的性格以及「刻」的動作，是人性化。", "尊嚴（抽象）被踩（具體動作），是形象化。", "女人是母老虎，借喻/隱喻。"]);
+            addQ("「晚景的溫存卻被我這樣偷嘗了不少」這句話中，「偷嘗」的作用是？", ["將具體的晚景抽象化", "將抽象的『溫存』具體化為可以品嘗的食物", "將人變成愛偷吃的小偷", "將晚景擬人化"], 1, ["修辭沒有抽象化。", "正確。「溫存」是抽象的感受，使用「偷嘗（品嘗）」這個對待具體食物的動作，成功將其形象化。", "人本來就能偷吃，這不是修辭重點。", "「溫存」是人性化，但「偷嘗」是形象化。"]);
+            addQ("「愛情就像鳥兒飛走了」與「愛情的鳥兒飛走了」分別屬於什麼修辭？", ["明喻 / 轉化", "明喻 / 隱喻", "轉化 / 譬喻", "隱喻 / 借代"], 0, ["正確。前者有喻詞「像」，是明喻（譬喻）。後者沒有喻詞，直接讓愛情（抽象）像鳥一樣「飛走」，著重於動作的改變，是轉化（或者說將愛情具體化為鳥的形象化/借喻，但在講義的迷思澄清中，這是轉化的標準例子）。", "後者無「是/為」。", "前者是譬喻。", "前者是明喻。"]);
+            addQ("「這件事讓他肩上的重擔減輕了不少」中的「重擔」原本是指具體的物品，在這裡用來指稱抽象的「責任壓力」。這比較接近何種修辭的作用？", ["借代", "形象化", "人性化", "誇飾"], 1, ["非約定俗成的替代。", "正確。將抽象的「責任、壓力」具體化為可以扛在肩上、有重量的「重擔」，屬於形象化（擬虛為實）的一種應用。", "壓力沒有人的特質。", "沒有誇大數據。"]);
+            addQ("下列何者「不是」轉化修辭？", ["桃花聽得入神，禁不住落了幾滴粉淚", "這雨下得像斷了線的珍珠", "把悲傷的記憶打包丟進垃圾桶", "他像一隻縮頭烏龜，躲了起來"], 1, ["桃花(物)聽(人)落淚(人)，人性化。", "正確。這是有喻詞「像」的【明喻】，兩事物僅是相似，並未改變性質。", "悲傷記憶(抽象)打包丟棄(具體)，形象化。", "有喻詞「像」，是明喻。"]);
+            addQ("「春風又綠江南岸」中的「綠」字，原本是形容詞，在此當動詞用（吹綠了），賦予春風動作。這帶有何種修辭的意味？", ["轉化（人性化）", "誇飾", "借代", "譬喻"], 0, ["正確。春風被賦予了主動去「染綠」江南岸的能力，帶有擬人的色彩。", "沒有誇大。", "沒有替代。", "沒有比方。"]);
+            addQ("「把你的怒火降溫吧！」這句話將抽象的怒火當作具體有溫度的物體。這是哪一種轉化？", ["人性化", "物性化", "形象化", "神格化"], 2, ["怒火不是人。", "怒火本來就不是人。", "正確。怒氣是抽象情緒，把它當作具體發熱的物體來「降溫」，是形象化。", "無神仙特質。"]);
+            addQ("「電腦感染了病毒，罷工抗議了」這句話使用了：", ["人性化", "物性化", "形象化", "借代"], 0, ["正確。電腦（物品）被賦予了人類「罷工抗議」的行為，是標準的人性化（擬人）。", "電腦本來就是物。", "電腦是具體的。", "無替代詞。"]);
+            addQ("判別修辭：(甲)「歲月是一把無情的殺豬刀」 / (乙)「歲月無情地割去了他的青春」。", ["甲是轉化，乙是譬喻", "甲是隱喻，乙是轉化", "甲是借代，乙是誇飾", "甲是明喻，乙是轉化"], 1, ["甲有喻詞「是」，為隱喻。", "正確。甲：歲月(喻體) + 是(喻詞) + 殺豬刀(喻依) = 隱喻。乙：歲月(無生命/抽象) + 割去(人的動作) = 轉化(人性化/形象化)。", "甲非借代。", "甲無「像」。"]);
+
+            // ============== Topic 4: 借代 (Questions 56-90) ==============
+            addQ("「無絲竹之亂耳」中的「絲竹」借代為什麼？", ["樂器", "音樂", "竹林", "噪音"], 1, ["絲竹雖是樂器材質，但在這裡是借代音樂。", "正確。「絲」指弦樂器，「竹」指管樂器，兩者合稱借代為「音樂」。", "字面意思，錯誤。", "不合文意。"]);
+            addQ("借代詞「九州」的意思是？", ["九個城市", "全世界", "中國", "亞洲"], 2, ["錯誤。", "範圍太大。", "正確。古代中國分為九州，故以九州借代「中國」。", "範圍錯誤。"]);
+            addQ("「留取丹心照汗青」中的「汗青」借代為？", ["汗水", "史冊", "青天", "竹林"], 1, ["字面意思，錯誤。", "正確。古人寫書前會將竹簡烤乾，出水如汗，稱為汗青。後用以借代「史冊、史籍」。", "字面意思，錯誤。", "字面意思，錯誤。"]);
+            addQ("下列哪一個借代詞「不是」用來指稱「史籍、史冊」？", ["丹青", "汗青", "殺青", "以上皆是"], 2, ["丹冊記功，青史記事，借代史籍。", "烤竹出水，借代史籍。", "正確。「殺青」是指刮去竹子青皮的步驟，後來借代為「作品完成」，並非指史籍本身。", "殺青不是。"]);
+            addQ("「黃花」在借代中通常指稱哪一種植物？", ["向日葵", "桂花", "菊花", "油菜花"], 2, ["錯誤。", "錯誤。", "正確。菊花色黃，古詩詞中常以「黃花」借代菊花（如李清照：人比黃花瘦）。", "錯誤。"]);
+            addQ("「朱門酒肉臭，路有凍死骨」中的「朱門」借代為？", ["紅色的大門", "寺廟", "豪貴人家", "皇宮"], 2, ["這是本義，不是借代義。", "錯誤。", "正確。古代豪門貴族的門多漆成朱紅色，故以朱門借代「豪貴人家」。", "皇宮的借代通常是陛下、廟堂等。"]);
+            addQ("「舊時王謝堂前燕」中的「王謝」借代為什麼？", ["兩位好朋友", "豪門望族", "平民百姓", "皇帝的親戚"], 1, ["錯誤。", "正確。王導與謝安是晉代的兩大名門望族，後世以「王謝」借代為「豪門望族」。", "平民借代為布衣、白丁。", "錯誤。"]);
+            addQ("「廟堂之上，朽木為官」中的「廟堂」借代為？", ["寺廟", "學校", "朝廷", "法院"], 2, ["字面意思，錯誤。", "錯誤。", "正確。廟堂原指宗廟，是帝王議事祭祀之處，常用來借代「朝廷」。", "錯誤。"]);
+            addQ("「放浪形骸」中的「形骸」借代為？", ["骨頭", "思想", "身體", "名譽"], 2, ["字面意思，錯誤。", "錯誤。", "正確。形體與骨骼，借用來指稱人的「身體」或外在的軀殼。", "錯誤。"]);
+            addQ("「等閒識得東風面，萬紫千紅總是春」中的「東風」借代為何種季節的風？", ["春風", "夏風", "秋風", "冬風"], 0, ["正確。五行中春季配東方，故東風借代「春風」。", "夏風為南風、薰風。", "秋風為西風、金風。", "冬風為北風、朔風。"]);
+            addQ("下列季節與風向的借代配對，何者「錯誤」？", ["東風—春風", "南風—冬風", "西風—秋風", "北風—冬風"], 1, ["配對正確。", "錯誤。南風對應夏季，又稱「薰風」。冬風應為北風或朔風。", "配對正確。秋風又稱金風。", "配對正確。"]);
+            addQ("「吹面不寒楊柳風」中的「楊柳風」借代為？", ["春風", "夏風", "秋風", "颱風"], 0, ["正確。春天時楊柳的丰姿最美，故以楊柳風借代「春風」。", "錯誤。", "錯誤。", "錯誤。"]);
+            addQ("「沾衣欲溼杏花雨」中的「杏花雨」指的是哪個季節的雨？", ["春雨", "夏雨", "秋雨", "冬雨"], 0, ["正確。杏花在二月（農曆春季）盛開，故杏花雨借代為「春雨」。", "錯誤。", "錯誤。", "錯誤。"]);
+            addQ("「紅顏棄軒冕，白首臥松雲」中的「紅顏」借代為什麼？", ["化妝品", "少年", "老太太", "櫻桃"], 1, ["錯誤。", "正確。紅顏可以借代「美女」，也可以借代面色紅潤的「少年」。此句對比「白首（老年）」，故指少年。", "錯誤。", "錯誤。"]);
+            addQ("「但願人長久，千里共嬋娟」中的「嬋娟」借代為？", ["美女", "月亮", "星星", "太陽"], 1, ["嬋娟亦可借代美女，但在這首蘇軾的詞中是指月亮。", "正確。蘇軾藉由共賞「月亮」來表達對遠方親人的思念。", "錯誤。", "錯誤。"]);
+            addQ("「韋編三絕」中的「韋編」借代為？", ["皮帶", "書籍", "武器", "樂器"], 1, ["字面意思，錯誤。", "正確。古代用牛皮（韋）將竹簡編纂成冊，故以韋編借代「書籍」。孔子讀易經使韋編斷了三次，比喻讀書勤奮。", "錯誤。", "錯誤。"]);
+            addQ("「臨池學書，池水盡黑」中的「臨池」後來借代為什麼行為？", ["游泳", "洗毛筆", "寫書法", "作畫"], 2, ["錯誤。", "是洗毛筆的結果，但借代的是整體行為。", "正確。相傳東漢張芝勤練書法，常在池邊洗筆，池水都變黑了，後以臨池借代「寫書法」。", "錯誤。"]);
+            addQ("木蘭詩：「東市買駿馬，西市買鞍韉」，但如果古文出現「被押赴東市」，此處的「東市」借代為？", ["菜市場", "刑場", "戰場", "東邊的城市"], 1, ["不是買菜的地方。", "正確。古代長安處決犯人多在城市的東方，故以東市借代「刑場」。", "錯誤。", "字面意思，錯誤。"]);
+            addQ("「東宮」在古代借代為哪一個身分的人？", ["皇帝", "皇后", "太子", "宰相"], 2, ["皇帝借代為陛下、萬乘。", "皇后住正宮。", "正確。東宮是古代「太子」居住的地方，因此用來借代太子本人。", "錯誤。"]);
+            addQ("「西席」在古代借代為哪一種職業？", ["醫生", "廚師", "教師", "裁縫"], 2, ["錯誤。", "錯誤。", "正確。古人尊師重道，座位以西向為尊，故安排老師坐在西邊的席位，以西席借代「教師」。", "錯誤。"]);
+            addQ("「慘遭祝融之災」中的「祝融」借代為？", ["水災", "火災", "地震", "蟲害"], 1, ["錯誤。", "正確。祝融是古代神話中的火神，後用以借代「火災」。", "錯誤。", "錯誤。"]);
+            addQ("除了「祝融」之外，下列何者也常用來借代「火災」？", ["共工", "后羿", "回祿", "夸父"], 2, ["水神。", "射日英雄。", "正確。回祿（或吳回）也是古代神話中的火神，同樣借代為「火災」。", "逐日巨人。"]);
+            addQ("「巾幗不讓鬚眉」中的「巾幗」與「鬚眉」分別借代為什麼？", ["女子 / 男子", "軍人 / 書生", "老人 / 小孩", "衣服 / 鬍子"], 0, ["正確。巾幗是古代婦女的頭巾，借代「女子」；鬚眉是鬍鬚和眉毛，借代「男子」。", "錯誤。", "錯誤。", "字面意思，錯誤。"]);
+            addQ("「方寸大亂」中的「方寸」借代為？", ["方向", "面積", "內心", "腳步"], 2, ["錯誤。", "本義指一寸見方的面積。", "正確。古人認為心臟的大小約一寸見方，故以方寸借代「內心」。方寸大亂即內心慌亂。", "錯誤。"]);
+            addQ("「布衣可致卿相」中的「布衣」借代為？", ["衣服", "商人", "軍人", "平民"], 3, ["字面意思。", "錯誤。", "錯誤。", "正確。古代平民多穿麻布衣服，故以布衣借代「平民百姓」。"]);
+            addQ("「社稷之臣」中的「社稷」借代為？", ["土地", "神明", "國家", "農業"], 2, ["本義相關，但已引申。", "本義為土神(社)與穀神(稷)。", "正確。因為古代帝王立國必先祭祀土神與穀神，故以社稷借代「國家」。", "錯誤。"]);
+            addQ("「烽火連三月，家書抵萬金」中的「烽火」借代為？", ["火災", "戰火、兵亂", "狼煙", "信件"], 1, ["火災是祝融、回祿。", "正確。烽火是古代邊防報警的煙火，借代為「戰火、戰爭」。", "字面意思。", "書信借代為魚雁、雙鯉。"]);
+            addQ("「化干戈為玉帛」中的「干戈」借代為？", ["武器", "戰爭", "和平", "財富"], 1, ["干、戈本是武器。", "正確。以武器的總稱借代使用武器的事件，也就是「戰爭」。", "玉帛借代和平。", "錯誤。"]);
+            addQ("「何以解憂？唯有杜康」中的「杜康」借代為？", ["朋友", "音樂", "酒", "睡眠"], 2, ["錯誤。", "音樂是絲竹。", "正確。相傳杜康是周代善於造酒的人，後人便以杜康借代為「酒」。", "錯誤。"]);
+            addQ("下列哪一個選項「不是」用來借代「酒」或「酒杯」？", ["杯中物", "羽觴", "杜康", "桑梓"], 3, ["借代酒。", "古代雀形酒器，借代酒杯。", "借代酒。", "正確。「桑梓」是住宅旁種的樹，用來借代「故鄉」，與酒無關。"]);
+            addQ("古裝劇中常呼喊「陛下」，「陛下」原本是指什麼，後來借代為「皇帝」？", ["皇冠", "龍椅", "宮殿的最高階", "皇帝的衣服"], 2, ["錯誤。", "錯誤。", "正確。「陛」原指古代宮殿的最高階梯，臣子不敢直視皇帝，只能看著階梯下，故以陛下借代「皇帝」。", "錯誤。"]);
+            addQ("「客舍青青柳色新」及古人「折柳」的習俗，後來「折柳」借代為什麼？", ["春天", "送別", "道歉", "考試及格"], 1, ["楊柳風借代春風。", "正確。漢代長安灞橋邊多柳樹，送客至此常折柳枝相贈（柳音同「留」），故折柳借代「送別」。", "錯誤。", "錯誤。"]);
+            addQ("「造福桑梓」中的「桑梓」借代為？", ["父母", "子孫", "故鄉", "農業"], 2, ["錯誤。", "錯誤。", "正確。古代常在住宅旁邊栽種桑樹與梓樹，後人便以桑梓借代「故鄉、家鄉」。", "農事借代為「桑麻」。"]);
+            addQ("「把酒話桑麻」中的「桑麻」借代為？", ["朋友", "農事", "衣服", "煩惱"], 1, ["錯誤。", "正確。桑樹可用於養蠶，麻可用於紡織，皆為農家重要作物，故借代「農事、農作物」。", "錯誤。", "錯誤。"]);
+            addQ("「保住烏紗帽」中的「烏紗帽」借代為？", ["生命", "財產", "名譽", "官職"], 3, ["錯誤。", "錯誤。", "錯誤。", "正確。烏紗帽原為明代官員的標準帽子，後用以借代「官職、官位」。"]);
+
+            // ============== Topic 5: 綜合修辭判斷與迷思 (Questions 91-100) ==============
+            addQ("【綜合判斷】下列哪一個句子「同時」使用了「譬喻」與「誇飾」？", ["他的心腸像石頭一樣硬", "怒髮衝冠，憑欄處", "白髮三千丈，緣愁似箇長", "只有綠色的小河還醒著"], 2, ["只有明喻（像石頭）。", "只有誇飾（怒髮衝冠）。", "正確。「白髮三千丈」是誇飾；「似箇長（像這麼長）」是明喻。兩者兼具。", "只有轉化（人性化）。"]);
+            addQ("【綜合判斷】「魚雁往返」中的「魚雁」借代為書信。下列何者也常被用來借代「書信」？", ["絲竹", "雙鯉", "汗青", "韋編"], 1, ["音樂。", "正確。古人將書信結成鯉魚形狀，或藏於魚腹，故以雙鯉、魚雁借代「書信」。", "史冊。", "書籍。"]);
+            addQ("【迷思突破】「她哭得好像心都要碎了。」這句話的修辭是？", ["明喻", "隱喻", "誇飾兼轉化", "誇飾兼假喻"], 3, ["沒有真正的喻依，所以不是明喻。", "沒有「是、為」。", "心碎不是擬人或擬物。", "正確。「心都要碎了」極度誇大悲傷程度（誇飾）；「好像」只是一種猜測與狀態描述，沒有譬喻對象（假喻）。"]);
+            addQ("【修辭大亂鬥】請選出配對「錯誤」的選項：", ["千山鳥飛絕——誇飾", "布衣可致卿相——借代", "愛情是一陣龍捲風——轉化", "這場雨就像倒水一樣——明喻"], 2, ["極言鳥跡之無，正確。", "布衣借代平民，正確。", "錯誤。愛情(喻體) + 是(喻詞) + 龍捲風(喻依)，有「是」，這是標準的【隱喻】，而非轉化。", "有喻體、像、喻依，正確。"]);
+            addQ("【鑑別題】「我的心是一座空城，沒有人能懂裡面的荒涼。」這句話包含的修辭順序為何？", ["隱喻、誇飾", "隱喻、轉化", "明喻、轉化", "借喻、誇飾"], 1, ["沒有誇大。", "正確。「心是空城」為隱喻；「空城裡面的荒涼」將抽象的心境具體化為城市的景象，帶有形象化的轉化意味。", "沒有「像」。", "沒有省略喻體。"]);
+            addQ("【鑑別題】「大珠小珠落玉盤」形容琵琶聲的清脆。這句詩使用了何種修辭？", ["借代", "借喻", "轉化", "誇飾"], 1, ["沒有約定俗成的替代名稱。", "正確。原意是「琵琶聲(喻體)像(喻詞)大珠小珠落玉盤(喻依)」，省略了喻體和喻詞，直接寫出喻依，是為借喻。", "沒有賦予人性/物性。", "沒有誇大。"]);
+            addQ("【鑑別題】下列哪一個「借代」的配對是正確的？", ["紅顏——老人", "祝融——水災", "干戈——和平", "黃花——菊花"], 3, ["紅顏借代美女或少年。", "祝融借代火災。", "干戈借代戰爭。", "正確。黃花借代菊花。"]);
+            addQ("【鑑別題】「讓微風輕輕撫摸你的愁緒」包含了哪些修辭？", ["轉化（人性化）、轉化（形象化）", "譬喻、誇飾", "借代、轉化", "誇飾、轉化"], 0, ["正確。「微風撫摸」把微風當人，是人性化；「撫摸愁緒」把抽象的愁緒當成具體可觸摸的物品，是形象化。兩者皆是轉化。", "沒有比方和誇大。", "沒有替代詞。", "沒有誇大。"]);
+            addQ("【終極考驗】關於「借喻」與「借代」，下列哪一個說明最精準？", ["借代可以加上『像』還原，借喻不行", "借喻是基於『相似性』，借代是基於『相關性』（部分代全體）", "借代一定會有喻體，借喻則無", "兩者其實是完全一樣的修辭"], 1, ["寫反了。借喻可還原，借代不行。", "正確。借喻（珍珠代星星）是因為兩者「長得像」；借代（帆檣代船）是因為帆是船的「一部分」，兩者高度相關但長得不像。", "兩者通常都不出現本體/喻體。", "機制完全不同。"]);
+            addQ("【終極考驗】「白髮三千丈，緣愁似箇長」是李白的名句。如果將它改寫成「我的白髮就是三千丈長的愁緒」，請問修辭發生了什麼變化？", ["從明喻變成轉化", "從明喻變成隱喻", "從誇飾變成借代", "從借喻變成明喻"], 1, ["沒有變成轉化。", "正確。原句「似」為明喻；改寫後用「就是」，變成了隱喻（喻詞改變）。誇飾的成分依然存在。", "沒有借代。", "原句非借喻。"]);
+
+            return qList;
+        };
+
+        let currentTab = 'login';
+        let learnSubTab = 'sec1';
+        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+        let isLearnMenuOpen = false;
+
+        const el = id => document.getElementById(id);
+
+        const syncQuestionsFormat = (state) => {
+            if (!state || !state.questions) return state;
+            if (state.questions.length > 0 && !state.questions[0].exps) {
+                const freshQuestions = generate100Questions();
+                state.questions = state.questions.map(oldQ => {
+                    const freshQ = freshQuestions.find(fq => fq.q === oldQ.q);
+                    if (freshQ) return { ...freshQ, showExplanation: oldQ.showExplanation, selectedAns: oldQ.selectedAns, isCorrect: oldQ.isCorrect };
+                    return oldQ;
+                });
+            }
+            return state;
+        };
+
+        window.toggleLearnMenu = (show) => {
+            isLearnMenuOpen = typeof show === 'boolean' ? show : !isLearnMenuOpen;
+            const drawer = el('learn-drawer');
+            const overlay = el('learn-overlay');
+            if(drawer && overlay) {
+                if(isLearnMenuOpen) {
+                    drawer.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                }
+            }
+        };
+
+        const listenToGlobalUsers = () => {
+            if (!isFirebaseInitialized || !currentUser) return;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            unsubscribeGlobal = onSnapshot(globalRef, (snap) => {
+                if(snap.exists()) recentUsers = snap.data().users || [];
+                else recentUsers = [];
+                if(currentTab === 'login') renderLogin();
+            });
+        };
+
+        const listenToUserDocument = (name) => {
+            if (!isFirebaseInitialized || !currentUser) {
+                loadLocalData(name);
+                return;
+            }
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, name);
+            if(unsubscribeUser) unsubscribeUser();
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, data);
+                    saveLocalData(name);
+                    
+                    if (userData.quizState) {
+                        userData.quizState = syncQuestionsFormat(userData.quizState); 
+                        const cloudStateStr = JSON.stringify(userData.quizState);
+                        const localStateStr = JSON.stringify(quizState);
+                        if (cloudStateStr !== localStateStr) {
+                            quizState = userData.quizState;
+                            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, cloudStateStr); } catch(e) {}
+                            if(currentTab === 'quiz') {
+                                let scrollPos = 0;
+                                const scrollContainer = document.getElementById('quiz-scroll-container');
+                                if (scrollContainer) scrollPos = scrollContainer.scrollTop;
+                                renderQuizView(document.getElementById('main-content'));
+                                setTimeout(() => {
+                                    const newScrollContainer = document.getElementById('quiz-scroll-container');
+                                    if (newScrollContainer && scrollPos > 0) newScrollContainer.scrollTop = scrollPos;
+                                }, 10);
+                                const navStats = document.getElementById('nav-quiz-stats');
+                                if (navStats) {
+                                    if (quizState.active) {
+                                        navStats.classList.remove('hidden');
+                                        navStats.classList.add('flex');
+                                        updateQuizStats();
+                                    } else {
+                                        navStats.classList.add('hidden');
+                                        navStats.classList.remove('flex');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()], quizState: null };
+                    setDoc(userRef, userData, { merge: true });
+                }
+                if(currentTab === 'favorites') renderFavorites();
+                else if(currentTab === 'mistakes') renderMistakes();
+                else if(currentTab === 'history') renderHistory();
+            }, (error) => console.error("Listen user error", error));
+        };
+
+        const saveUserDataToCloud = async () => {
+            saveLocalData(username);
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+            try { await setDoc(userRef, userData, { merge: true }); } catch(e) { console.error("Firebase save error:", e); }
+        };
+
+        const loadLocalData = (name) => {
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
+                if (localData) userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, JSON.parse(localData));
+            } catch(e) {}
+        };
+
+        const saveLocalData = (name) => {
+            try { if (name) localStorage.setItem(`${COLLECTION_NAME}_${name}_data`, JSON.stringify(userData)); } catch(e) {}
+        };
+
+        const saveQuizState = () => {
+            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            userData.quizState = quizState;
+            saveUserDataToCloud();
+        };
+
+        const loadLocalQuizState = () => {
+            if (userData.quizState) { quizState = syncQuestionsFormat(userData.quizState); return; }
+            try {
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = syncQuestionsFormat(q);
+                }
+            } catch(e) {}
+        };
+
+        const initApp = async () => {
+            renderApp();
+            const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_user`);
+            if (isFirebaseInitialized) {
+                await initAuth(); 
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        listenToGlobalUsers();
+                        if (lastUser) {
+                            username = lastUser;
+                            setTimeout(() => listenToUserDocument(username), 200);
+                            loadLocalQuizState();
+                            renderMain();
+                        } else renderLogin();
+                    } else renderLogin();
+                });
+            } else {
+                if (lastUser) {
+                    username = lastUser;
+                    loadLocalData(username);
+                    loadLocalQuizState();
+                    renderMain();
+                } else renderLogin();
+            }
+        };
+
+        window.handleLogin = async (name) => {
+            if(!name.trim()) {
+                const inputEl = document.getElementById('usernameInput');
+                inputEl.classList.add('border-red-500', 'bg-red-50');
+                inputEl.placeholder = "名稱不能為空！";
+                setTimeout(() => {
+                    inputEl.classList.remove('border-red-500', 'bg-red-50');
+                    inputEl.placeholder = "✍️ 請輸入您的姓名/座號";
+                }, 2000);
+                return;
+            }
+            username = name;
+            localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
+            if (isFirebaseInitialized && currentUser) {
+                const now = new Date().toISOString();
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                try {
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
+                        if (userData.quizState) {
+                            quizState = syncQuestionsFormat(userData.quizState);
+                            try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
+                        }
+                    } else loadLocalData(username);
+                    if (!userData.loginHistory) userData.loginHistory = [];
+                    userData.loginHistory.push(now);
+                    if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50);
+                    await setDoc(userRef, userData, { merge: true });
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username);
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10);
+                    await setDoc(globalRef, { users }, { merge: true });
+                } catch(e) { console.error("Login data sync error:", e); }
+                listenToUserDocument(username);
+            } else {
+                loadLocalData(username);
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(new Date().toISOString());
+                saveLocalData(username);
+            }
+            renderMain();
+        };
+
+        const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col bg-amber-50"></div>`; };
+
+        window.renderLogin = () => {
+            currentTab = 'login';
+            el('view-container').innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-6 z-0">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 -z-20"></div>
+                    <div class="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-r from-indigo-300 to-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10"></div>
+                    <div class="absolute top-40 -right-20 w-80 h-80 bg-gradient-to-r from-purple-300 to-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 1s;"></div>
+                    <div class="absolute -bottom-32 left-1/3 w-80 h-80 bg-gradient-to-r from-rose-300 to-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 2s;"></div>
+                    <div class="absolute top-6 right-6 z-20">
+                        <div class="flex flex-col items-end gap-3 w-full md:w-auto">
+                            <div class="glass-card px-4 py-2 rounded-full shadow-sm text-sm font-bold text-indigo-800 flex items-center border border-white/50">
+                                <span class="status-dot ${connectionStatus === 'loading' ? 'status-loading' : connectionStatus === 'success' ? 'status-success' : 'status-error'}"></span>
+                                ${connectionStatus === 'loading' ? '雲端讀取中... ⏳' : connectionStatus === 'success' ? '雲端已同步 ☁️✨' : '雲端連線失敗 ❌'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl z-10 w-[32rem] max-w-[95vw] text-center border border-white/60">
+                        <div class="w-24 h-24 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-6">
+                            <span class="text-6xl text-white">💎</span>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-indigo-950 mb-4 tracking-widest leading-tight">善用修辭一<br>part1 ✨🌈</h1>
+                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 100題 會考魔王版 👑</p>
+                        <div class="space-y-6">
+                            <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-indigo-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
+                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                                進入學習系統 🚀🌈🎉
+                            </button>
+                        </div>
+                        <div class="mt-10 border-t border-indigo-200/50 pt-6">
+                            <p class="text-base text-indigo-700/60 mb-4 font-bold tracking-wide">☁️ 雲端最近登入 👥</p>
+                            <div class="flex flex-wrap justify-center gap-3">
+                                ${recentUsers.length > 0 ? recentUsers.slice().reverse().slice(0, 8).map(u => `<button onclick="handleLogin('${u.name}')" class="text-base font-bold bg-white/80 border-2 border-indigo-200 text-indigo-800 hover:bg-indigo-100 hover:text-indigo-900 hover:border-indigo-400 px-5 py-2.5 rounded-xl shadow-sm transition-all">${u.name}</button>`).join('') : `<span class="text-base text-indigo-700/60 bg-white/50 px-5 py-2.5 rounded-xl">尚無紀錄或尚未連線</span>`}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderMain = () => {
+            el('view-container').innerHTML = `
+                <nav class="glass-nav text-white shadow-lg z-20 shrink-0" style="background: rgba(79, 70, 229, 0.9);">
+                    <div class="w-full px-2 sm:px-4 md:px-6 lg:px-8 mx-auto">
+                        <div class="flex justify-between items-center h-20 w-full overflow-x-auto scrollbar-hide gap-2 md:gap-4">
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <span class="font-extrabold text-xl md:text-2xl lg:text-xl xl:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
+                                    <span class="bg-white/20 p-2 rounded-xl mr-2 xl:mr-3 shadow-sm">📖</span>善用修辭一 🎓✨
+                                </span>
+                                <div class="flex items-center bg-white/20 px-2 py-1.5 md:px-3 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
+                                    <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
+                                    <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
+                                </div>
+                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-2 animate-fade-in shrink-0 gap-2 md:gap-3">
+                                    <div class="flex items-center bg-white px-3 py-1.5 md:px-4 md:py-1.5 rounded-xl shadow-md text-sm md:text-lg font-bold shrink-0 text-indigo-950">
+                                        <span class="text-emerald-600 flex items-center"><span class="mr-1 md:mr-2">✅</span><span id="nav-stat-correct">0</span></span>
+                                        <div class="w-px bg-slate-300 h-4 md:h-5 mx-2 md:mx-3"></div>
+                                        <span class="text-rose-600 flex items-center"><span class="mr-1 md:mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
+                                    </div>
+                                    <div class="hidden xl:flex flex-col w-24 lg:w-32 shrink-0">
+                                        <div class="w-full bg-indigo-950/40 rounded-full h-3.5 overflow-hidden shadow-inner border border-white/20">
+                                            <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-amber-300 to-amber-500 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
+                                                <div class="absolute inset-0 bg-white/30 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.2) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.2) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(100)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
+                                
+                                <div class="ml-1 sm:ml-2 lg:ml-4 flex items-center pl-2 sm:pl-3 lg:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-1 md:gap-2">
+                                    <div class="text-sm md:text-base lg:text-lg xl:text-xl font-bold bg-white/20 px-2 py-1.5 md:px-3 lg:px-4 lg:py-2 rounded-xl text-white shadow-inner flex items-center">
+                                        <span class="mr-1 lg:mr-2">👤</span>${username}
+                                    </div>
+                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="刪除帳號紀錄">🗑️</button>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-rose-500/80 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="登出">🚪</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+                <div id="main-content" class="flex-1 overflow-hidden flex flex-col w-full z-10 relative">
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+CjxyZWN0IHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgZmlsbD0ibm9uZSIvPgo8Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIxIiBmaWxsPSIjZjVjNWMyIi8+Cjwvc3ZnPg==')] opacity-50 z-0"></div>
+                </div>
+            `;
+            switchTab('learn');
+        };
+
+        window.deleteUserData = async () => {
+            if(!confirm(`確定要從雲端刪除選手 ${username} 的所有資料？此操作無法復原！`)) return;
+            if(!confirm(`⚠️ 再次警告：這將永久刪除 ${username} 的所有進度、錯題與紀錄！\n\n您真的確定要執行刪除嗎？`)) return;
+            try {
+                if (isFirebaseInitialized && currentUser) {
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const snap = await getDoc(globalRef);
+                    if(snap.exists()) {
+                        let users = snap.data().users || [];
+                        users = users.filter(u => u.name !== username);
+                        await setDoc(globalRef, { users }, { merge: true });
+                    }
+                    const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                    await setDoc(userRef, { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, { merge: true });
+                }
+                localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+                userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+                if(unsubscribeUser) unsubscribeUser();
+                username = '';
+                renderLogin();
+            } catch(e) { alert("刪除失敗，請稍後再試"); }
+        };
+
+        window.logout = () => {
+            username = '';
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+            quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+            if(unsubscribeUser) unsubscribeUser();
+            renderLogin();
+        };
+
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
+                const btn = el(`nav-${t}`);
+                if(btn) {
+                    if(t === tab) btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                    else btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                }
+            });
+            const navStats = el('nav-quiz-stats');
+            if (navStats) {
+                if (tab === 'quiz' && quizState.active) {
+                    navStats.classList.remove('hidden'); navStats.classList.add('flex'); updateQuizStats();
+                } else { navStats.classList.add('hidden'); navStats.classList.remove('flex'); }
+            }
+            const content = el('main-content');
+            if(tab === 'learn') renderLearnView(content);
+            if(tab === 'quiz') renderQuizView(content);
+            if(tab === 'mistakes') renderMistakes(content);
+            if(tab === 'favorites') renderFavorites(content);
+            if(tab === 'history') renderHistory(content);
+        };
+
+        const renderLearnView = (container) => {
+            const currentData = learnData.find(d => d.id === learnSubTab);
+            const themeColors = {
+                'orange': 'text-orange-900 bg-orange-50 border-orange-200',
+                'teal': 'text-teal-900 bg-teal-50 border-teal-200',
+                'purple': 'text-purple-900 bg-purple-50 border-purple-200'
+            };
+            const activeTheme = currentData && currentData.theme ? themeColors[currentData.theme] : 'text-indigo-900 bg-indigo-50 border-indigo-200';
+
+            container.innerHTML = `
+                <div class="w-full ${activeTheme} border-b p-4 flex items-center shadow-sm z-10 shrink-0 overflow-hidden transition-colors duration-300">
+                    <button onclick="toggleLearnMenu(true)" class="text-indigo-800 hover:text-rose-600 focus:outline-none flex items-center px-4 py-2 bg-white/80 rounded-xl border border-white shadow-sm mr-4 transition-all hover:shadow">
+                        <i class="fas fa-bars text-xl md:mr-3"></i>
+                        <span class="font-bold text-lg hidden md:inline tracking-wide">單元選單</span>
+                    </button>
+                    <span class="font-extrabold text-xl md:text-2xl lg:text-3xl truncate drop-shadow-sm" id="current-learn-title">${currentData ? currentData.title : ''}</span>
+                </div>
+                <div id="learn-overlay" onclick="toggleLearnMenu(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden transition-opacity duration-300"></div>
+                <div id="learn-drawer" class="fixed inset-y-0 left-0 w-[24rem] max-w-[85vw] bg-white border-r border-indigo-100 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl flex flex-col">
+                    <div class="p-6 bg-indigo-50 flex justify-between items-center border-b border-indigo-100 shrink-0">
+                        <span class="font-extrabold text-2xl text-indigo-900">📑 學習目錄 🗺️</span>
+                        <button onclick="toggleLearnMenu(false)" class="text-indigo-400 hover:text-rose-500 transition-colors bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-indigo-100"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                    <ul class="py-4 flex-1 px-3 space-y-1">
+                        ${learnData.map(d => {
+                            const isSelected = learnSubTab === d.id;
+                            const themeConfig = {
+                                'orange': isSelected ? 'bg-orange-50 text-orange-900 border-orange-500' : 'hover:bg-orange-50/50',
+                                'teal': isSelected ? 'bg-teal-50 text-teal-900 border-teal-500' : 'hover:bg-teal-50/50',
+                                'purple': isSelected ? 'bg-purple-50 text-purple-900 border-purple-500' : 'hover:bg-purple-50/50'
+                            };
+                            const defaultClass = isSelected ? 'bg-indigo-50 text-indigo-900 border-indigo-500 shadow-sm' : 'text-slate-600 border-transparent hover:bg-indigo-50';
+                            const activeClass = d.theme ? themeConfig[d.theme] : defaultClass;
+                            return `
+                            <li>
+                                <button onclick="selectLearnTab('${d.id}')" id="ltab-${d.id}" class="w-full text-left px-5 py-4 text-lg md:text-xl font-bold rounded-xl transition-all border-l-4 ${isSelected ? activeClass + ' shadow-sm' : 'text-slate-600 border-transparent hover:bg-indigo-50 hover:pl-6 hover:text-indigo-800'}">
+                                    ${d.title}
+                                </button>
+                            </li>
+                        `}).join('')}
+                    </ul>
+                </div>
+                <div class="flex-1 p-4 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden w-full relative z-10" id="learn-content-area"></div>
+            `;
+            renderLearnContent();
+        };
+
+        window.selectLearnTab = (id) => {
+            learnSubTab = id;
+            renderLearnView(el('main-content')); 
+            toggleLearnMenu(false);
+        };
+
+        window.renderLearnContent = () => {
+            const area = el('learn-content-area');
+            if(!area) return;
+            const data = learnData.find(d => d.id === learnSubTab);
+            area.innerHTML = `<div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto animate-fade-in pb-12">${data.content}</div>`;
+        };
+
+        const renderQuizView = (container) => {
+            if(!quizState.active) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto relative z-10">
+                        <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-4xl lg:max-w-5xl w-full border border-white/60 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-40 h-40 bg-indigo-100 rounded-bl-full -z-10 opacity-50"></div>
+                            <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
+                                <span class="text-6xl md:text-7xl text-white">🧠</span>
+                            </div>
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-indigo-950 tracking-wide">善用修辭一 100題挑戰 🏆🔥</h2>
+                            <p class="text-indigo-800/80 mb-10 text-xl md:text-2xl leading-loose">
+                                從譬喻到誇飾，從轉化到借代，驗收您的修辭精熟度！<br>
+                                <span class="bg-indigo-100 text-indigo-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-indigo-200 shadow-sm">🌊 瀑布流模式</span><br>
+                                <span class="text-lg md:text-xl text-rose-600 mt-3 block font-bold">🎯 點擊選項後，詳細解析將直接顯示在每個選項框框內，無須滑動對照！</span>
+                            </p>
+                            <button onclick="startQuiz()" class="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-5 px-16 text-2xl md:text-3xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl">
+                                開始挑戰 🚀🔥
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                renderQuizWaterfall(container);
+            }
+        };
+
+        window.startQuiz = () => {
+            const qList = [...generate100Questions()].sort(() => 0.5 - Math.random()).map(q => ({
+                ...q, selectedAns: null, showExplanation: false, isCorrect: false
+            }));
+            quizState = { active: true, isFinished: false, questions: qList };
+            saveQuizState();
+            renderQuizView(el('main-content'));
+            const navStats = el('nav-quiz-stats');
+            if (navStats) { navStats.classList.remove('hidden'); navStats.classList.add('flex'); }
+            updateQuizStats();
+        };
+
+        window.updateQuizStats = () => {
+            if (!quizState.active) return;
+            let correct = 0; let incorrect = 0; let answered = 0;
+            const total = quizState.questions.length;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answered++;
+                    if (q.isCorrect) correct++; else incorrect++;
+                }
+            });
+            const progressPercent = (answered / total) * 100;
+            const elCorrect = document.getElementById('nav-stat-correct');
+            const elIncorrect = document.getElementById('nav-stat-incorrect');
+            const elBar = document.getElementById('nav-stat-progress-bar');
+            if (elCorrect) elCorrect.innerText = correct;
+            if (elIncorrect) elIncorrect.innerText = incorrect;
+            if (elBar) elBar.style.width = progressPercent + '%';
+        };
+
+        window.restartQuizWithConfirm = () => {
+            if(confirm('確定要重新開始挑戰嗎？這將會清除目前的畫面，並產生全新的測驗題目！')) startQuiz();
+        };
+
+        const renderQuizWaterfall = (container) => {
+            const total = quizState.questions.length;
+            const isFinished = quizState.isFinished;
+            
+            let headerHtml = isFinished 
+                ? ` <div class="glass-card flex flex-col md:flex-row justify-between items-center rounded-2xl p-5 md:p-6 shadow-lg border border-amber-300 mb-10 sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-indigo-50 to-purple-50">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="text-5xl mr-4 drop-shadow-md">🏆✨</span>
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-900">測驗結算完成 🎉</h2>
+                                <p class="text-indigo-700 font-bold text-lg mt-1">總分：<span class="text-3xl md:text-4xl text-rose-600 font-black">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="switchTab('mistakes')" class="text-base md:text-lg text-indigo-600 hover:text-white hover:bg-indigo-500 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border-2 border-indigo-200 hover:border-indigo-500 bg-white"><span class="mr-2">🩹</span>錯題本</button>
+                            <button onclick="restartQuizWithConfirm()" class="text-base md:text-lg text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 px-4 py-2 rounded-xl font-bold transition-colors flex items-center shadow-md hover:shadow-lg"><span class="mr-2">🔄</span>重新挑戰</button>
+                        </div>
+                    </div>`
+                : ` <div class="flex justify-end mb-4">
+                        <button onclick="clearQuizHistory()" class="text-sm md:text-base text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-rose-200 bg-white shadow-sm"><span class="mr-2">🚪</span>放棄作答</button>
+                    </div>`;
+
+            let html = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto relative">
+                        ${headerHtml}
+                        <div id="questions-list" class="space-y-10 w-full">
+            `;
+            quizState.questions.forEach((_, qIdx) => { html += `<div id="q-block-${qIdx}" class="bg-white rounded-3xl shadow-lg overflow-hidden border border-indigo-100 transition-all w-full">${generateSingleQuestionHtml(qIdx)}</div>`; });
+            html += `</div>`;
+            
+            if (!isFinished) {
+                html += `
+                        <button onclick="finishQuizWaterfall()" class="w-full mt-16 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-purple-700">
+                            🏁 完成測驗並結算成績 📊🎉
+                        </button>`;
+            } else {
+                 html += `
+                        <button onclick="restartQuizWithConfirm()" class="w-full mt-16 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-pink-700">
+                            🔄 重新開始挑戰 🚀💪
+                        </button>`;                
+            }
+            html += `</div></div>`;
+            container.innerHTML = html;
+        };
+
+        const generateSingleQuestionHtml = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            let optionsHtml = '';
+            
+            q.opts.forEach((opt, i) => {
+                let btnClass = "w-full text-left p-3 md:p-5 text-xl md:text-2xl rounded-2xl border-2 transition-all duration-200 flex flex-col items-start group relative overflow-hidden ";
+                let iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3 md:mr-5 font-extrabold text-xl md:text-2xl transition-colors shrink-0 shadow-inner group-hover:bg-indigo-100 group-hover:text-indigo-700">${String.fromCharCode(65+i)}</span>`;
+                
+                let optExpHtml = '';
+                
+                if (!q.showExplanation) {
+                    btnClass += "border-indigo-100 hover:border-indigo-400 hover:bg-indigo-50/50 bg-white cursor-pointer hover:shadow-md";
+                } else {
+                    let expText = (q.exps && q.exps[i]) ? q.exps[i] : '無詳細解析';
+                    
+                    if (i === q.ans) {
+                        btnClass += "border-emerald-400 bg-emerald-50/30 text-emerald-900 shadow-md z-10 ring-2 ring-emerald-400/20";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-3 md:mr-5 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">✅</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-emerald-200 bg-emerald-100/60 text-emerald-900 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-emerald-700">🎯 解析：</span>${expText}</div>`;
+                    } else if (i === q.selectedAns) {
+                        btnClass += "border-rose-400 bg-rose-50/40 text-rose-900";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-rose-500 text-white flex items-center justify-center mr-3 md:mr-5 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">❌</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-rose-200 bg-rose-100/60 text-rose-900 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-rose-700">💡 解析：</span>${expText}</div>`;
+                    } else {
+                        btnClass += "border-slate-200 bg-slate-50/60 opacity-90 cursor-not-allowed";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center mr-3 md:mr-5 font-extrabold text-xl md:text-2xl shrink-0">${String.fromCharCode(65+i)}</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-slate-200 bg-white text-slate-700 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-slate-500">💡 解析：</span>${expText}</div>`;
+                    }
+                }
+
+                optionsHtml += `
+                    <button ${q.showExplanation ? 'disabled' : `onclick="answerWaterfallQuestion(${qIdx}, ${i})"`} class="${btnClass}">
+                        <div class="flex items-center w-full">
+                            ${iconHtml}
+                            <span class="flex-1 leading-relaxed break-words z-10 ${q.showExplanation && i === q.ans ? 'text-emerald-900 font-bold' : 'text-slate-800 font-medium'} group-hover:text-indigo-950">${opt}</span>
+                        </div>
+                        ${optExpHtml}
+                    </button>
+                `;
+            });
+
+            let generalExpHtml = '';
+            if (q.showExplanation && q.generalExp) {
+                generalExpHtml = `
+                    <div class="mt-5 p-4 md:p-5 bg-indigo-50/80 border border-indigo-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-indigo-400"></div>
+                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-indigo-900">${q.generalExp}</p>
+                    </div>
+                `;
+            }
+
+            const isFav = userData.favorites && userData.favorites.includes(q.q);
+            const favIconHtml = isFav 
+                ? '<i class="fa-solid fa-heart text-rose-500"></i>' 
+                : '<i class="fa-regular fa-heart text-rose-500"></i>';
+
+            let statusTag = '';
+            let bgGradient = '';
+            if (q.showExplanation) {
+                if (q.selectedAns === q.ans) {
+                    statusTag = '<span class="text-emerald-600 font-bold text-lg md:text-xl flex items-center bg-emerald-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">✅</span>答對 🎉</span>';
+                    bgGradient = 'bg-gradient-to-r from-emerald-50 to-white';
+                } else if (q.selectedAns === -1) {
+                    statusTag = '<span class="text-amber-600 font-bold text-lg md:text-xl flex items-center bg-amber-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">⚠️</span>未作答</span>';
+                    bgGradient = 'bg-gradient-to-r from-amber-50 to-white';
+                } else {
+                    statusTag = '<span class="text-rose-600 font-bold text-lg md:text-xl flex items-center bg-rose-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯 💦</span>';
+                    bgGradient = 'bg-gradient-to-r from-rose-50 to-white';
+                }
+            } else {
+                statusTag = '<span class="text-indigo-400 font-bold text-base md:text-lg flex items-center bg-indigo-100/50 px-3 py-1 rounded-full border border-indigo-200"><span class="mr-2">✍️</span>作答區</span>';
+                bgGradient = 'bg-indigo-50/30';
+            }
+
+            return `
+                <div class="px-5 md:px-8 py-4 border-b border-indigo-100 flex justify-between items-center transition-colors ${bgGradient}">
+                    <div class="flex items-center">
+                        <span class="font-extrabold text-indigo-500 text-lg md:text-xl bg-white px-3 py-1 rounded-xl border border-indigo-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
+                        <button onclick="toggleQuizFavorite(${qIdx})" class="ml-4 text-[1.5rem] md:text-3xl hover:scale-110 transition-transform focus:outline-none drop-shadow-sm" title="加入/取消最愛">
+                            ${favIconHtml}
+                        </button>
+                    </div>
+                    ${statusTag}
+                </div>
+                <div class="p-5 md:p-8 w-full overflow-hidden">
+                    <h3 class="text-2xl md:text-3xl font-extrabold text-slate-800 mb-6 leading-loose break-words">${q.q}</h3>
+                    <div class="space-y-3 w-full">
+                        ${optionsHtml}
+                    </div>
+                    ${generalExpHtml}
+                </div>
+            `;
+        };
+
+        window.toggleQuizFavorite = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            const qText = q.q;
+            if (!userData.favorites) userData.favorites = [];
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) userData.favorites.splice(idx, 1);
+            else userData.favorites.push(qText);
+            saveUserDataToCloud();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
+        };
+
+        window.answerWaterfallQuestion = (qIdx, optIdx) => {
+            const q = quizState.questions[qIdx];
+            if(q.showExplanation) return; 
+
+            const isCorrect = optIdx === q.ans;
+            q.selectedAns = optIdx;
+            q.showExplanation = true;
+            q.isCorrect = isCorrect;
+            
+            if (isCorrect) {
+                playCorrectSound();
+                confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 }, zIndex: 10000, colors: ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#3b82f6'] });
+            } else {
+                playWrongSound();
+                const mistakeId = q.q; 
+                if(!userData.mistakes) userData.mistakes = [];
+                const exists = userData.mistakes.find(m => m.id === mistakeId);
+                if(!exists) {
+                    userData.mistakes.push({
+                        id: mistakeId, q: q.q, opts: q.opts, ans: q.ans, exps: q.exps, generalExp: q.generalExp, time: new Date().toISOString()
+                    });
+                    saveUserDataToCloud();
+                }
+            }
+            saveQuizState();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
+            updateQuizStats();
+        };
+
+        window.finishQuizWaterfall = async () => {
+            let correctCount = 0; let answeredCount = 0;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answeredCount++;
+                    if (q.isCorrect) correctCount++;
+                }
+            });
+            if (answeredCount < quizState.questions.length) {
+                if(!confirm(`您還有 ${quizState.questions.length - answeredCount} 題尚未作答，確定要直接交卷結算嗎？未作答的題目將以錯誤計算。`)) return;
+            }
+            quizState.questions.forEach(q => {
+                if (!q.showExplanation) {
+                    q.showExplanation = true; q.isCorrect = false; q.selectedAns = -1;
+                }
+            });
+            quizState.isFinished = true; quizState.correctCount = correctCount; quizState.answeredCount = answeredCount;
+            const total = quizState.questions.length;
+            const scorePercent = Math.round((correctCount / total) * 100);
+            quizState.scorePercent = scorePercent;
+            saveQuizState();
+            
+            if (!userData.quizHistory) userData.quizHistory = [];
+            userData.quizHistory.push({ date: new Date().toLocaleString(), score: scorePercent, total: total, correct: correctCount });
+            if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
+            saveUserDataToCloud();
+
+            renderQuizView(el('main-content'));
+            confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 }, zIndex: 10000, colors: ['#4f46e5', '#8b5cf6', '#ec4899', '#f43f5e', '#3b82f6'] });
+            
+            setTimeout(() => {
+                const scrollContainer = document.getElementById('quiz-scroll-container');
+                if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+        };
+
+        window.clearQuizHistory = () => {
+            if(confirm('警告：確定要清除目前的作答紀錄嗎？\n(此動作將會遺失目前所有測驗進度)')) {
+                if(confirm('【第二次確認】真的要清除作答紀錄並放棄目前測驗嗎？\n按下「確定」將會清空並返回測驗首頁。')) {
+                    quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                    saveQuizState();
+                    const navStats = el('nav-quiz-stats');
+                    if (navStats) { navStats.classList.add('hidden'); navStats.classList.remove('flex'); }
+                    renderQuizView(el('main-content'));
+                }
+            }
+        };
+
+        window.renderMistakes = (container) => {
+            if(!container) container = el('main-content');
+            if(!userData.mistakes || userData.mistakes.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-indigo-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-emerald-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-emerald-200 text-7xl">🥳</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-indigo-950 mb-4">太棒了！✨</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-indigo-800/60">目前沒有任何錯題紀錄 🎉</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">🩹</span>錯題本 📚</h2>
+                                <p class="text-rose-900/50 mt-3 ml-20 font-bold text-lg md:text-xl">收錄您在測驗中答錯的題目，溫故知新 🔄💡</p>
+                            </div>
+                            <button onclick="clearMistakes()" class="text-base md:text-xl text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 px-5 py-3 rounded-xl border-2 border-rose-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${userData.mistakes.map((m, i) => `
+                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-indigo-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-indigo-400"></div>
+                                    <h3 class="font-extrabold text-indigo-950 mb-6 text-2xl md:text-3xl break-words leading-loose flex items-start">
+                                        <span class="text-rose-500 mr-3 text-2xl font-black bg-rose-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
+                                    </h3>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-xl md:text-2xl w-full font-medium">
+                                        ${m.opts.map((opt, idx) => `
+                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all flex flex-col ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <div class="flex items-start">
+                                                    <span class="inline-block w-8 md:w-10 font-bold ${idx === m.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> 
+                                                    <span class="flex-1">${opt}</span>
+                                                    ${idx === m.ans ? '<span class="ml-2 text-emerald-500 text-2xl">✅</span>' : ''}
+                                                </div>
+                                                ${(m.exps && m.exps[idx]) ? `<div class="mt-3 p-3 rounded-xl text-base md:text-lg border ${idx === m.ans ? 'border-emerald-200 bg-emerald-100/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'} leading-relaxed font-medium"><span class="font-bold mr-2 ${idx === m.ans ? 'text-emerald-700' : 'text-slate-500'}">${idx === m.ans ? '🎯 解析：' : '💡 解析：'}</span>${m.exps[idx]}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ${m.generalExp ? `
+                                    <div class="mt-5 p-4 md:p-5 bg-indigo-50/80 border border-indigo-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-indigo-400"></div>
+                                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-indigo-900">${m.generalExp}</p>
+                                    </div>` : ''}
+                                </div>
+                            `).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.clearMistakes = () => {
+            if(confirm('警告：確定要清空所有錯題紀錄嗎？\n(此動作無法復原)')) {
+                if(confirm('【第二次確認】真的要徹底清空錯題本嗎？\n按下「確定」將會刪除所有錯題資料。')) {
+                    userData.mistakes = []; saveUserDataToCloud(); renderMistakes();
+                }
+            }
+        };
+
+        window.renderFavorites = (container) => {
+            if(!container) container = el('main-content');
+            if(!userData.favorites || userData.favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-indigo-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-rose-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-rose-100 text-7xl">💔</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-indigo-950 mb-4">暫無收藏</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-indigo-800/60 mb-10">在測驗中點擊愛心圖示即可收藏題目！ 📌✨</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            const allQList = generate100Questions();
+            const favQuestions = userData.favorites.map(favText => {
+                return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exps: [], generalExp: '題目資料已遺失' };
+            });
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">💖</span>我的最愛 🌟</h2>
+                            <p class="text-rose-900/50 mt-3 ml-8 font-bold text-lg md:text-xl hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${favQuestions.map((qObj, i) => {
+                                if (qObj.opts.length === 0) return '';
+                                return `
+                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-rose-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-rose-600"></div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="font-extrabold text-indigo-950 text-2xl md:text-3xl break-words leading-loose flex items-start pr-6 flex-1">
+                                            <span class="text-rose-500 mr-3 text-2xl font-black bg-rose-50 px-3 py-1 rounded-xl">📌 Q</span>${qObj.q}
+                                        </h3>
+                                        <button onclick="toggleFavoritePage('${qObj.q}')" class="text-[2rem] md:text-3xl hover:scale-110 transition-transform shrink-0 mt-1 focus:outline-none drop-shadow-sm" title="移除最愛">
+                                            <i class="fa-solid fa-heart text-rose-500"></i>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-xl md:text-2xl w-full font-medium">
+                                        ${qObj.opts.map((opt, idx) => `
+                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all flex flex-col ${idx === qObj.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <div class="flex items-start">
+                                                    <span class="inline-block w-8 md:w-10 font-bold ${idx === qObj.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> 
+                                                    <span class="flex-1">${opt}</span>
+                                                    ${idx === qObj.ans ? '<span class="ml-2 text-emerald-500 text-2xl">✅</span>' : ''}
+                                                </div>
+                                                ${(qObj.exps && qObj.exps[idx]) ? `<div class="mt-3 p-3 rounded-xl text-base md:text-lg border ${idx === qObj.ans ? 'border-emerald-200 bg-emerald-100/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'} leading-relaxed font-medium"><span class="font-bold mr-2 ${idx === qObj.ans ? 'text-emerald-700' : 'text-slate-500'}">${idx === qObj.ans ? '🎯 解析：' : '💡 解析：'}</span>${qObj.exps[idx]}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ${qObj.generalExp ? `
+                                    <div class="mt-5 p-4 md:p-5 bg-indigo-50/80 border border-indigo-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-indigo-400"></div>
+                                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-indigo-900">${qObj.generalExp}</p>
+                                    </div>` : ''}
+                                </div>
+                                `;
+                            }).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.toggleFavoritePage = (qText) => {
+            if (!userData.favorites) return;
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) {
+                if(confirm('確定要從最愛中移除此題嗎？')) {
+                    userData.favorites.splice(idx, 1);
+                    saveUserDataToCloud();
+                    renderFavorites();
+                }
+            }
+        };
+
+        window.renderHistory = (container) => {
+            if(!container) container = el('main-content');
+            if((!userData.quizHistory || userData.quizHistory.length === 0) && (!userData.loginHistory || userData.loginHistory.length === 0)) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-indigo-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-slate-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-slate-200 text-7xl">📜</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-indigo-950 mb-4">暫無紀錄</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-indigo-800/60 mb-10">您還沒有完成任何測驗或留下足跡喔！</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-amber-300 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-amber-800 flex items-center"><span class="bg-amber-100 text-amber-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">📜</span>作答與登入紀錄</h2>
+                                <p class="text-amber-900/60 mt-3 ml-20 font-bold text-lg md:text-xl">追蹤您的學習軌跡，跨裝置同步更新 ☁️</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <!-- 作答紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+                                <div class="bg-amber-50 p-6 border-b border-amber-200">
+                                    <h3 class="text-3xl font-bold text-amber-900 flex items-center"><span class="mr-3 text-3xl">🎯</span>最近作答成績</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                                    ${(userData.quizHistory || []).slice().reverse().map((h, i) => `
+                                        <div class="flex justify-between items-center p-5 rounded-2xl border-2 border-slate-100 ${h.score >= 80 ? 'bg-emerald-50/50 border-emerald-100' : (h.score < 60 ? 'bg-rose-50/50 border-rose-100' : 'bg-slate-50')} transition-all hover:shadow-md">
+                                            <div>
+                                                <div class="font-bold text-slate-800 text-xl md:text-2xl">${h.date}</div>
+                                                <div class="text-lg text-slate-500 mt-2 font-medium">共 ${h.total} 題，答對 <span class="font-bold text-slate-700">${h.correct}</span> 題</div>
+                                            </div>
+                                            <div class="text-5xl font-black ${h.score >= 80 ? 'text-emerald-600' : (h.score < 60 ? 'text-rose-500' : 'text-amber-500')}">${h.score}<span class="text-2xl ml-1 font-bold">分</span></div>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">目前還沒有測驗紀錄喔</p>'}
+                                </div>
+                            </div>
+
+                            <!-- 登入紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden h-fit">
+                                <div class="bg-slate-50 p-6 border-b border-slate-200">
+                                    <h3 class="text-3xl font-bold text-slate-800 flex items-center"><span class="mr-3 text-3xl">👣</span>最近登入足跡</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-4 max-h-[40vh] overflow-y-auto">
+                                    ${(userData.loginHistory || []).slice().reverse().map((time, i) => `
+                                        <div class="flex items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors">
+                                            <span class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 mr-4 text-lg font-bold shadow-inner">${i+1}</span>
+                                            <span class="font-bold text-slate-700 text-xl">${new Date(time).toLocaleString()}</span>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">無登入紀錄</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        initApp();
+
+    </script>
+</body>
+</html>
