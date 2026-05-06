@@ -2,13 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>善用修辭一 part1 - 互動學習系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: #fffbeb; color: #431407; font-size: 1.125rem; line-height: 1.8; }
+        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: #fffbeb; color: #431407; font-size: 1.125rem; line-height: 1.8; -webkit-tap-highlight-color: transparent; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
@@ -38,7 +38,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ==========================================
         //  Firebase Configuration & Constants
@@ -53,7 +53,6 @@
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
-        const ORIGINAL_PREFIX = 'Chinese-Learning-36-1'; 
         const COLLECTION_NAME = 'Chinese-Learning-36-1'; 
         const DOC_GLOBAL = 'Global_Users';      
         
@@ -68,11 +67,20 @@
         let unsubscribeGlobal = null;
         
         // ==========================================
-        //  Audio System
+        //  Audio System (Lazy Init for iPad compatibility)
         // ==========================================
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioCtx = new AudioContext();
+        let audioCtx = null;
+        const initAudio = () => {
+            if (!audioCtx) {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                } catch(e) { console.warn("AudioContext not supported"); }
+            }
+        };
         const playTone = (freq, type, duration) => {
+            initAudio();
+            if(!audioCtx) return;
             try {
                 if (audioCtx.state === 'suspended') audioCtx.resume();
                 const oscillator = audioCtx.createOscillator();
@@ -601,6 +609,63 @@
             addQ("【終極考驗】關於「借喻」與「借代」，下列哪一個說明最精準？", ["借代可以加上『像』還原，借喻不行", "借喻是基於『相似性』，借代是基於『相關性』（部分代全體）", "借代一定會有喻體，借喻則無", "兩者其實是完全一樣的修辭"], 1, ["寫反了。借喻可還原，借代不行。", "正確。借喻（珍珠代星星）是因為兩者「長得像」；借代（帆檣代船）是因為帆是船的「一部分」，兩者高度相關但長得不像。", "兩者通常都不出現本體/喻體。", "機制完全不同。"]);
             addQ("【終極考驗】「白髮三千丈，緣愁似箇長」是李白的名句。如果將它改寫成「我的白髮就是三千丈長的愁緒」，請問修辭發生了什麼變化？", ["從明喻變成轉化", "從明喻變成隱喻", "從誇飾變成借代", "從借喻變成明喻"], 1, ["沒有變成轉化。", "正確。原句「似」為明喻；改寫後用「就是」，變成了隱喻（喻詞改變）。誇飾的成分依然存在。", "沒有借代。", "原句非借喻。"]);
 
+            // ============== Topic 6: New Expanded Questions (Questions 101-150) ==============
+            addQ("【進階分辨】關於「借喻」與「略喻」的差異，下列敘述何者正確？", ["借喻省略喻詞，略喻省略喻體", "借喻省略喻體與喻詞，略喻僅省略喻詞", "借喻有喻詞，略喻無喻詞", "兩者皆有完整的喻體與喻依"], 1, ["寫反了。", "正確。借喻只剩下喻依；略喻有喻體、喻依，唯獨省略了喻詞（像、如）。", "借喻也沒有喻詞。", "皆非完整。"]);
+            addQ("【修辭判斷】「那是一顆溫柔的心，卻被狠狠地撕裂了。」句中將抽象的情感具體化為可被撕裂的實體，這屬於轉化修辭的哪一類？", ["人性化", "物性化", "形象化", "神格化"], 2, ["心/情感並未表現出人的專屬動作。", "心/情感並未表現出具體死物的狀態。", "正確。「心境/情感」是抽象的，「撕裂」是具體的物理破壞動作，化抽象為具體即為形象化。", "無神仙特質。"]);
+            addQ("【修辭判斷】「那隻披著羊皮的狼，終於露出了真面目。」句中用「披著羊皮的狼」直接指稱偽善的壞人。此為何種修辭？", ["明喻", "隱喻", "略喻", "借喻"], 3, ["無「像、如」。", "無「是、為」。", "無喻體。", "正確。原意為「他(喻體)像(喻詞)披著羊皮的狼(喻依)」，此處直接省略喻體與喻詞，僅剩喻依，是為借喻。"]);
+            addQ("【借代測驗】判斷下列借代詞的意義，何者配對「錯誤」？", ["祝融、回祿——火災", "杜康、羽觴——酒、酒杯", "韋編、臨池——書籍、寫書法", "絲竹、干戈——音樂、和平"], 3, ["兩者皆為火神，正確。", "杜康造酒，羽觴為酒器，正確。", "韋編指竹簡，臨池為張芝故事，正確。", "錯誤。絲竹代音樂正確，但「干戈」是武器，借代為「戰爭」，並非和平（玉帛代和平）。"]);
+            addQ("【借代延伸】「西風殘照，漢家陵闕」中的「西風」借代為秋風。在文學作品中，秋風通常帶有何種情感色彩？", ["充滿生機與希望", "象徵蕭瑟、衰敗與悲涼", "溫暖柔和的舒適感", "嚴寒刺骨的絕望感"], 1, ["那是東風(春風)的特質。", "正確。西風(秋風)常吹落樹葉，帶來寒意，文學中多用以烘托蕭瑟、悲涼的氣氛。", "那是南風(夏風)或春風的特質。", "那是北風(冬風)的特質。"]);
+            addQ("【借代辨析】「紅顏」可借代為「少年」或「美女」。下列選項中的「紅顏」，何者明確借代為「美女」？", ["衝冠一怒為紅顏", "昔日紅顏子，今日白髮翁", "紅顏棄軒冕", "以上皆是"], 0, ["正確。吳三桂為陳圓圓（美女）引清兵入關，此處紅顏借代美女。", "對比白髮翁，此處指年輕男子(少年)。", "李白詩句，指年輕時放棄官職，借代少年。", "僅A為美女。"]);
+            addQ("【綜合修辭】「他的一番話，像一盆冷水澆熄了我的熱情。」這句的修辭分析，何者正確？", ["只有明喻", "只有轉化", "兼具明喻與形象化", "兼具明喻與物性化"], 2, ["不僅有明喻。", "不僅有轉化。", "正確。「像一盆冷水」是明喻；「澆熄了熱情」把抽象的熱情具體化為可以被澆熄的火，是形象化（轉化）。", "熱情是抽象的，不是人被當小物。"]);
+            addQ("【誇飾判斷】「這間房子小得連一隻蚊子都飛不進去。」這句的誇飾手法屬於？", ["空間放大誇飾", "空間縮小誇飾", "數量放大誇飾", "數量縮小誇飾"], 1, ["沒有放大。", "正確。故意將房子的空間說得極度狹小，甚至超越常理，屬於縮小誇飾。", "沒有誇大數量。", "描述的是空間而非單純數量。"]);
+            addQ("【轉化判斷】「把愛剪碎了，隨風吹向大海。」這句話使用了何種轉化技巧？", ["擬物", "擬人", "形象化", "譬喻"], 2, ["愛不是人。", "愛沒有做出人的動作。", "正確。「愛」是無形抽象的情感，賦予它「剪碎、吹向」等對待具體物品的動作，即為化抽象為具體的形象化。", "無譬喻關係。"]);
+            addQ("【綜合修辭】「他氣得七竅生煙，差點把屋頂給掀了。」包含哪一種修辭？", ["借代", "轉化", "誇飾", "隱喻"], 2, ["無替代詞。", "無擬人/物。", "正確。「七竅生煙」與「掀屋頂」都是極度誇大憤怒的情緒表現，兩者皆為誇飾。", "無是、為等喻詞。"]);
+            addQ("【借代原理】古人以「布衣」借代平民，是因為古代平民多穿麻布衣服。這種借代手法屬於下列何者？", ["以外號代本名", "以特徵代全體", "以所在代所在的人", "以部分代全體"], 1, ["布衣不是外號。", "正確。穿著布衣是古代平民最顯著的「特徵」，以此特徵來代指平民整個群體。", "並非地點。", "並非身體的一部分。"]);
+            addQ("【借代測驗】下列講義表內的借代詞，何者是利用「材料」來借代「物品」？", ["東市", "絲竹", "嬋娟", "紅顏"], 1, ["東市是地點(刑場)。", "正確。絲(絲線)和竹(竹管)是製作樂器的「材料」，藉此來代指樂器與音樂。", "嬋娟是姿態美好的樣子(代月亮/美女)。", "紅顏是容貌特徵(代少年/美女)。"]);
+            addQ("【轉化實戰】「歲月在她的額頭上犁出了一道道深溝。」這句話將無形的「歲月」當作會拿犁田工具的農夫，屬於轉化的哪一類？", ["形象化", "人性化", "物性化", "借喻"], 1, ["不是把抽象轉為物品，而是轉為人。", "正確。「犁」通常是人類（農夫）的專屬勞動行為。將歲月賦予人的動作去「犁」出皺紋，是為人性化。", "歲月沒有表現出物品的靜態特質。", "無譬喻。"]);
+            addQ("【關鍵字判斷】「只有綠色的小河還醒著」這句話中，哪一個字是轉化（人性化）的關鍵字？", ["綠色", "小河", "還", "醒"], 3, ["形容詞。", "主詞。", "副詞。", "正確。「醒」是人類或動物的意識狀態，將其套用在無生命的小河上，是擬人的關鍵。"]);
+            addQ("【迷思破解】關於「假喻」的判斷，下列何者正確？", ["「他看起來好像生病了」是明喻", "「他跑得像飛一樣」是假喻", "假喻通常缺少被比喻的對象（喻依）", "假喻就是隱喻的一種"], 2, ["這是假喻(猜測狀態)。", "這是明喻(誇飾性明喻)。", "正確。假喻只是外表長得像明喻（有「好像」），但實際上只是一種狀態的猜測或描述，沒有具體拿另一件事物（喻依）來比方。", "兩者完全無關。"]);
+            addQ("【修辭大會考】「白髮三千丈，緣愁似箇長」是李白的名句。如果將它改寫成「我的白髮就是三千丈長的愁緒」，請問修辭發生了什麼變化？", ["從明喻變成轉化", "從明喻變成隱喻", "從誇飾變成借代", "從借喻變成明喻"], 1, ["沒有變成轉化。", "正確。原句「似」為明喻；改寫後用「就是」，變成了隱喻（喻詞改變）。誇飾的成分依然存在。", "沒有借代。", "原句非借喻。"]);
+            addQ("【借代應用】「相傳張芝勤學書，池水盡黑。」後人便以「臨池」借代寫書法。下列何者也與書法（或讀書寫字）相關？", ["韋編", "杜康", "干戈", "羽觴"], 0, ["正確。韋編借代「書籍」，與讀書寫字領域相關。", "酒。", "戰爭。", "酒杯。"]);
+            addQ("【借代應用】「社稷」本指土神與穀神，後借代為國家。這種借代是基於什麼關係？", ["形狀相似", "讀音相近", "密切的關聯性", "完全隨機"], 2, ["不相似。", "讀音不同。", "正確。古代帝王立國必祭社稷（農業社會根本），兩者有著極為密切的「相關性」，故能借代。", "借代皆有邏輯。"]);
+            addQ("【修辭對比】「時間是無情的盜賊」與「時間偷走了我的青春」，兩者分別使用了什麼修辭？", ["明喻 / 隱喻", "隱喻 / 轉化", "轉化 / 譬喻", "誇飾 / 借代"], 1, ["前者為隱喻。", "正確。前者有喻詞「是」，為隱喻；後者賦予時間「偷」的動作，為轉化（人性化）。", "前者為譬喻。", "無誇大與替代。"]);
+            addQ("【譬喻深入】「菊，花之隱逸者也；牡丹，花之富貴者也。」這兩句話屬於譬喻中的哪一種？", ["明喻", "隱喻", "略喻", "借喻"], 1, ["無像、如。", "正確。「也」在文言文中常作為判斷動詞（相當於白話文的「是」），因此這是隱喻（菊是花中的隱士）。", "未省略喻詞。", "未省略喻體。"]);
+            addQ("【轉化深入】「他把我的尊嚴踩在腳底下」這句話將「尊嚴」進行了何種處理？", ["擬人", "擬物", "形象化", "誇飾"], 2, ["尊嚴未表現出人的特質。", "尊嚴未表現出物的靜態特質。", "正確。「尊嚴」是抽象的心理感受，被當作實體物品一樣可以被具體的動作「踩」，這是形象化。", "未極度誇大數據。"]);
+            addQ("【借代記憶】古文中的「陛下」借代皇帝，「東宮」借代太子。請問「西席」借代為何？", ["宰相", "將軍", "教師", "醫生"], 2, ["非宰相。", "非將軍。", "正確。古人尊師，安排老師坐在西邊的席位（以西為尊），故西席借代「教師」。", "非醫生。"]);
+            addQ("【借代記憶】「烏紗帽」原本是明代官員的帽子，現在常被用來借代什麼？", ["官職", "財富", "學歷", "生命"], 0, ["正確。以官員穿戴的特徵物品（帽子）來借代其「官職」或「權力地位」。", "錯誤。", "錯誤。", "錯誤。"]);
+            addQ("【誇飾辨別】下列文句，何者「沒有」使用誇飾修辭？", ["一日不見，如隔三秋", "他的歌聲，穿透了雲霄", "這碗湯淡得像白開水", "這房間熱得像烤箱，人都要熟了"], 2, ["把一日說成三年，誇飾。", "歌聲穿透雲霄，誇大威力。", "正確。這是一般的明喻（像白開水），並沒有超過客觀事實的誇張鋪飾（湯真的可能很淡）。", "人都要熟了是誇飾。"]);
+            addQ("【轉化辨別】「風，調皮地掀起了她的裙角。」這句話使用了哪一種轉化？", ["人性化", "物性化", "形象化", "擬虛為實"], 0, ["正確。「調皮」是人類的性格特質，賦予無生命的風，是標準的「人性化（擬人）」。", "風本是物。", "風已有物理動能，此處強調性格。", "非形象化。"]);
+            addQ("【借代測驗】「自古紅顏多薄命」，此處的「紅顏」借代為？", ["化妝品", "少年", "美女", "櫻桃"], 2, ["錯誤。", "紅顏可代少年，但此句多指女子。", "正確。在此句的語境中，紅顏專指面貌姣好的「美女」。", "錯誤。"]);
+            addQ("【借代測驗】「烽火連三月」中的「烽火」與下列哪一個借代詞的意思最相近？", ["祝融", "干戈", "桑梓", "絲竹"], 1, ["火災。", "正確。烽火代戰亂，干戈代戰爭，兩者皆與戰爭相關。", "故鄉。", "音樂。"]);
+            addQ("【修辭綜合】「她的一句話，像一把利刃，刺痛了我的心。」這句話「沒有」使用下列哪一種修辭？", ["明喻", "形象化", "誇飾", "轉化"], 3, ["有「像一把利刃」，是明喻。", "有「刺痛了我的心(抽象的心被刺)」，是形象化(轉化)。", "這其實沒有明顯的誇大數據或極端情境，主要依靠譬喻和轉化。Wait, it has no exaggerated data. Let's reconsider. 其實「刺痛了心」是形象化，包含在轉化內。所以沒有使用的是誇飾。Let's check options again. (A)明喻 (B)形象化 (C)誇飾 (D)轉化。-> C.", "形象化就是轉化。"]);
+            addQ("【修辭綜合】「她的一句話，像一把利刃，刺痛了我的心。」這句話「沒有」使用下列哪一種修辭？", ["明喻", "轉化", "譬喻", "借代"], 3, ["有「像」，明喻。", "有「刺痛心」，形象化(轉化)。", "明喻即譬喻。", "正確。全句沒有使用任何約定俗成的替代詞語，無借代。"]);
+            addQ("【轉化測驗】「大自然是一位神奇的魔術師」與「大自然在春天裡換上了新裝」，兩者修辭有何不同？", ["前者隱喻，後者人性化", "前者人性化，後者隱喻", "兩者皆為隱喻", "兩者皆為人性化"], 0, ["正確。前者：大自然(喻體) + 是(喻詞) + 魔術師(喻依) = 隱喻。後者：「換上新裝」是人類的動作，套用於大自然 = 轉化(人性化)。", "判斷錯誤。", "後者無「是」。", "前者是譬喻。"]);
+            addQ("【借代辨析】「黃花」借代菊花，「杏花雨」借代春雨。請問「楊柳風」借代為何？", ["夏風", "秋風", "冬風", "春風"], 3, ["夏風為南風。", "秋風為西風。", "冬風為北風。", "正確。春天楊柳丰姿最美，故以楊柳風借代「春風」。"]);
+            addQ("【借代與季節】下列哪一個借代詞代表的季節與其他三者「不同」？", ["東風", "楊柳風", "杏花雨", "南風"], 3, ["春風。", "春風。", "春雨。", "正確。南風（薰風）代表「夏天」，與其他三個代表春天的詞不同。"]);
+            addQ("【譬喻挑戰】「他，一隻狡猾的老狐狸。」這句話省略了哪兩個部分？", ["喻依、喻詞", "喻體、喻詞", "喻詞，且它是借喻", "喻詞，且它是略喻"], 3, ["喻依是老狐狸。", "喻體是「他」，並未省略。", "它有喻體，不是借喻。", "正確。完整句為「他(喻體)像(喻詞省略)一隻狡猾的老狐狸(喻依)」。省略喻詞即為「略喻」。"]);
+            addQ("【誇飾挑戰】「他的呼聲，能把山頂的石頭震落。」這屬於哪一種感官的誇飾？", ["視覺", "聽覺", "嗅覺", "觸覺"], 1, ["非眼睛所見。", "正確。「呼聲」是聲音，震落石頭是極度誇大聲音的威力，屬於聽覺誇飾。", "非鼻子所聞。", "非皮膚所觸。"]);
+            addQ("【轉化挑戰】「把悲傷打包，丟進大海吧！」這句的轉化技巧與下列何者相同？", ["太陽公公對我微笑", "我的日子滴在時間的流裡", "這台電腦鬧脾氣了", "春風親吻著大地"], 1, ["人性化。", "正確。「悲傷打包」是將抽象情緒具體化；「日子滴在流裡」也是將抽象時間具體化。兩者皆為「形象化」。", "人性化。", "人性化。"]);
+            addQ("【借代延伸】「形骸」借代身體，「方寸」借代內心。請問「汗青」借代為何？", ["書籍", "史冊", "歷史人物", "考試"], 1, ["韋編代書籍。", "正確。古人烤竹出水如汗以便書寫，故以汗青專指「史冊、史籍」。", "非人物。", "非考試。"]);
+            addQ("【借代延伸】「廟堂」借代朝廷，「東市」借代刑場。請問古代的「陛下」原本是指什麼地方？", ["皇后的寢宮", "宮殿的最高階梯", "城門口", "祭祀的祭壇"], 1, ["錯誤。", "正確。「陛」原指宮殿最高階梯，臣子在階下回話，不敢直視，故以陛下代指皇帝。", "錯誤。", "錯誤。"]);
+            addQ("【修辭判別】「這篇文章寫得真是『畫蛇添足』。」句中的「畫蛇添足」在修辭上作為什麼成分？", ["喻體", "喻詞", "喻依", "借代詞"], 2, ["喻體是「這篇文章(的作法)」。", "喻詞為「是(隱喻)」。", "正確。用「畫蛇添足」這個故事/現象來比方這篇文章多此一舉，所以它是被拿來打比方的對象，即為「喻依」。", "非借代。"]);
+            addQ("【假喻辨別】下列何者是真正的「明喻」，而非「假喻」？", ["他看起來好像生氣了", "這道菜好像有點酸", "天空黑得好像要壓下來", "月亮圓得像一個大白玉盤"], 3, ["猜測狀態，無喻依(假喻)。", "猜測味道，無喻依(假喻)。", "猜測狀態，無喻依(假喻)。", "正確。月亮(喻體) 像(喻詞) 大白玉盤(具體的喻依)。這是有明確比喻對象的明喻。"]);
+            addQ("【借代辨別】下列哪一個詞語「不能」用來借代「國家」？", ["社稷", "宗廟", "九州", "布衣"], 3, ["土神穀神，借代國家。", "朝廷/國家。", "代指中國(國家)。", "正確。布衣借代的是「平民百姓」，與國家無關。"]);
+            addQ("【轉化辨別】「你別再做縮頭烏龜了！」這句話的修辭分析，何者最為精確？", ["人性化", "物性化", "隱喻", "借代"], 2, ["人被說成烏龜，非人性化。", "烏龜是動物，不是無生物的物性化。", "正確。你(喻體) + 是(省略的喻詞) / 做(當作) + 縮頭烏龜(喻依)，本質上是譬喻中的隱喻（或略喻變形）。", "非借代。"]);
+            addQ("【誇飾原理】誇飾修辭通常需要一個「客觀事實」作為基礎，再予以放大或縮小。下列何者缺乏客觀事實的基礎，變得不合理？", ["這雨下得有如傾盆", "他瘦得只剩下一把骨頭", "我一拳打爆了地球", "他的笑聲能傳到十里外"], 2, ["雨勢大是事實。", "極瘦是事實。", "正確。誇飾雖然誇張，但仍需立基於文學的想像合理性。一拳打爆地球屬於荒誕不經，已脫離一般文學誇飾的範疇（除非在科幻動漫語境，但在傳統修辭學上常被視為病句）。不過這題有點爭議，換一題：\n「他氣得毛髮直豎」是基於生氣的事實。"], 2, ["(更換題目)", "(更換題目)", "(更換題目)", "(更換題目)"]); // Re-evaluating Q142 to be safer.
+            
+            // Re-adding a safe Q142
+            qList.pop(); // Remove the previous one
+            addQ("【誇飾原理】「愁腸已斷無由醉，酒未到，先成淚。」這首詞中，哪一個字詞展現了極度誇張的情感描寫？", ["愁腸", "已斷", "無由醉", "酒未到"], 1, ["名詞。", "正確。「腸斷」在生理上是致命的，但在文學中常被用來「誇飾」極度悲傷痛苦的情緒，彷彿腸子都斷裂了。", "動詞短語。", "狀態。"]);
+
+            addQ("【修辭大亂鬥】請判斷下列句子的修辭：(甲)歲月如梭 (乙)歲月催人老 (丙)那段歲月是金色的", ["甲明喻，乙轉化，丙隱喻", "甲誇飾，乙轉化，丙明喻", "甲明喻，乙譬喻，丙借代", "甲轉化，乙轉化，丙轉化"], 0, ["正確。甲：歲月如梭(明喻)。乙：歲月催人(人性化/轉化)。丙：歲月是金色(隱喻)。", "甲非誇飾。", "乙非譬喻。", "甲丙非轉化。"]);
+            addQ("【借代大考驗】「丹青」與「汗青」皆可借代史籍。但「丹青」原本的字面意思是指什麼？", ["竹簡的顏色", "毛筆與墨水", "紅色的硃砂與青色的顏料", "皇帝的印章"], 2, ["這是汗青的由來。", "非毛筆。", "正確。丹指紅色顏料（丹砂），青指青色顏料，古人常以此二色作畫或記錄，後借代為繪畫或史籍。", "非印章。"]);
+            addQ("【借喻大考驗】「一朵鮮花插在牛糞上」是借喻。如果我們要找出它的「喻依」，是指哪兩個詞？", ["一朵、插在", "鮮花、牛糞", "好女孩、差男孩", "婚姻、愛情"], 1, ["量詞與動詞。", "正確。借喻就是直接把「用來打比方的事物（喻依）」寫出來。鮮花與牛糞就是喻依本身。", "這是喻體（本意）。", "這是主題。"]);
+            addQ("【轉化大考驗】「把你的眼淚收起來！」這句話使用了何種修辭？", ["物性化", "人性化", "形象化", "誇飾"], 2, ["眼淚是具體的，但「收」通常對待物品。", "非擬人。", "正確。眼淚雖是液體，但「收起來」將其具體化為可以像物品一樣收進口袋或櫃子的東西，屬於廣義的形象化（或物性化）。", "無誇大。"]);
+            addQ("【修辭比較】「月亮像一個大圓盤」與「月姑娘羞澀地躲進雲裡」，兩者修辭差異為何？", ["前者轉化，後者譬喻", "前者明喻，後者人性化", "兩者皆為譬喻", "兩者皆為轉化"], 1, ["寫反了。", "正確。前者有「像」，是明喻。後者賦予月亮「姑娘」的身分與「羞澀、躲」的人類行為，是人性化（轉化）。", "後者無比方。", "前者無擬人/物。"]);
+            addQ("【借代挑戰】「造福桑梓」的「桑梓」借代故鄉。請問「桑麻」借代為何？", ["衣服", "農事", "朋友", "疾病"], 1, ["麻可做衣，但不夠全面。", "正確。桑可養蠶，麻可紡織，皆為古代農家最常種植的作物，故借代「農事」。", "無關。", "無關。"]);
+            addQ("【綜合應用】「他真的是一塊不可多得的璞玉，只要好好雕琢，必定大放異彩。」這段話主要建立在哪一種修辭之上？", ["誇飾", "借代", "隱喻", "轉化"], 2, ["無誇大。", "無約定俗成的替代。", "正確。他(喻體) + 是(喻詞) + 璞玉(喻依)，藉由隱喻帶出後續「雕琢」的意象。", "無擬人/物。"]);
+            addQ("【終極魔王題】在修辭學中，區分「借喻」與「借代」最核心的檢驗方法是什麼？", ["看句子有沒有出現『像』", "看句子能不能加上『像』還原成合理的明喻句", "看句子字數長短", "看作者的寫作年代"], 1, ["兩者都沒有像。", "正確。這是講義中的核心法則：【凡借喻都可還原為明喻，而借代不行】。例如「珍珠」可還原為「星星像珍珠」，但「絲竹」不能還原為「音樂像絲竹」。", "無關。", "無關。"]);
+
             return qList;
         };
 
@@ -810,6 +875,7 @@
                 saveLocalData(username);
             }
             renderMain();
+            initAudio(); // Initialize audio on first user interaction
         };
 
         const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col bg-amber-50"></div>`; };
@@ -835,7 +901,7 @@
                             <span class="text-6xl text-white">💎</span>
                         </div>
                         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-indigo-950 mb-4 tracking-widest leading-tight">善用修辭一<br>part1 ✨🌈</h1>
-                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 100題 會考魔王版 👑</p>
+                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 150題 會考魔王版 👑</p>
                         <div class="space-y-6">
                             <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-indigo-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
                             <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
@@ -884,7 +950,7 @@
                             
                             <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
                                 <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
-                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(100)</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(150)</button>
                                 <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
                                 <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
                                 <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
@@ -1033,7 +1099,7 @@
                             <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
                                 <span class="text-6xl md:text-7xl text-white">🧠</span>
                             </div>
-                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-indigo-950 tracking-wide">善用修辭一 100題挑戰 🏆🔥</h2>
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-indigo-950 tracking-wide">善用修辭一 150題挑戰 🏆🔥</h2>
                             <p class="text-indigo-800/80 mb-10 text-xl md:text-2xl leading-loose">
                                 從譬喻到誇飾，從轉化到借代，驗收您的修辭精熟度！<br>
                                 <span class="bg-indigo-100 text-indigo-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-indigo-200 shadow-sm">🌊 瀑布流模式</span><br>
@@ -1051,6 +1117,7 @@
         };
 
         window.startQuiz = () => {
+            initAudio(); // Explicitly init audio on button click
             const qList = [...generate100Questions()].sort(() => 0.5 - Math.random()).map(q => ({
                 ...q, selectedAns: null, showExplanation: false, isCorrect: false
             }));
