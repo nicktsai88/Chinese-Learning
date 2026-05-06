@@ -776,7 +776,22 @@
         window.selectLearnTab = (id) => {
             learnSubTab = id;
             renderLearnView(el('main-content')); 
-            toggleLearnMenu(false);
+            window.toggleLearnMenu(false);
+        };
+
+        window.toggleLearnMenu = (show) => {
+            isLearnMenuOpen = show;
+            const drawer = el('learn-drawer');
+            const overlay = el('learn-overlay');
+            if (drawer && overlay) {
+                if (show) {
+                    drawer.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                }
+            }
         };
 
         window.renderLearnContent = () => {
@@ -901,7 +916,7 @@
                 
                 if (!q.showExplanation) {
                     btnClass += "border-orange-100 hover:border-orange-400 hover:bg-orange-50/50 bg-white cursor-pointer hover:shadow-md";
-                } else {
+                    } else {
                     if (i === q.ans) {
                         btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 font-bold shadow-md z-10 ring-2 ring-emerald-400/20";
                         iconHtml = `<span class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-4 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">✅</span>`;
