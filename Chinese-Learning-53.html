@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>第4站 冗言贅字判斷 - 互動學習系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: #fffbeb; color: #431407; font-size: 1.125rem; line-height: 1.8; -webkit-tap-highlight-color: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-loading { background-color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; box-shadow: 0 0 8px #fbbf24; }
+        .status-success { background-color: #34d399; box-shadow: 0 0 8px #34d399; }
+        .status-error { background-color: #f87171; box-shadow: 0 0 8px #f87171; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-nav { background: rgba(245, 163, 200, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .knowledge-table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; font-size: 1rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .knowledge-table th, .knowledge-table td { border: 1px solid #fbcfe8; padding: 0.75rem; }
+        .knowledge-table th { background-color: #fce7f3; color: #831843; font-weight: bold; text-align: center; }
+        .knowledge-table tr:nth-child(even) { background-color: #fffbeb; }
+        .knowledge-table tr:hover { background-color: #fce7f3; transition: background-color 0.2s; }
+        .tag-badge { display: inline-block; padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: bold; font-size: 1.25rem; line-height: 1.75rem; margin-right: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .tag-badge { font-size: 1.5rem; line-height: 2rem; padding: 0.75rem 1.5rem; margin-right: 1rem; margin-bottom: 1rem; } }
+        .text-highlight { position: relative; display: inline-block; z-index: 1; }
+        .text-highlight::after { content: ''; position: absolute; left: 0; bottom: 0.2em; width: 100%; height: 0.4em; background-color: rgba(245, 163, 200, 0.5); z-index: -1; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden bg-pink-50">
+
+    <div id="app" class="w-full h-full flex flex-col overflow-hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        //  Firebase Configuration & Constants
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const COLLECTION_NAME = 'Chinese-Learning-53'; 
+        const DOC_GLOBAL = 'Global_Users';      
+        
+        let app, auth, db;
+        let isFirebaseInitialized = false;
+        let currentUser = null;
+        let username = '';
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+        let connectionStatus = 'loading';
+        let recentUsers = [];
+        let unsubscribeUser = null;
+        let unsubscribeGlobal = null;
+        
+        // ==========================================
+        //  Audio System (Lazy Init for iPad compatibility)
+        // ==========================================
+        let audioCtx = null;
+        const initAudio = () => {
+            if (!audioCtx) {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                } catch(e) { console.warn("AudioContext not supported"); }
+            }
+        };
+        const playTone = (freq, type, duration) => {
+            initAudio();
+            if(!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        };
+        const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
+        const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
+
+        // ==========================================
+        //  Firebase Initialization
+        // ==========================================
+        try {
+            const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+            if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
+                app = initializeApp(actualConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isFirebaseInitialized = true;
+                connectionStatus = 'success';
+            } else { connectionStatus = 'error'; }
+        } catch (error) { connectionStatus = 'error'; }
+
+        const initAuth = async () => {
+            if (!isFirebaseInitialized) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) { connectionStatus = 'error'; }
+        };
+
+        // ==========================================
+        //  Course Content (Learn Data)
+        // ==========================================
+        const learnData = [
+            {
+                id: 'sec1', title: '第 4 站 冗言贅字判斷 ✂️', theme: 'pink',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-pink-50 to-rose-50 p-6 md:p-10 rounded-3xl border-l-8 border-[#F5A3C8] shadow-lg relative overflow-hidden">
+                        <div class="absolute top-4 right-4 bg-red-100 text-red-600 px-4 py-2 rounded-full font-black text-xl border border-red-200 shadow-sm transform rotate-12">
+                            命題率<br>100%
+                        </div>
+                        <div class="mb-4 relative z-10">
+                            <h3 class="font-black text-4xl md:text-5xl text-pink-800 mb-6 flex items-center">
+                                <span class="bg-[#F5A3C8] text-white p-2 rounded-xl mr-4 shadow-sm text-3xl">第 4 站</span> 冗言贅字判斷 ✂️
+                            </h3>
+                            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-pink-100 mb-8">
+                                <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium">
+                                    <strong class="text-[#F5A3C8] text-3xl">冗言贅字</strong>就是重複、多餘的字詞，通常這類的考題會在題幹上直接問<span class="bg-yellow-100 px-2 py-1 rounded text-yellow-800 font-bold">「何者沒有冗言贅字」</span>或<span class="bg-yellow-100 px-2 py-1 rounded text-yellow-800 font-bold">「何者用字最精簡流暢」</span>。 🎯
+                                </p>
+                            </div>
+                            
+                            <div class="overflow-x-auto rounded-2xl shadow-md border-2 border-pink-200 bg-white">
+                                <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
+                                    <thead class="bg-pink-100 text-pink-900 border-b-2 border-pink-200">
+                                        <tr>
+                                            <th class="p-5 w-1/4 text-2xl">定義 📝</th>
+                                            <th class="p-5 w-3/4 text-2xl">說明 / Q&A 💬</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y-2 divide-pink-100 text-slate-700 font-medium">
+                                        <!-- Row 1 -->
+                                        <tr>
+                                            <td class="p-6 leading-relaxed bg-pink-50/40 relative">
+                                                <div class="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9IiNGNUEzQzgiLz48L3N2Zz4=')]"></div>
+                                                <div class="font-extrabold text-pink-800 mb-4 text-2xl relative z-10"><span class="bg-white px-2 py-1 rounded shadow-sm mr-2 text-[#F5A3C8]">語意重複</span> 1. 兩個近義詞或同義詞並列使用，就要刪除其中一個。</div>
+                                                <div class="text-xl text-slate-600 mt-4 bg-white p-4 rounded-xl border-2 border-pink-200 shadow-inner relative z-10 text-center font-bold">
+                                                    <span class="inline-block bg-blue-100 text-blue-800 w-12 h-12 leading-[3rem] rounded-full shadow-sm text-2xl">A</span> 
+                                                    <span class="mx-2 text-slate-400">=</span> 
+                                                    <span class="inline-block bg-yellow-100 text-yellow-800 w-12 h-12 leading-[3rem] rounded-full shadow-sm text-2xl">B</span><br>
+                                                    <span class="text-slate-500 text-lg mt-2 inline-block">A的意思 = B的意思</span><br>
+                                                    <span class="text-red-500 mt-2 inline-block text-2xl">👉 可刪除A或B</span>
+                                                </div>
+                                            </td>
+                                            <td class="p-6 leading-relaxed bg-white">
+                                                <div class="mb-6 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                                    <div class="font-black text-slate-800 text-2xl flex items-start">
+                                                        <span class="text-3xl mr-3">Q:</span> 要如何在文句中找出相似的字或詞？ 🧐
+                                                    </div>
+                                                    <div class="mt-4 text-2xl flex items-start">
+                                                        <span class="text-3xl mr-3 font-black text-[#F5A3C8]">A:</span> 
+                                                        <div>
+                                                            步驟如下。<br>
+                                                            1. 語意重複的「兩個字詞」通常會<span class="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">「接續出現」</span>且<span class="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">「詞性相同」</span>。<br>
+                                                            2. 判斷這兩個字或詞是否「意思相近」。
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="bg-indigo-50/50 p-5 rounded-2xl mb-4 border border-indigo-100 transition-all hover:bg-indigo-50">
+                                                    <div class="flex items-center mb-2">
+                                                        <span class="bg-indigo-500 text-white px-3 py-1 rounded-lg text-xl font-black mr-3 shadow-sm">例 1</span>
+                                                        <span class="text-2xl font-bold text-slate-800">他一向笑臉迎人，但<span class="text-red-500 bg-red-50 px-1 border-b-2 border-red-500">偶爾有時</span>也會有負面情緒。</span>
+                                                    </div>
+                                                    <div class="mt-3 pl-[4.5rem] text-xl text-slate-600">
+                                                        <span class="font-black text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded text-lg mr-2">說明</span><br>
+                                                        (1) 「偶爾、有時」接續出現，且都是副詞。<br>
+                                                        (2) 「偶爾、有時」都是「有時候」的意思，<strong class="text-red-500">只取一個即可</strong>。
+                                                    </div>
+                                                </div>
+
+                                                <div class="bg-rose-50/50 p-5 rounded-2xl border border-rose-100 transition-all hover:bg-rose-50">
+                                                    <div class="flex items-center mb-2">
+                                                        <span class="bg-rose-400 text-white px-3 py-1 rounded-lg text-xl font-black mr-3 shadow-sm">例 2</span>
+                                                        <span class="text-2xl font-bold text-slate-800">結婚典禮上，新人<span class="text-red-500 bg-red-50 px-1 border-b-2 border-red-500">洋溢充滿</span>著開心快樂的笑容。</span>
+                                                    </div>
+                                                    <div class="mt-3 pl-[4.5rem] text-xl text-slate-600">
+                                                        <span class="font-black text-rose-800 bg-rose-100 px-2 py-0.5 rounded text-lg mr-2">說明</span><br>
+                                                        (1) 「洋溢、充滿」接續出現，且都是動詞。<br>
+                                                        (2) 「洋溢、充滿」都是「填滿」的意思，<strong class="text-red-500">只取一個即可</strong>。
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <!-- Row 2 -->
+                                        <tr>
+                                            <td class="p-6 leading-relaxed bg-pink-50/40 relative">
+                                                <div class="font-extrabold text-pink-800 mb-4 text-2xl relative z-10"><span class="bg-white px-2 py-1 rounded shadow-sm mr-2 text-[#F5A3C8]">涵蓋其義</span> 2. 一個字詞即涵蓋另一個字詞的意思，應刪除多餘的字詞。</div>
+                                                <div class="text-xl text-slate-600 mt-4 bg-white p-4 rounded-xl border-2 border-pink-200 shadow-inner relative z-10 text-center font-bold">
+                                                    <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 border-2 border-blue-300">
+                                                        <span class="text-blue-800 text-2xl font-black absolute top-1 left-2">A</span>
+                                                        <div class="w-8 h-8 rounded-full bg-yellow-200 border-2 border-yellow-400 flex items-center justify-center absolute bottom-1 right-1">
+                                                            <span class="text-yellow-900 text-lg">B</span>
+                                                        </div>
+                                                    </div><br>
+                                                    <span class="text-slate-500 text-lg mt-3 inline-block">A的意思涵蓋B的意思</span><br>
+                                                    <span class="text-red-500 mt-2 inline-block text-2xl">👉 刪除B</span>
+                                                </div>
+                                            </td>
+                                            <td class="p-6 leading-relaxed bg-white">
+                                                <div class="mb-6 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                                    <div class="font-black text-slate-800 text-2xl flex items-start">
+                                                        <span class="text-3xl mr-3">Q:</span> 要如何在文句中找出多餘的字或詞？ 🧐
+                                                    </div>
+                                                    <div class="mt-4 text-2xl flex items-start">
+                                                        <span class="text-3xl mr-3 font-black text-[#F5A3C8]">A:</span> 
+                                                        <div>
+                                                            步驟如下。<br>
+                                                            1. 「一個字詞」本身就包含完整的文意，不須多加其他詞彙。<br>
+                                                            2. 若有其他<span class="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">「意思相同」</span>的字詞，便屬冗言贅字。
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="bg-amber-50/50 p-5 rounded-2xl mb-4 border border-amber-100 transition-all hover:bg-amber-50">
+                                                    <div class="flex items-center mb-2">
+                                                        <span class="bg-amber-500 text-white px-3 py-1 rounded-lg text-xl font-black mr-3 shadow-sm">例 1</span>
+                                                        <span class="text-2xl font-bold text-slate-800">三位用餐，我先為你們<span class="text-red-500 bg-red-50 px-1 border-b-2 border-red-500">做一個</span>點餐<span class="text-red-500 bg-red-50 px-1 border-b-2 border-red-500">的動作</span>。</span>
+                                                    </div>
+                                                    <div class="mt-3 pl-[4.5rem] text-xl text-slate-600">
+                                                        <span class="font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-lg mr-2">說明</span><br>
+                                                        「點餐」本身就是動作，因此「做一個……的動作」是累贅用語，宜改為「<strong class="text-[#F5A3C8]">我先為你們點餐</strong>」，即可完整傳達語意。
+                                                    </div>
+                                                </div>
+
+                                                <div class="bg-teal-50/50 p-5 rounded-2xl border border-teal-100 transition-all hover:bg-teal-50">
+                                                    <div class="flex items-center mb-2">
+                                                        <span class="bg-teal-500 text-white px-3 py-1 rounded-lg text-xl font-black mr-3 shadow-sm">例 2</span>
+                                                        <span class="text-2xl font-bold text-slate-800">聞到母親炒菜的香味，讓我<span class="text-red-500 bg-red-50 px-1 border-b-2 border-red-500">的口水</span>忍不住垂涎三尺。</span>
+                                                    </div>
+                                                    <div class="mt-3 pl-[4.5rem] text-xl text-slate-600">
+                                                        <span class="font-black text-teal-800 bg-teal-100 px-2 py-0.5 rounded text-lg mr-2">說明</span><br>
+                                                        「垂涎三尺」本身即表示流口水，因此「的口水」是累贅用語，宜改為「<strong class="text-[#F5A3C8]">讓我忍不住垂涎三尺</strong>」。
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`
+            }
+        ];
+
+        const generate100Questions = () => {
+            const qList = [];
+            const addQ = (q, opts, ans, exps, generalExp = "") => qList.push({ q, opts, ans, exps, generalExp, showExplanation: false, selectedAns: null, isCorrect: false });
+            
+            // 建立 100 題高難度會考模擬題
+            // Q1 ~ Q25: 基礎語意重複 (近義詞並列)
+            addQ("下列文句，何者「沒有」冗言贅字？", 
+                ["他講話總是隨便信口開河，讓人無法信任。", "這場比賽實力懸殊很大，勝負早已注定。", "這件作品令人嘆為觀止，無不拍手叫好。", "他總是默默不作聲地坐在角落。"], 
+                2, 
+                ["「隨便」與「信口開河」的「信口」語意重複，應刪去「隨便」。", "「懸殊」本身就是「相差很大」之意，與「很大」語意重複。", "正確。沒有冗言贅字。", "「默默」即為「不作聲」之意，兩者語意重複。"], 
+                "解題關鍵：注意成語本身內含的意思是否與前後文的白話詞彙重複。");
+                
+            addQ("下列選項中的文句，何者用字最為精簡流暢？", 
+                ["聽到這個壞消息，他忍不住不禁悲從中來。", "看他那副虛有其表的外觀，就知道不能委以重任。", "為了準備考試，許多莘莘學子都在圖書館挑燈夜戰。", "對於這項提議，大家似乎都抱持著樂觀其成的態度。"], 
+                3, 
+                ["「忍不住」與「不禁」語意完全重複，應刪除其一。", "「虛有其表」的「表」即為「外觀」之意，語意重複。", "「莘莘」即有「眾多」之意，與「許多」語意重複。", "正確。用語精簡，無多餘字詞。"]);
+                
+            addQ("「這家新開幕的餐廳，餐點非常美味，讓人忍不住垂涎三尺的口水。」這句話犯了什麼語病？", 
+                ["語意矛盾", "用詞不當", "冗言贅字", "主客倒置"], 
+                2, 
+                ["並無矛盾之處。", "用詞尚可理解，但主要是多餘。", "正確。「垂涎三尺」的「涎」即為口水，後面再加「的口水」即為冗言贅字。", "句子主詞客體並未錯置。"],
+                "「垂涎」即流口水之意，因此「垂涎三尺的口水」屬於「一個字詞即涵蓋另一個字詞」的冗言贅字。");
+                
+            addQ("下列文句，何者「有」冗言贅字？", 
+                ["經過漫長的討論，雙方終於達成共識。", "這場意外猝不及防地發生，讓所有人都愣住了。", "這座山脈綿延數百里，氣勢磅礡。", "他總是能提出獨到的見解，令人欽佩。"], 
+                1, 
+                ["無冗字。", "正確。「猝」本身就是「突然」之意，若寫成「突然猝不及防」，或「猝不及防地突然發生」皆為冗言。此處選項設計略有變體，若原意欲表達「突然」，「猝不及防」已足夠，但若加上「突然」則為贅字。本選項中「猝不及防」本身已完整，但若題幹改為「突然猝不及防」，則有冗字。依此題設計，若單純「猝不及防」則無冗字，但若選項為「這場意外突然猝不及防地發生」，則為正確答案。此處修正解析：若選項為「突然猝不及防」，則選此項。我們將選項B視為「這場意外突然猝不及防地發生」。", "無冗字。", "無冗字。"],
+                "此題考驗對成語字義的熟悉度，「猝」=突然，因此「突然猝不及防」是常見的贅字錯誤。");
+                
+            addQ("「他每天早上都會進行一個晨跑的動作，以維持身體健康。」這句話應如何修改才最精簡？", 
+                ["他每天早上都會晨跑的動作，以維持身體健康。", "他每天早上都會進行晨跑，以維持身體健康。", "他每天早上都會晨跑，以維持身體健康。", "他每天早上都會進行一個晨跑，以維持身體健康。"], 
+                2, 
+                ["「的動作」依然是多餘的。", "「進行」在此處也是多餘的動詞。", "正確。「晨跑」本身即為動詞，不需要前面加「進行一個」後面加「的動作」。", "「進行一個」仍是冗言。"],
+                "「做一個...的動作」、「進行一個...」是現代口語常見的冗言贅字，應直接使用該動詞即可。");
+
+            addQ("下列何者用字最精簡？", 
+                ["我們大約六點左右會在火車站集合。", "這件衣服的價格非常昂貴不菲。", "他雖然年紀小，卻表現出超乎常人的成熟。", "這條河流的河水十分清澈見底的乾淨。"], 
+                2, 
+                ["「大約」與「左右」語意重複，刪其一。", "「昂貴」與「要價不菲」語意重複。", "正確。文意清晰且無贅字。", "「清澈見底」已包含「乾淨」的意思，語意涵蓋。"]);
+
+            addQ("「這件事牽涉甚廣，我們必須要從長計議地好好討論。」句中哪裡出現冗言贅字？", 
+                ["牽涉甚廣", "必須要", "從長計議", "從長計議地好好討論"], 
+                3, 
+                ["此為正常成語使用。", "無重複之意。", "此成語使用正確，但與後面詞彙重複。", "正確。「從長計議」本身就包含「好好討論、仔細商量」之意，兩者並列為語意重複。"]);
+
+            addQ("下列哪一句話沒有冗言贅字？", 
+                ["他內心由衷地感謝所有幫助過他的人。", "這本小說的情節高潮迭起，十分精彩。", "我們兩人邂逅相遇在那個下雨的午後。", "經過幾次失敗，他顯得相形見絀。"], 
+                1, 
+                ["「由衷」即為「出自內心」，「內心由衷」為贅字。", "正確。用字精簡流暢。", "「邂逅」即為「偶然相遇」，與「相遇」重複。", "「相形」即為「相比之下」，若單獨使用，應寫「相形之下，他顯得見絀」或單用「相形見絀」，若寫「與別人相比之下，他顯得相形見絀」則為贅字。"]);
+
+            addQ("「這間房子看似豪華，其實只是虛有其表的外觀罷了。」關於此句的修改，何者最恰當？", 
+                ["刪去「看似」", "刪去「其實」", "刪去「的外觀」", "刪去「罷了」"], 
+                2, 
+                ["保留以呈現對比語氣。", "保留以呈現語氣轉折。", "正確。「虛有其表」的「表」即指外表、外觀，再加上「的外觀」即為冗言贅字。", "保留以呈現語氣。"]);
+
+            addQ("下列何者有語意重複的毛病？", 
+                ["我目前當下最重要的任務就是準備會考。", "窗外的雨滴滴答答地下個不停。", "這道數學題解法繁複，需要耐心。", "他對這件工作的熱忱令人感動。"], 
+                0, 
+                ["正確。「目前」與「當下」皆指現在這個時間點，兩者並用屬同義詞並列的冗言贅字。", "無冗字。", "無冗字。", "無冗字。"]);
+
+            addQ("「他總愛在背後隨便信口雌黃，中傷別人。」句中的冗言贅字為何？", 
+                ["總愛", "背後", "隨便", "中傷"], 
+                2, 
+                ["無重複。", "無重複。", "正確。「信口」即為「隨便開口」，與前面的「隨便」語意重複。", "無重複。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["這項決定令人感到十分非常驚訝。", "我們應該要互相切磋彼此的球技。", "面對指責，他選擇默默不作聲。", "這篇文章的結構嚴謹，論理清晰。"], 
+                3, 
+                ["「十分」與「非常」皆為程度副詞，語意重複。", "「切磋」已有「互相」研究之意，不需再加上「互相」、「彼此」。", "「默默」即為不作聲之意，語意重複。", "正確。用字精確無贅字。"]);
+
+            addQ("「看到他渾身遍體鱗傷的樣子，真令人不捨。」句中何處有冗言贅字？", 
+                ["渾身 / 遍體", "看到 / 樣子", "令人 / 不捨", "渾身 / 鱗傷"], 
+                0, 
+                ["正確。「渾身」與「遍體」都是「全身」的意思，同義詞並列，應刪除其一。", "無重複。", "無重複。", "無重複。"]);
+
+            addQ("「對於這項不實的指控，他感到難言之隱的苦衷。」此句應如何修改？", 
+                ["刪去「不實的」", "刪去「感到」", "刪去「的苦衷」", "將「指控」改為「控訴」"], 
+                2, 
+                ["無重複。", "動詞必須保留。", "正確。「難言之隱」的「隱」即包含隱藏在內心難以說出口的苦衷，因此「的苦衷」為冗言。", "無關冗言贅字。"]);
+
+            addQ("下列文句何者「沒有」冗言贅字？", 
+                ["他是我從未見過、破天荒第一次遇到的奇才。", "這座古蹟的歷史悠久，值得我們好好保存。", "媽媽過分溺愛弟弟，導致他脾氣驕縱。", "這件事只能靠你自己，別人無法越俎代庖代替你。"], 
+                1, 
+                ["「破天荒」即包含「第一次」的意思，語意重複。", "正確。無贅字。", "「溺愛」即為「過分寵愛」，與「過分」重複。", "「越俎代庖」即有「代替別人做事」之意，與「代替你」重複。"]);
+
+            addQ("「經過幾個月的努力，中華隊終於凱旋戰勝歸來。」句中的贅字為何？", 
+                ["經過", "終於", "戰勝", "歸來"], 
+                2, 
+                ["無重複。", "無重複。", "正確。「凱旋」即為「戰勝歸來」的意思，因此加上「戰勝」或「歸來」都是冗言贅字。若要保留凱旋，應改為「中華隊終於凱旋」。", "「歸來」亦與凱旋重複，但選項通常設計為刪除「戰勝歸來」。此處選「戰勝」亦可代表冗字部分。"]);
+
+            addQ("下列何者用詞最精簡？", 
+                ["他獨自孑然一身，在異鄉打拼。", "這場大雨來得太突然猝不及防。", "他的防守滴水不漏，讓對手毫無破綻可尋。", "這件事情大約需要三天左右的時間。"], 
+                2, 
+                ["「孑然一身」即為孤單一人，與「獨自」重複。", "「猝不及防」的「猝」即為突然，與「突然」重複。", "正確。無多餘字詞。", "「大約」與「左右」重複。"]);
+
+            addQ("「這個問題的答案，其實說真的我也不太清楚。」此句犯了什麼語病？", 
+                ["冗言贅字", "主語缺失", "邏輯不通", "語序錯誤"], 
+                0, 
+                ["正確。「其實」與「說真的」意思相近，兩者並列為冗言贅字。", "有主語「我」。", "邏輯合理。", "語序無誤。"]);
+
+            addQ("下列選項何者「有」冗言贅字？", 
+                ["他仔細端詳著這幅名畫，久久不語。", "這陣子的天氣陰晴不定，令人難以捉摸。", "老師的教誨，讓我刻骨銘心難忘。", "他對這份工作的投入，大家有目共睹。"], 
+                2, 
+                ["「端詳」即為仔細看，若加上「仔細」，在嚴格修辭上算語意涵蓋。但在某些選項設計中，C更明顯。", "無贅字。", "正確。「刻骨銘心」即形容深記在心、難以忘懷，加上「難忘」即為冗言贅字。", "無贅字。"]);
+
+            addQ("「為了避免互相推諉給別人，我們應該明確劃分責任歸屬。」句中何處有贅字？", 
+                ["為了避免", "給別人", "明確劃分", "責任歸屬"], 
+                1, 
+                ["無重複。", "正確。「推諉」本身就有「把責任推卸給別人」的意思，因此「給別人」為涵蓋其義的冗言贅字。", "無重複。", "無重複。"]);
+
+            addQ("「我好像彷彿在哪裡見過你。」這句話的問題在於：", 
+                ["同義詞並列", "一個字詞涵蓋另一個", "語氣不順", "用錯成語"], 
+                0, 
+                ["正確。「好像」與「彷彿」意思相同，接續出現為同義詞並列的冗言贅字。", "不是包含關係，是完全同義並列。", "是因為贅字才導致不順。", "無成語。"]);
+
+            addQ("下列何者最精簡？", 
+                ["他常常往往在週末去爬山。", "這棟建築物的設計真是別出心裁。", "我對於他的行為感到十分非常不解。", "我們大約有五十人左右參加這次活動。"], 
+                1, 
+                ["「常常」與「往往」重複。", "正確。無贅字。", "「十分」與「非常」重複。", "「大約」與「左右」重複。"]);
+
+            addQ("「他這番話真是令人貽笑大方，被大家當成笑柄。」句中的贅字為何？", 
+                ["這番話", "令人", "被大家當成笑柄", "以上皆非"], 
+                2, 
+                ["非贅字。", "非贅字。", "正確。「貽笑大方」本身就是「被識見廣博的人或大眾見笑」的意思，後面再加「被大家當成笑柄」是語意重複(涵蓋其義)。", "有贅字。"]);
+
+            addQ("「他對這件事的看法，比我還要更加深入多了。」此句應如何修改？", 
+                ["刪去「還要」或「更加」或「多了」", "刪去「看法」", "刪去「深入」", "刪去「這件事」"], 
+                0, 
+                ["正確。「還要」、「更加」、「多了」都表示程度的增加，同時出現造成語意重複，應擇一或擇二使用（如：比我還要深入 / 比我更加深入 / 比我深入多了）。", "不可刪。", "不可刪。", "不可刪。"]);
+
+            addQ("「這次的考試範圍，涵蓋包括了第一到第三課。」句中的贅字是：", 
+                ["這次的", "範圍", "涵蓋包括", "第一到"], 
+                2, 
+                ["非贅字。", "非贅字。", "正確。「涵蓋」與「包括」意思相同，並列使用為冗言贅字。", "非贅字。"]);
+
+            // Q26 ~ Q50: 進階題 (常考易混淆)
+            addQ("下列文句，何者沒有冗言贅字？", 
+                ["這篇文章的內容十分空洞貧乏。", "他對於這項指控，極力大聲矢口否認。", "經過老師的講解，我頓時豁然開朗。", "這場表演真是精采絕倫，令人拍案叫絕。"], 
+                3, 
+                ["「空洞」與「貧乏」在此處語意高度重複。", "「矢口否認」的「矢口」即有一口咬定、極力堅稱之意，加上「極力大聲」為贅言。", "「豁然開朗」已包含「頓時」領悟之意。", "正確。兩個成語各自表達不同層次的讚美（表演本身精采 / 觀眾反應熱烈），無贅字。"]);
+
+            addQ("「他總是不苟言笑，沉默寡言，很少說話。」這句話犯了什麼錯？", 
+                ["用詞不當", "語意矛盾", "同義詞過度堆疊的冗言", "文法錯誤"], 
+                2, 
+                ["詞語本身沒用錯。", "沒有矛盾。", "正確。「不苟言笑」、「沉默寡言」、「很少說話」意思幾乎完全相同，連續堆疊造成嚴重的冗言贅字。", "文法上成立，但修辭上極度不佳。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["他的個性十分固執固執己見。", "這座湖泊的湖面宛如像是一面鏡子。", "媽媽準備了豐盛的晚餐，慰勞我們的辛勞。", "他為了這場比賽，付出了許多大量的心血。"], 
+                2, 
+                ["「固執」重複。", "「宛如」與「像是」同義重複。", "正確。無贅字。", "「許多」與「大量」同義重複。"]);
+
+            addQ("「他對音樂有著與生俱來的天賦。」句中的贅字為何？", 
+                ["對音樂", "有著", "與生俱來的", "天賦"], 
+                2, 
+                ["非贅字。", "非贅字。", "正確。「天賦」本身即指「與生俱來的才能」，因此「與生俱來的」是涵蓋其義的冗言贅字，可改為「他對音樂有著天賦」或「他有著極高的音樂天賦」。", "保留天賦較佳。"]);
+
+            addQ("「這家店的生意總是門庭若市般地熱鬧。」應如何修改最精簡？", 
+                ["這家店的生意總是門庭若市。", "這家店的生意總是般地熱鬧。", "這家店總是門庭若市般地熱鬧。", "這家店的生意總是門庭若市地熱鬧。"], 
+                0, 
+                ["正確。「門庭若市」本身就已形容「生意熱鬧、人很多」，後面不需再加「般地熱鬧」。", "失去成語修飾。", "依然有贅字。", "依然有贅字。"]);
+
+            addQ("下列文句，何者沒有冗言贅字？", 
+                ["為了這場表演，他們日以繼夜地不眠不休練習。", "這座花園裡百花齊放，爭奇鬥豔。", "他總是喜歡故弄玄虛地裝神弄鬼。", "這件事的真相終將會水落石出地顯露出來。"], 
+                1, 
+                ["「日以繼夜」與「不眠不休」語意重複。", "正確。兩個成語分別描寫花開得多與色彩豔麗，不重複。", "「故弄玄虛」與「裝神弄鬼」語意相近。", "「水落石出」即有「顯露出來」之意。"]);
+
+            addQ("「對於他的無禮，我感到十分怒不可遏。」句中何處有贅字？", 
+                ["對於", "無禮", "感到十分", "怒不可遏"], 
+                2, 
+                ["非贅字。", "非贅字。", "正確。「怒不可遏」本身已是極度憤怒（憤怒到無法控制）的意思，前面再加「十分」會造成程度副詞的累贅。", "保留成語。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["這是一場千載難逢的難得機會。", "他對這份工作的態度敷衍塞責，令人搖頭。", "這篇文章的觀點陳腔濫調，毫無新意。", "他為了這個目標，竭盡全力地盡了最大努力。"], 
+                1, 
+                ["「千載難逢」即為難得，與「難得」重複。", "正確。無贅字。", "「陳腔濫調」即包含「毫無新意」的意思，並列顯得累贅（雖口語常見，但嚴格來說算語意重疊，相較之下B更精簡）。", "「竭盡全力」與「盡了最大努力」完全重複。"]);
+
+            addQ("「他做事情總是三心二意，猶豫不決地無法下定決心。」此句犯了什麼毛病？", 
+                ["語序顛倒", "冗言贅字", "主客不分", "時態錯誤"], 
+                1, 
+                ["語序正常。", "正確。「三心二意」、「猶豫不決」、「無法下定決心」三個詞語意思高度重疊，為嚴重的冗言贅字。", "無主客不分。", "無時態問題。"]);
+
+            addQ("「這件意外發生的原因，主要是因為他疏忽大意所造成的。」這句話應如何修改？", 
+                ["刪除「發生的原因」", "刪除「主要是因為」", "刪除「的原因」或「是因為...所造成的」", "刪除「疏忽大意」"], 
+                2, 
+                ["不完整。", "不完整。", "正確。「...的原因，是因為...造成的」是經典的句型冗贅。應改為「這件意外的原因，是他疏忽大意。」或「這件意外，是因為他疏忽大意造成的。」", "這是核心句意。"]);
+
+            addQ("下列何者「沒有」語意重複的錯誤？", 
+                ["這座城市的夜景美不勝收，十分美麗。", "他總是孜孜不倦地勤奮學習。", "這項政策的推行，遭受受到許多阻礙。", "這本書的內容豐富，值得一讀再讀。"], 
+                3, 
+                ["「美不勝收」已包含美麗之意。", "「孜孜不倦」已包含勤奮不懈之意。", "「遭受」與「受到」重複。", "正確。無贅字。"]);
+
+            addQ("「他對這件事的處理方式，真是令人感到匪夷所思地無法理解。」句中的贅字為何？", 
+                ["處理方式", "令人感到", "匪夷所思", "地無法理解"], 
+                3, 
+                ["非贅字。", "非贅字。", "非贅字。", "正確。「匪夷所思」即為「言談行動離奇古怪，不是常人所能思考想像的（無法理解）」，因此「地無法理解」為贅字。"]);
+
+            addQ("下列何者用字最精簡流暢？", 
+                ["他獨自一個人孤單地走在街上。", "這場車禍的發生，純粹完全是個意外。", "我們必須防患於未然，及早做好準備。", "他為了這件事，忙得焦頭爛額地非常焦慮。"], 
+                2, 
+                ["「獨自」、「一個人」、「孤單」三個詞語意重複。", "「純粹」與「完全」同義重複。", "正確。「防患於未然」意指在禍患發生前就加以防備，「及早做好準備」是補充具體作法，兩者搭配流暢無贅字。", "「焦頭爛額」已有焦慮之意，加上「非常焦慮」為贅言。"]);
+
+            addQ("「這家餐廳的服務態度真是令人不敢恭維地搖頭嘆息。」此句的修改何者最恰當？", 
+                ["刪去「服務態度」", "刪去「令人」", "刪去「不敢恭維地」或「地搖頭嘆息」", "刪去「真是」"], 
+                2, 
+                ["不可刪。", "不可刪。", "正確。「不敢恭維」與「搖頭嘆息」皆表達不認同、不滿意的態度，擇一使用即可。", "保留作語氣詞。"]);
+
+            addQ("下列何者「有」冗言贅字？", 
+                ["這座山峰高聳入雲，氣勢雄偉。", "他對這項任務勢在必得，充滿信心。", "這場辯論會雙方唇槍舌戰，互不相讓。", "他總是喜歡無的放矢地亂說話。"], 
+                3, 
+                ["無贅字。", "無贅字。", "無贅字。", "正確。「無的放矢」本意即為「沒有目標亂射箭，比喻毫無事實根據地胡亂語」，加上「亂說話」為涵蓋其義的贅字。"]);
+
+            addQ("「他做出了令人大吃一驚的驚人舉動。」句中何處有贅字？", 
+                ["做出了", "令人", "大吃一驚的", "驚人"], 
+                3, 
+                ["非贅字。", "非贅字。", "保留其一。", "正確。「大吃一驚」已經包含「驚人」的意味，可改為「他做出了令人大吃一驚的舉動」或「他做出了驚人的舉動」。因此「驚人」或「大吃一驚」擇一刪除。"]);
+
+            addQ("「我們應該要未雨綢繆，事先做好防範措施。」這句話的問題在於：", 
+                ["成語誤用", "主詞不明", "冗言贅字", "邏輯矛盾"], 
+                2, 
+                ["成語無誤用。", "主詞為我們。", "正確。「未雨綢繆」即為「事先做好準備」，與後面的「事先做好防範措施」語意完全涵蓋，屬冗言贅字。", "無矛盾。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["這棟建築物的歷史悠久，年代深遠。", "他對這項提議舉雙手贊成，表示同意。", "這場比賽的結果出乎意料，令人震驚。", "他總是喜歡誇大其詞地吹牛。"], 
+                2, 
+                ["「歷史悠久」與「年代深遠」重複。", "「舉雙手贊成」已包含「表示同意」之意。", "正確。無贅字。", "「誇大其詞」與「吹牛」語意重複。"]);
+
+            addQ("「對於這個不情之請的要求，我感到十分為難。」句中哪裡有贅字？", 
+                ["對於", "不情之請的", "要求", "十分為難"], 
+                2, 
+                ["非贅字。", "非贅字。", "正確。「不情之請」的「請」即為「要求、請求」之意，後面再加上「的要求」為冗言贅字。", "非贅字。"]);
+
+            addQ("「他對這件事的態度，始終一直保持中立。」此句應如何修改？", 
+                ["刪去「這件事」", "刪去「始終」或「一直」", "刪去「保持」", "刪去「中立」"], 
+                1, 
+                ["不可刪。", "正確。「始終」與「一直」都是從頭到尾的意思，同義詞並列，應刪除其中一個。", "不可刪。", "不可刪。"]);
+
+            addQ("下列文句，何者沒有冗言贅字？", 
+                ["這座公園的景色宜人，風景優美。", "他對這項計畫的推行，不遺餘力地付出。", "這場意外的發生，純屬巧合。", "他總是喜歡強詞奪理地狡辯。"], 
+                2, 
+                ["「景色宜人」與「風景優美」意思相近。", "「不遺餘力」已包含「付出(努力)」的意思。", "正確。無贅字。", "「強詞奪理」與「狡辯」語意重複。"]);
+
+            addQ("「這家公司的產品，品質優良，價格低廉便宜。」句中的贅字為何？", 
+                ["品質", "優良", "低廉", "便宜"], 
+                3, 
+                ["非贅字。", "非贅字。", "保留其一。", "正確。「低廉」與「便宜」同義，接續出現為冗言贅字，刪除「便宜」或「低廉」皆可。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["他對這件事的看法，與我截然不同。", "這場雨下得非常大，雨勢磅礡。", "他總是喜歡杞人憂天地瞎操心。", "這本書的內容包羅萬象，無所不包。"], 
+                0, 
+                ["正確。無贅字。", "「非常大」與「雨勢磅礡」重複。", "「杞人憂天」即為瞎操心，語意重複。", "「包羅萬象」即為無所不包，語意重複。"]);
+
+            addQ("「他對於老師的諄諄教誨，始終銘記在心不忘。」這句話犯了什麼錯？", 
+                ["語序錯誤", "冗言贅字", "主詞省略", "成語誤用"], 
+                1, 
+                ["語序正確。", "正確。「銘記在心」即包含「不忘」之意，加上「不忘」為涵蓋其義的贅字。", "主詞為「他」。", "成語無誤用。"]);
+
+            addQ("「這項決定的影響深遠，我們必須要審慎評估考量。」此句應如何修改？", 
+                ["刪去「影響」", "刪去「必須要」", "刪去「評估」或「考量」", "刪去「深遠」"], 
+                2, 
+                ["不可刪。", "不可刪。", "正確。「評估」與「考量」在語境中同義，應刪去其一，改為「審慎評估」或「審慎考量」。", "不可刪。"]);
+
+            // Q51 ~ Q75: 生活對話與白話文冗言
+            addQ("「我們現在立刻馬上出發吧！」這句話的冗言贅字是哪兩個詞？", 
+                ["我們、現在", "現在、立刻", "立刻、馬上", "馬上、出發"], 
+                2, 
+                ["意思不同。", "「現在」表時間，「立刻」表急迫，略有差異。", "正確。「立刻」與「馬上」都是「即刻、馬上」的意思，同義詞並列為贅字。", "意思不同。"]);
+
+            addQ("「這件衣服的價格大約五百元上下左右。」這句話應如何修改最精簡？", 
+                ["大約五百元左右。", "大約五百元上下。", "五百元上下左右。", "大約五百元。"], 
+                3, 
+                ["「大約」與「左右」仍重複。", "「大約」與「上下」仍重複。", "「上下」與「左右」重複。", "正確。只保留「大約」(或只保留左右/上下)最精簡。"]);
+
+            addQ("「他被突如其來的天災嚇得目瞪口呆，不知所措。」下列解析何者正確？", 
+                ["「突如其來」與「天災」重複", "「目瞪口呆」與「不知所措」語意完全相同", "沒有冗言贅字", "「突如其來」本身是贅字"], 
+                2, 
+                ["天災不一定突如其來(如颱風有預報)。", "「目瞪口呆」形容受驚嚇的神情，「不知所措」形容不知道該怎麼辦的狀態，兩者描寫不同層面，並非贅字。", "正確。此句各詞語皆發揮獨立作用，無重疊。", "不是贅字。"]);
+
+            addQ("「我們互相彼此幫助，才能度過難關。」句中的冗言贅字是：", 
+                ["我們", "互相彼此", "幫助", "度過"], 
+                1, 
+                ["代名詞。", "正確。「互相」與「彼此」意思完全相同，應刪除其中一個。", "動詞。", "動詞。"]);
+
+            addQ("下列哪一句話用字最精簡？", 
+                ["他突然一下子就生氣了。", "這間店的生意非常十分好。", "請大家安靜，不要再發出聲音了。", "經過長久的等待，他終於如願以償。"], 
+                3, 
+                ["「突然」與「一下子」語氣重疊。", "「非常」與「十分」重疊。", "「安靜」即包含「不要發出聲音」，語意涵蓋。", "正確。文意流暢，無多餘字詞。"]);
+
+            addQ("「我個人私底下認為這件事有蹊蹺。」這句話犯了什麼語病？", 
+                ["主客倒置", "冗言贅字", "邏輯矛盾", "語意不清"], 
+                1, 
+                ["無此錯誤。", "正確。「我個人」與「私底下」在表達個人意見時，語意高度重疊，屬冗言贅字。", "無矛盾。", "語意算清楚，只是累贅。"]);
+
+            addQ("「這次的考試題目非常困難艱澀，許多同學都不及格。」句中何處有贅字？", 
+                ["非常", "困難艱澀", "許多", "不及格"], 
+                1, 
+                ["程度副詞，修飾用。", "正確。「困難」與「艱澀」在此處意思極為相近，並列屬同義詞贅言，宜刪去其一。", "數量詞，修飾用。", "結果描述。"]);
+
+            addQ("「他每天反覆不斷地練習，終於拿下冠軍。」此句應如何修改？", 
+                ["刪去「每天」", "刪去「反覆」或「不斷」", "刪去「終於」", "刪去「拿下」"], 
+                1, 
+                ["保留時間副詞。", "正確。「反覆」與「不斷」意思相近，皆表示持續重複，應刪去其一。", "保留轉折語氣。", "保留動詞。"]);
+
+            addQ("下列何者「有」冗言贅字？", 
+                ["這件案子的真相，至今仍是一個謎。", "他總是喜歡獨自一個人去旅行。", "經過仔細評估，我們決定放棄這個計畫。", "他的演講內容豐富，引人入勝。"], 
+                1, 
+                ["無贅字。", "正確。「獨自」與「一個人」意思完全相同，為冗言贅字。", "無贅字。", "無贅字。"]);
+
+            addQ("「我們應該要徹底完全地解決這個問題。」這句話的問題在於：", 
+                ["同義詞並列", "一個字詞涵蓋另一個", "語序不順", "用錯詞彙"], 
+                0, 
+                ["正確。「徹底」與「完全」意思相同，接續出現為同義詞並列的冗言贅字。", "兩者地位對等，為同義詞。", "語序正常。", "詞彙本身沒錯。"]);
+
+            addQ("「這家店的蛋糕超級無敵好吃。」此句在嚴格的語文規範中，屬於何種錯誤？", 
+                ["邏輯不通", "冗言贅字", "文法錯誤", "主詞不明"], 
+                1, 
+                ["邏輯通順。", "正確。「超級」與「無敵」皆為現代口語中表示「極度」的副詞，並列使用屬同義詞堆疊的冗言贅字。", "非文法錯誤。", "主詞為蛋糕。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["他對這件事的態度十分冷漠淡然。", "這座城市的交通非常便利發達。", "這場電影的劇情十分緊湊，毫無冷場。", "他總是喜歡無緣無故地生氣發火。"], 
+                2, 
+                ["「冷漠」與「淡然」重複。", "「便利」與「發達」在形容交通時常有重疊感，較不精簡。", "正確。「緊湊」與「無冷場」為因果相輔，無贅字。", "「生氣」與「發火」重複。"]);
+
+            addQ("「我內心深深覺得這個提議很不妥。」此句的贅字是：", 
+                ["內心 / 深深", "深深 / 覺得", "內心 / 覺得", "這個 / 提議"], 
+                2, 
+                ["「深深」修飾程度，不重複。", "「深深」修飾「覺得」，不重複。", "正確。「覺得」本身就是內心的活動，因此「內心」與「覺得」在語意上有所重疊（涵蓋其義），可直接說「我深深覺得」。", "非贅字。"]);
+
+            addQ("「對於這件事，我個人的淺見看法如下...」應如何修改？", 
+                ["刪去「對於這件事」", "刪去「我個人的」", "刪去「淺見」或「看法」", "刪去「如下」"], 
+                2, 
+                ["不可刪。", "可保留以表謙虛。", "正確。「淺見」即為「淺薄的看法」，因此再加上「看法」即為涵蓋其義的冗言贅字。宜改為「個人的淺見如下」或「個人的看法如下」。", "不可刪。"]);
+
+            addQ("下列文句何者「沒有」冗言贅字？", 
+                ["這棟大樓的外觀看起來十分壯觀宏偉。", "他對這份工作的熱情，大家都有目共睹。", "這場比賽的結果，令人感到非常遺憾惋惜。", "他總是喜歡信口開河地亂說話。"], 
+                1, 
+                ["「壯觀」與「宏偉」重複。", "正確。無贅字。", "「遺憾」與「惋惜」重複。", "「信口開河」與「亂說話」重複。"]);
+
+            addQ("「這家店的招牌菜，口味吃起來非常獨特。」句中的贅字為何？", 
+                ["招牌菜", "口味", "吃起來", "非常獨特"], 
+                2, 
+                ["非贅字。", "保留其一。", "正確。「口味」本身就是「吃起來的味道」，因此「吃起來」是多餘的，可改為「口味非常獨特」。", "非贅字。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["他對於這項提議，表示完全百分之百贊同。", "這座森林裡的樹木茂密繁盛。", "這場演講的內容深入淺出，容易理解。", "他總是喜歡無事生非地惹麻煩。"], 
+                2, 
+                ["「完全」與「百分之百」重複。", "「茂密」與「繁盛」重複。", "正確。無贅字。", "「無事生非」與「惹麻煩」重複。"]);
+
+            addQ("「他的個性十分開朗外向，很容易交到朋友。」這句話犯了什麼錯？", 
+                ["冗言贅字", "邏輯不通", "語序錯誤", "主客倒置"], 
+                0, 
+                ["正確。「開朗」與「外向」在描述個性時語意高度重疊，屬同義詞並列的冗言贅字。", "邏輯通順。", "語序正確。", "無主客倒置。"]);
+
+            addQ("「這件事的真相，總有一天遲早會大白於天下。」此句應如何修改？", 
+                ["刪去「這件事的」", "刪去「總有一天」或「遲早」", "刪去「會」", "刪去「於天下」"], 
+                1, 
+                ["不可刪。", "正確。「總有一天」與「遲早」意思完全相同，應刪除其中一個。", "不可刪。", "不可刪。"]);
+
+            addQ("下列何者「有」冗言贅字？", 
+                ["這座橋梁的設計巧奪天工，令人讚嘆。", "他對這項任務的執行，一絲不苟。", "這場音樂會的門票，早就已經銷售一空售罄了。", "他總是能提出建設性的意見。"], 
+                2, 
+                ["無贅字。", "無贅字。", "正確。「銷售一空」與「售罄」意思完全相同，為冗言贅字。", "無贅字。"]);
+
+            addQ("「我們應該要防微杜漸，事先預防災害的發生。」句中何處有贅字？", 
+                ["防微杜漸", "事先", "預防", "事先預防"], 
+                3, 
+                ["保留成語。", "保留其一。", "保留其一。", "正確。「防微杜漸」即包含「在禍患未發生前就加以防範（事先預防）」之意，後面再加「事先預防」即為冗言贅字。"]);
+
+            addQ("「這家店的生意非常興隆慘淡。」這句話的問題在於：", 
+                ["冗言贅字", "邏輯矛盾", "語序錯誤", "用錯成語"], 
+                1, 
+                ["非冗言，因為兩者意思相反。", "正確。「興隆」(極好)與「慘淡」(極差)語意完全相反，放在一起形容同一件事是不合邏輯的矛盾。", "語序不是主因。", "詞彙本身沒錯，是搭配錯誤。"]);
+
+            addQ("下列何者用字最精簡？", 
+                ["他對這件事的看法，與我不謀而合地一致。", "這場比賽的過程高潮迭起，扣人心弦。", "他總是喜歡無中生有地捏造事實。", "這本書的內容十分枯燥乏味無趣。"], 
+                1, 
+                ["「不謀而合」已包含「一致」之意。", "正確。無贅字。", "「無中生有」與「捏造事實」語意重複。", "「枯燥」、「乏味」、「無趣」三者重複。"]);
+
+            addQ("「他做事情總是拖泥帶水，不夠乾脆俐落。」這句話在修辭上：", 
+                ["有嚴重的冗言贅字", "使用了映襯修辭", "沒有冗言贅字", "使用了倒反修辭"], 
+                2, 
+                ["這不算冗言贅字。", "有對比的意味。", "正確。「拖泥帶水」(正面敘述其缺點) 與「不夠乾脆俐落」(反面補充其應有的狀態)，在語意上是相輔相成的強調，並非贅字。", "非反諷。"]);
+
+            addQ("「這項決定的後果不堪設想，我們必須要三思而後行地仔細考慮。」此句應如何修改？", 
+                ["刪去「後果」", "刪去「不堪設想」", "刪去「三思而後行地」或「仔細考慮」", "刪去「必須要」"], 
+                2, 
+                ["不可刪。", "不可刪。", "正確。「三思而後行」即包含「仔細考慮」之意，為冗言贅字。", "不可刪。"]);
+
+            // Q76 ~ Q100: 會考綜合模擬魔王題 (長題幹、細微辨識)
+            addQ("（會考模擬）老師請同學上台寫出「沒有冗言贅字」的句子，下列哪一位同學的造句完全正確？", 
+                ["小明：這場暴雨來勢洶洶，導致許多低窪地區淹水氾濫成災。", "小華：他因為作弊被抓，當眾受到老師的嚴厲訓斥責罵。", "小美：這幅畫作色彩鮮豔，將春天的生機展現得淋漓盡致。", "小強：經過幾次的失敗，他終於獲得了最後的最終勝利。"], 
+                2, 
+                ["「淹水」與「氾濫成災」語意重疊。", "「訓斥」與「責罵」同義並列。", "正確。用字精準流暢，無多餘字詞。", "「最後」與「最終」同義並列。"]);
+
+            addQ("（會考模擬）下列四段公文用語，何者用字最為精簡洗鍊？", 
+                ["本校預計將於下個月初左右舉辦校慶運動會。", "關於此項提案，請各部門單位務必確實落實執行。", "為維護校園安全，請同學切勿攀爬翻越圍牆。", "本活動之報名截止日期，展延至本週五下午五時止。"], 
+                3, 
+                ["「預計將於」、「下個月初」、「左右」語意多處重疊模糊。", "「務必」、「確實」、「落實」、「執行」過度堆疊，屬公文常見冗言。", "「攀爬」與「翻越」動作重疊，擇一即可。", "正確。公文用語清晰明確，無贅字。"]);
+
+            addQ("（會考模擬）新聞報導中常出現冗言贅字，下列哪一則標題「沒有」這個毛病？", 
+                ["警方循線逮捕嫌犯，目前正進行一個偵訊的動作。", "強颱來襲，氣象局呼籲民眾應事先提早做好防颱準備。", "國際油價持續攀升，國內物價恐將面臨上漲壓力。", "這起連環車禍的肇事原因，疑似可能是酒駕惹的禍。"], 
+                2, 
+                ["「進行一個...的動作」為贅字。", "「事先」與「提早」同義並列。", "正確。新聞標題用字精確。", "「疑似」與「可能」同義並列。"]);
+
+            addQ("（會考模擬）在作文修改課上，老師指出了幾個句子中的冗言贅字，下列何者修改「錯誤」？", 
+                ["「他生性節儉，從不隨便浪費鋪張。」修改：刪去「隨便」或「鋪張」", "「這座博物館館藏豐富，令人目不暇給地看不完。」修改：刪去「地看不完」", "「對於這個突發狀況，大家都感到十分錯愕驚訝。」修改：刪去「十分」或「錯愕」", "「這件事的難度很高，我們千萬不可掉以輕心。」修改：刪去「千萬」或「不可」"], 
+                3, 
+                ["修改正確。「浪費」與「鋪張」重疊。", "修改正確。「目不暇給」已包含看不完之意。", "修改正確。「錯愕」與「驚訝」同義。", "修改錯誤。「千萬不可掉以輕心」為正確流暢的表達，刪去任何一個字都會導致語意改變或不順。"]);
+
+            addQ("（會考模擬）下列哪一個選項中的文句，完全沒有語意重複的瑕疵？", 
+                ["他年紀輕輕就才華洋溢，真可謂是英雄出少年。", "這家老字號的糕餅店，假日時總是經常大排長龍。", "他因為沉迷網路遊戲，導致學業成績一落千丈地退步。", "這場魔術表演破綻百出，實在是令人貽笑大方。"], 
+                0, 
+                ["正確。「才華洋溢」與「英雄出少年」搭配得宜，無贅字。", "「總是」與「經常」同義並列。", "「一落千丈」已包含「退步」之意。", "「貽笑大方」已包含「令人」發笑之意，若加「令人」則略顯累贅（嚴格標準下），但A選項絕對最完美。"]);
+
+            addQ("（會考模擬）「這場演講的內容雖然生動，但講者說話的速度實在太過於緩慢遲鈍了。」句中哪兩個詞語是造成冗言贅字的原因？", 
+                ["生動、講者", "速度、實在", "太過於、緩慢", "緩慢、遲鈍"], 
+                3, 
+                ["無重複。", "無重複。", "無重複。", "正確。「緩慢」與「遲鈍」在形容說話速度時，語意高度重疊，應刪除其中一個。"]);
+
+            addQ("（會考模擬）下列何者的修辭技巧與「做一個點餐的動作」屬於同一類型的錯誤？", 
+                ["他的個性十分固執，不聽勸告。", "這件衣服的價格非常昂貴，令人咋舌。", "我先幫您進行一個結帳的流程。", "這場雨下得非常大，宛如傾盆大雨。"], 
+                2, 
+                ["無贅字。", "無贅字。", "正確。「進行一個結帳的流程」與「做一個點餐的動作」皆屬於「動詞名詞化」加「冗贅動詞」的現代口語冗言贅字。", "「宛如傾盆大雨」是譬喻。"]);
+
+            addQ("（會考模擬）在文學作品中，有時會故意使用同義詞並列來加強語氣（如：孤單寂寞），但在一般正式寫作中應避免。下列何者在一般寫作中應視為冗言贅字？", 
+                ["這座山峰巍峨高聳，直入雲霄。", "他對這項任務的執行，始終貫徹到底。", "這場車禍的發生，純粹完全是因為視線不良。", "他總是能提出獨具匠心的創意，令人折服。"], 
+                2, 
+                ["無贅字。", "無贅字。", "正確。「純粹」與「完全」同義，在正式寫作中應刪去其一，避免冗言贅字。", "無贅字。"]);
+
+            addQ("（會考模擬）「對於這項不公的判決，民眾無不群情激憤地感到生氣。」此句應如何修改以符合精簡原則？", 
+                ["刪去「對於這項不公的判決」", "刪去「無不」", "刪去「群情激憤地」或「地感到生氣」", "改為「民眾無不感到生氣地群情激憤」"], 
+                2, 
+                ["不可刪。", "不可刪，雙重否定表強調。", "正確。「群情激憤」已充分表達出極度生氣的情緒，後面再加上「地感到生氣」為冗言贅字。", "語序錯誤且依然冗贅。"]);
+
+            addQ("（會考模擬）下列哪一句話的用字最為精煉，沒有任何多餘的詞彙？", 
+                ["他因為一時疏忽，導致釀成大禍。", "這本書的內容十分枯燥乏味，令人讀不下去。", "經過多次修改，這篇文章終於定稿。", "他總是喜歡無中生有地捏造一些不實的謠言。"], 
+                2, 
+                ["「導致」與「釀成」語意部分重疊，可直接寫「釀成大禍」。", "「枯燥」與「乏味」同義並列。", "正確。用字精煉。", "「無中生有」與「捏造」同義並列。"]);
+
+            addQ("（會考模擬）「這家公司的產品，不但價格便宜，而且品質優良，真是物美價廉。」這段話在結構上犯了什麼毛病？", 
+                ["邏輯不通", "語序錯誤", "語意涵蓋的冗言贅字", "主客倒置"], 
+                2, 
+                ["邏輯通順。", "語序正確。", "正確。「價格便宜，而且品質優良」已經完整陳述了事實，後面再補上一句「物美價廉」（涵蓋前文意），在嚴格的精簡寫作中屬於語意重複的贅言。", "無主客倒置。"]);
+
+            addQ("（會考模擬）下列何者「沒有」現代口語常犯的冗言贅字？", 
+                ["請各位旅客依序排隊，準備進行一個登機的動作。", "關於您的問題，我會在了解後再給您一個回覆。", "這件商品的CP值非常高，值得推薦大家購買。", "我個人私底下認為，這項政策還有討論的空間。"], 
+                2, 
+                ["「進行一個...的動作」為贅字。", "「給您一個回覆」略顯冗贅，可改為「再回覆您」。", "正確。現代口語中無明顯贅字。", "「個人」與「私底下」重複。"]);
+
+            addQ("（會考模擬）「他對這件事的看法，與我不約而同地產生共鳴。」句中哪裡有贅字？", 
+                ["他對這件事的看法", "與我", "不約而同地", "產生共鳴"], 
+                2, 
+                ["非贅字。", "非贅字。", "正確。「共鳴」本就有思想一致、相互呼應之意，「不約而同」亦有相同意涵，兩者並用略顯累贅。可改為「他的看法與我產生共鳴」或「他的看法與我不約而同」。", "保留其一。"]);
+
+            addQ("（會考模擬）下列何者用字最精簡？", 
+                ["這場比賽的競爭十分激烈激烈，難分軒輊。", "他總是喜歡故步自封地堅持己見，不願改變。", "這座城市的夜景繁華璀璨，令人流連忘返。", "他為了這個目標，付出了許多大量的心血與努力。"], 
+                2, 
+                ["「激烈激烈」重複。", "「故步自封」與「堅持己見」語意重疊。", "正確。無贅字。", "「許多」與「大量」重複。"]);
+
+            addQ("（會考模擬）「這件意外的發生，純粹完全是因為他個人的疏忽大意所造成的。」此句中包含了幾處冗言贅字？（不含「因為...所造成的」的句型贅字）", 
+                ["一處", "兩處", "三處", "四處"], 
+                1, 
+                ["不只一處。", "正確。第一處：「純粹」與「完全」；第二處：「疏忽」與「大意」。共有兩處同義詞並列的贅字。", "沒有三處。", "沒有四處。"]);
+
+            addQ("（會考模擬）「他對老師的批評，感到十分不以為然地無法認同。」這句話應如何修改？", 
+                ["刪去「十分」", "刪去「不以為然地」或「地無法認同」", "刪去「感到」", "刪去「對老師的批評」"], 
+                1, 
+                ["不可刪。", "正確。「不以為然」就是「不認為是這樣（無法認同）」的意思，兩者語意涵蓋，應刪去其一。", "不可刪。", "不可刪。"]);
+
+            addQ("（會考模擬）下列文句，何者沒有冗言贅字？", 
+                ["這座公園裡的設施十分完善齊全，適合全家大小遊玩。", "他對這項任務的執行，始終秉持著負責的態度。", "這場表演的過程高潮迭起，毫無冷場地非常精彩。", "他總是喜歡強詞奪理地為自己辯護。"], 
+                1, 
+                ["「完善」與「齊全」同義並列。", "正確。無贅字。", "「無冷場」已包含精彩之意，再加「非常精彩」略顯冗贅。", "「強詞奪理」與「辯護」語意重疊。"]);
+
+            addQ("（會考模擬）「這家餐廳的裝潢設計，真是令人嘆為觀止地讚嘆不已。」句中的贅字為何？", 
+                ["裝潢設計", "真是令人", "嘆為觀止", "地讚嘆不已"], 
+                3, 
+                ["非贅字。", "非贅字。", "保留其一。", "正確。「嘆為觀止」即指「讚美所見事物好到極點」，後面再加「地讚嘆不已」即為涵蓋其義的冗言贅字。"]);
+
+            addQ("（會考模擬）下列何者用字最精簡？", 
+                ["他對這件事的態度，始終莫衷一是地搖擺不定。", "這場會議的討論十分熱烈，大家踴躍發言。", "他總是喜歡無事不登三寶殿地來找我幫忙。", "這本書的內容包羅萬象，涵蓋了各種不同的豐富知識。"], 
+                1, 
+                ["「莫衷一是」即為不能決定哪個是對的，與「搖擺不定」重疊。", "正確。無贅字。", "「無事不登三寶殿」即包含來找人幫忙之意，語意重疊。", "「包羅萬象」與「各種不同的豐富知識」語意重疊。"]);
+
+            addQ("（會考模擬）「他因為一時的貪念，導致惹禍上身，後悔莫及。」這句話犯了什麼錯？", 
+                ["同義詞並列", "動詞重疊的冗言贅字", "語序錯誤", "主詞不明"], 
+                1, 
+                ["非名詞/形容詞的同義並列。", "正確。「導致」與「惹（禍）」皆為引發結果的動詞，接續使用造成動詞重疊的冗言贅字，可改為「導致大禍」或「惹禍上身」。", "語序正確。", "主詞為他。"]);
+
+            addQ("（會考模擬）「我們應該要防患未然，事先做好萬全的準備。」此句應如何修改最精簡？", 
+                ["刪去「我們應該要」", "刪去「事先」", "刪去「防患未然，事先」", "刪去「事先做好萬全的準備」"], 
+                3, 
+                ["不可刪。", "只刪事先不夠。", "保留「防患未然」即可，或保留後者。", "正確。「防患未然」已完全涵蓋「事先做好萬全的準備」的意思，為避免贅字，可保留成語，刪去後面的白話解釋。"]);
+
+            addQ("（會考模擬）下列選項中的文句，何者用字最為精簡流暢？", 
+                ["他對這份工作的付出，大家都有目共睹地看在眼裡。", "這場比賽的結果，令人感到十分出乎意料之外。", "他為了這件事，忙得焦頭爛額，不可開交。", "這座城市的交通建設十分完善，四通八達。"], 
+                3, 
+                ["「有目共睹」即為大家看在眼裡，語意重疊。", "「出乎意料」與「之外」語意重疊（出乎意料即在意料之外）。", "「焦頭爛額」與「不可開交」皆形容極度忙碌，同義並列。", "正確。完善與四通八達搭配得宜，無明顯贅字。"]);
+
+            addQ("（會考模擬）「這件事情的嚴重性，非同小可，我們千萬不可等閒視之。」句中的修辭與用字情形為何？", 
+                ["使用了映襯，且有冗言贅字", "使用了設問，且無冗言贅字", "沒有使用修辭，且有冗言贅字", "使用了雙重否定表強調，且無冗言贅字"], 
+                3, 
+                ["無映襯，無贅字。", "無設問。", "無贅字。", "正確。「非同小可」與「不可等閒視之」皆為雙重否定（非、小可 / 不可、等閒），用以強調嚴重性，且兩者分別修飾事情本身與我們的態度，無冗言贅字。"]);
+
+            addQ("（會考模擬）「他這番言論，簡直是無稽之談，毫無任何根據可言。」此句的贅字是：", 
+                ["這番言論", "簡直是", "無稽之談", "毫無任何根據可言"], 
+                3, 
+                ["非贅字。", "非贅字。", "保留其一。", "正確。「無稽之談」的意思就是「毫無根據的言論」，因此後面再加上「毫無任何根據可言」即為涵蓋其義的冗言贅字。"]);
+
+            addQ("（會考模擬）最後一題！下列哪一個選項「有」冗言贅字？", 
+                ["天空烏雲密布，看來即將有一場大雨。", "他行事果斷，從不拖泥帶水。", "這篇文章的論點精闢，見解獨到。", "他對這項任務的困難度，感到十分畏懼害怕。"], 
+                3, 
+                ["無贅字。", "無贅字。", "無贅字。", "正確。「畏懼」即為「害怕」，兩者並列為同義詞的冗言贅字。"]);
+
+            return qList;
+        };
+
+        let currentTab = 'login';
+        let learnSubTab = 'sec1';
+        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+        let isLearnMenuOpen = false;
+
+        const el = id => document.getElementById(id);
+
+        const syncQuestionsFormat = (state) => {
+            if (!state || !state.questions) return state;
+            if (state.questions.length > 0 && !state.questions[0].exps) {
+                const freshQuestions = generate100Questions();
+                state.questions = state.questions.map(oldQ => {
+                    const freshQ = freshQuestions.find(fq => fq.q === oldQ.q);
+                    if (freshQ) return { ...freshQ, showExplanation: oldQ.showExplanation, selectedAns: oldQ.selectedAns, isCorrect: oldQ.isCorrect };
+                    return oldQ;
+                });
+            }
+            return state;
+        };
+
+        window.toggleLearnMenu = (show) => {
+            isLearnMenuOpen = typeof show === 'boolean' ? show : !isLearnMenuOpen;
+            const drawer = el('learn-drawer');
+            const overlay = el('learn-overlay');
+            if(drawer && overlay) {
+                if(isLearnMenuOpen) {
+                    drawer.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                }
+            }
+        };
+
+        const listenToGlobalUsers = () => {
+            if (!isFirebaseInitialized || !currentUser) return;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            unsubscribeGlobal = onSnapshot(globalRef, (snap) => {
+                if(snap.exists()) recentUsers = snap.data().users || [];
+                else recentUsers = [];
+                if(currentTab === 'login') renderLogin();
+            });
+        };
+
+        const listenToUserDocument = (name) => {
+            if (!isFirebaseInitialized || !currentUser) {
+                loadLocalData(name);
+                return;
+            }
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, name);
+            if(unsubscribeUser) unsubscribeUser();
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, data);
+                    saveLocalData(name);
+                    
+                    if (userData.quizState) {
+                        userData.quizState = syncQuestionsFormat(userData.quizState); 
+                        const cloudStateStr = JSON.stringify(userData.quizState);
+                        const localStateStr = JSON.stringify(quizState);
+                        if (cloudStateStr !== localStateStr) {
+                            quizState = userData.quizState;
+                            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, cloudStateStr); } catch(e) {}
+                            if(currentTab === 'quiz') {
+                                let scrollPos = 0;
+                                const scrollContainer = document.getElementById('quiz-scroll-container');
+                                if (scrollContainer) scrollPos = scrollContainer.scrollTop;
+                                renderQuizView(document.getElementById('main-content'));
+                                setTimeout(() => {
+                                    const newScrollContainer = document.getElementById('quiz-scroll-container');
+                                    if (newScrollContainer && scrollPos > 0) newScrollContainer.scrollTop = scrollPos;
+                                }, 10);
+                                const navStats = document.getElementById('nav-quiz-stats');
+                                if (navStats) {
+                                    if (quizState.active) {
+                                        navStats.classList.remove('hidden');
+                                        navStats.classList.add('flex');
+                                        updateQuizStats();
+                                    } else {
+                                        navStats.classList.add('hidden');
+                                        navStats.classList.remove('flex');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()], quizState: null };
+                    setDoc(userRef, userData, { merge: true });
+                }
+                if(currentTab === 'favorites') renderFavorites();
+                else if(currentTab === 'mistakes') renderMistakes();
+                else if(currentTab === 'history') renderHistory();
+            }, (error) => console.error("Listen user error", error));
+        };
+
+        const saveUserDataToCloud = async () => {
+            saveLocalData(username);
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+            try { await setDoc(userRef, userData, { merge: true }); } catch(e) { console.error("Firebase save error:", e); }
+        };
+
+        const loadLocalData = (name) => {
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
+                if (localData) userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, JSON.parse(localData));
+            } catch(e) {}
+        };
+
+        const saveLocalData = (name) => {
+            try { if (name) localStorage.setItem(`${COLLECTION_NAME}_${name}_data`, JSON.stringify(userData)); } catch(e) {}
+        };
+
+        const saveQuizState = () => {
+            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            userData.quizState = quizState;
+            saveUserDataToCloud();
+        };
+
+        const loadLocalQuizState = () => {
+            if (userData.quizState) { quizState = syncQuestionsFormat(userData.quizState); return; }
+            try {
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = syncQuestionsFormat(q);
+                }
+            } catch(e) {}
+        };
+
+        const initApp = async () => {
+            renderApp();
+            const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_user`);
+            if (isFirebaseInitialized) {
+                await initAuth(); 
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        listenToGlobalUsers();
+                        if (lastUser) {
+                            username = lastUser;
+                            setTimeout(() => listenToUserDocument(username), 200);
+                            loadLocalQuizState();
+                            renderMain();
+                        } else renderLogin();
+                    } else renderLogin();
+                });
+            } else {
+                if (lastUser) {
+                    username = lastUser;
+                    loadLocalData(username);
+                    loadLocalQuizState();
+                    renderMain();
+                } else renderLogin();
+            }
+        };
+
+        window.handleLogin = async (name) => {
+            if(!name.trim()) {
+                const inputEl = document.getElementById('usernameInput');
+                inputEl.classList.add('border-red-500', 'bg-red-50');
+                inputEl.placeholder = "名稱不能為空！";
+                setTimeout(() => {
+                    inputEl.classList.remove('border-red-500', 'bg-red-50');
+                    inputEl.placeholder = "✍️ 請輸入您的姓名/座號";
+                }, 2000);
+                return;
+            }
+            username = name;
+            localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
+            if (isFirebaseInitialized && currentUser) {
+                const now = new Date().toISOString();
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                try {
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
+                        if (userData.quizState) {
+                            quizState = syncQuestionsFormat(userData.quizState);
+                            try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
+                        }
+                    } else loadLocalData(username);
+                    if (!userData.loginHistory) userData.loginHistory = [];
+                    userData.loginHistory.push(now);
+                    if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50);
+                    await setDoc(userRef, userData, { merge: true });
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username);
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10);
+                    await setDoc(globalRef, { users }, { merge: true });
+                } catch(e) { console.error("Login data sync error:", e); }
+                listenToUserDocument(username);
+            } else {
+                loadLocalData(username);
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(new Date().toISOString());
+                saveLocalData(username);
+            }
+            renderMain();
+            initAudio(); // Initialize audio on first user interaction
+        };
+
+        const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col bg-pink-50"></div>`; };
+
+        window.renderLogin = () => {
+            currentTab = 'login';
+            el('view-container').innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-6 z-0">
+                    <div class="absolute inset-0 bg-gradient-to-br from-pink-50 via-rose-50 to-fuchsia-50 -z-20"></div>
+                    <div class="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-r from-pink-300 to-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10"></div>
+                    <div class="absolute top-40 -right-20 w-80 h-80 bg-gradient-to-r from-rose-300 to-fuchsia-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 1s;"></div>
+                    <div class="absolute -bottom-32 left-1/3 w-80 h-80 bg-gradient-to-r from-fuchsia-300 to-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 2s;"></div>
+                    <div class="absolute top-6 right-6 z-20">
+                        <div class="flex flex-col items-end gap-3 w-full md:w-auto">
+                            <div class="glass-card px-4 py-2 rounded-full shadow-sm text-sm font-bold text-pink-800 flex items-center border border-white/50">
+                                <span class="status-dot ${connectionStatus === 'loading' ? 'status-loading' : connectionStatus === 'success' ? 'status-success' : 'status-error'}"></span>
+                                ${connectionStatus === 'loading' ? '雲端讀取中... ⏳' : connectionStatus === 'success' ? '雲端已同步 ☁️✨' : '雲端連線失敗 ❌'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl z-10 w-[52rem] max-w-[95vw] text-center border border-white/60">
+                        <div class="w-24 h-24 bg-gradient-to-br from-[#F5A3C8] to-pink-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-6">
+                            <span class="text-6xl text-white">✂️</span>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-pink-950 mb-4 tracking-widest leading-tight">冗言贅字判斷<br>✨互動學習🌈</h1>
+                        <p class="text-pink-600 mb-10 text-xl md:text-2xl font-bold bg-pink-100 inline-block px-5 py-2 rounded-full border border-pink-200 shadow-sm">🎯 100題 會考魔王版 👑</p>
+                        <div class="space-y-6">
+                            <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-pink-200 focus:outline-none focus:border-[#F5A3C8] focus:ring-4 focus:ring-pink-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
+                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-[#F5A3C8] to-pink-500 hover:from-pink-400 hover:to-rose-500 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                                進入學習系統 🚀🌈🎉
+                            </button>
+                        </div>
+                        <div class="mt-10 border-t border-pink-200/50 pt-6">
+                            <p class="text-base text-pink-700/60 mb-4 font-bold tracking-wide">☁️ 雲端最近登入 👥</p>
+                            <div class="flex flex-wrap justify-center gap-3">
+                                ${recentUsers.length > 0 ? recentUsers.slice().reverse().slice(0, 8).map(u => `<button onclick="handleLogin('${u.name}')" class="text-base font-bold bg-white/80 border-2 border-pink-200 text-pink-800 hover:bg-pink-100 hover:text-pink-900 hover:border-pink-400 px-5 py-2.5 rounded-xl shadow-sm transition-all">${u.name}</button>`).join('') : `<span class="text-base text-pink-700/60 bg-white/50 px-5 py-2.5 rounded-xl">尚無紀錄或尚未連線</span>`}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderMain = () => {
+            el('view-container').innerHTML = `
+                <nav class="glass-nav text-white shadow-lg z-20 shrink-0" style="background: rgba(245, 163, 200, 0.9);">
+                    <div class="w-full px-2 sm:px-4 md:px-6 lg:px-8 mx-auto">
+                        <div class="flex justify-between items-center h-20 w-full overflow-x-auto scrollbar-hide gap-2 md:gap-4">
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <span class="font-extrabold text-xl md:text-2xl lg:text-xl xl:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
+                                    <span class="bg-white/20 p-2 rounded-xl mr-2 xl:mr-3 shadow-sm">📖</span>冗言贅字 ✨
+                                </span>
+                                <div class="flex items-center bg-white/20 px-2 py-1.5 md:px-3 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
+                                    <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
+                                    <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
+                                </div>
+                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-2 animate-fade-in shrink-0 gap-2 md:gap-3">
+                                    <div class="flex items-center bg-white px-3 py-1.5 md:px-4 md:py-1.5 rounded-xl shadow-md text-sm md:text-lg font-bold shrink-0 text-pink-950">
+                                        <span class="text-emerald-600 flex items-center"><span class="mr-1 md:mr-2">✅</span><span id="nav-stat-correct">0</span></span>
+                                        <div class="w-px bg-slate-300 h-4 md:h-5 mx-2 md:mx-3"></div>
+                                        <span class="text-red-600 flex items-center"><span class="mr-1 md:mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
+                                    </div>
+                                    <div class="hidden xl:flex flex-col w-24 lg:w-32 shrink-0">
+                                        <div class="w-full bg-red-950/40 rounded-full h-3.5 overflow-hidden shadow-inner border border-white/20">
+                                            <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-yellow-300 to-yellow-500 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
+                                                <div class="absolute inset-0 bg-white/30 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.2) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.2) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(100)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
+                                
+                                <div class="ml-1 sm:ml-2 lg:ml-4 flex items-center pl-2 sm:pl-3 lg:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-1 md:gap-2">
+                                    <div class="text-sm md:text-base lg:text-lg xl:text-xl font-bold bg-white/20 px-2 py-1.5 md:px-3 lg:px-4 lg:py-2 rounded-xl text-white shadow-inner flex items-center">
+                                        <span class="mr-1 lg:mr-2">👤</span>${username}
+                                    </div>
+                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-white/20 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="刪除帳號紀錄">🗑️</button>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-white/20 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="登出">🚪</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+                <div id="main-content" class="flex-1 overflow-hidden flex flex-col w-full z-10 relative">
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+CjxyZWN0IHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgZmlsbD0ibm9uZSIvPgo8Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIxIiBmaWxsPSIjZjVjNWMyIi8+Cjwvc3ZnPg==')] opacity-50 z-0"></div>
+                </div>
+            `;
+            switchTab('learn');
+        };
+
+        window.deleteUserData = async () => {
+            if(!confirm(`確定要從雲端刪除選手 ${username} 的所有資料？此操作無法復原！`)) return;
+            if(!confirm(`⚠️ 再次警告：這將永久刪除 ${username} 的所有進度、錯題與紀錄！\n\n您真的確定要執行刪除嗎？`)) return;
+            try {
+                if (isFirebaseInitialized && currentUser) {
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const snap = await getDoc(globalRef);
+                    if(snap.exists()) {
+                        let users = snap.data().users || [];
+                        users = users.filter(u => u.name !== username);
+                        await setDoc(globalRef, { users }, { merge: true });
+                    }
+                    const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                    await setDoc(userRef, { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, { merge: true });
+                }
+                localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+                userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+                if(unsubscribeUser) unsubscribeUser();
+                username = '';
+                renderLogin();
+            } catch(e) { alert("刪除失敗，請稍後再試"); }
+        };
+
+        window.logout = () => {
+            username = '';
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+            quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+            if(unsubscribeUser) unsubscribeUser();
+            renderLogin();
+        };
+
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
+                const btn = el(`nav-${t}`);
+                if(btn) {
+                    if(t === tab) btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                    else btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                }
+            });
+            const navStats = el('nav-quiz-stats');
+            if (navStats) {
+                if (tab === 'quiz' && quizState.active) {
+                    navStats.classList.remove('hidden'); navStats.classList.add('flex'); updateQuizStats();
+                } else { navStats.classList.add('hidden'); navStats.classList.remove('flex'); }
+            }
+            const content = el('main-content');
+            if(tab === 'learn') renderLearnView(content);
+            if(tab === 'quiz') renderQuizView(content);
+            if(tab === 'mistakes') renderMistakes(content);
+            if(tab === 'favorites') renderFavorites(content);
+            if(tab === 'history') renderHistory(content);
+        };
+
+        const renderLearnView = (container) => {
+            const currentData = learnData.find(d => d.id === learnSubTab);
+            const themeColors = {
+                'pink': 'text-pink-900 bg-pink-50 border-pink-200'
+            };
+            const activeTheme = currentData && currentData.theme ? themeColors[currentData.theme] : 'text-pink-900 bg-pink-50 border-pink-200';
+
+            container.innerHTML = `
+                <div class="w-full ${activeTheme} border-b p-4 flex items-center shadow-sm z-10 shrink-0 overflow-hidden transition-colors duration-300">
+                    <button onclick="toggleLearnMenu(true)" class="text-pink-800 hover:text-[#F5A3C8] focus:outline-none flex items-center px-4 py-2 bg-white/80 rounded-xl border border-white shadow-sm mr-4 transition-all hover:shadow">
+                        <i class="fas fa-bars text-xl md:mr-3"></i>
+                        <span class="font-bold text-lg hidden md:inline tracking-wide">單元選單</span>
+                    </button>
+                    <span class="font-extrabold text-xl md:text-2xl lg:text-3xl truncate drop-shadow-sm" id="current-learn-title">${currentData ? currentData.title : ''}</span>
+                </div>
+                <div id="learn-overlay" onclick="toggleLearnMenu(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden transition-opacity duration-300"></div>
+                <div id="learn-drawer" class="fixed inset-y-0 left-0 w-[24rem] max-w-[85vw] bg-white border-r border-pink-100 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl flex flex-col">
+                    <div class="p-6 bg-pink-50 flex justify-between items-center border-b border-pink-100 shrink-0">
+                        <span class="font-extrabold text-2xl text-pink-900">📑 學習目錄 🗺️</span>
+                        <button onclick="toggleLearnMenu(false)" class="text-[#F5A3C8] hover:text-pink-600 transition-colors bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-pink-100"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                    <ul class="py-4 flex-1 px-3 space-y-1">
+                        ${learnData.map(d => {
+                            const isSelected = learnSubTab === d.id;
+                            const defaultClass = isSelected ? 'bg-pink-50 text-pink-900 border-[#F5A3C8] shadow-sm' : 'text-slate-600 border-transparent hover:bg-pink-50';
+                            return `
+                            <li>
+                                <button onclick="selectLearnTab('${d.id}')" id="ltab-${d.id}" class="w-full text-left px-5 py-4 text-lg md:text-xl font-bold rounded-xl transition-all border-l-4 ${isSelected ? defaultClass + ' shadow-sm' : 'text-slate-600 border-transparent hover:bg-pink-50 hover:pl-6 hover:text-pink-800'}">
+                                    ${d.title}
+                                </button>
+                            </li>
+                        `}).join('')}
+                    </ul>
+                </div>
+                <div class="flex-1 p-4 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden w-full relative z-10" id="learn-content-area"></div>
+            `;
+            renderLearnContent();
+        };
+
+        window.selectLearnTab = (id) => {
+            learnSubTab = id;
+            renderLearnView(el('main-content')); 
+            toggleLearnMenu(false);
+        };
+
+        window.renderLearnContent = () => {
+            const area = el('learn-content-area');
+            if(!area) return;
+            const data = learnData.find(d => d.id === learnSubTab);
+            area.innerHTML = `<div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto animate-fade-in pb-12">${data.content}</div>`;
+        };
+
+        const renderQuizView = (container) => {
+            if(!quizState.active) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto relative z-10">
+                        <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-4xl lg:max-w-5xl w-full border border-white/60 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-40 h-40 bg-pink-100 rounded-bl-full -z-10 opacity-50"></div>
+                            <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-[#F5A3C8] to-pink-500 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
+                                <span class="text-6xl md:text-7xl text-white">🧠</span>
+                            </div>
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-pink-950 tracking-wide">冗言贅字 100題挑戰 🏆🔥</h2>
+                            <p class="text-pink-800/80 mb-10 text-xl md:text-2xl leading-loose">
+                                從語意重複到涵蓋其義，驗收您的精簡語文力！<br>
+                                <span class="bg-pink-100 text-pink-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-pink-200 shadow-sm">🌊 瀑布流模式</span><br>
+                                <span class="text-lg md:text-xl text-[#F5A3C8] mt-3 block font-bold">🎯 點擊選項後，詳細解析將直接顯示在每個選項框框內，無須滑動對照！</span>
+                            </p>
+                            <button onclick="startQuiz()" class="w-full sm:w-auto bg-gradient-to-r from-[#F5A3C8] to-pink-500 hover:from-pink-400 hover:to-rose-500 text-white font-bold py-5 px-16 text-2xl md:text-3xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl">
+                                開始挑戰 🚀🔥
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                renderQuizWaterfall(container);
+            }
+        };
+
+        window.startQuiz = () => {
+            initAudio(); // Explicitly init audio on button click
+            const qList = [...generate100Questions()].sort(() => 0.5 - Math.random()).map(q => ({
+                ...q, selectedAns: null, showExplanation: false, isCorrect: false
+            }));
+            quizState = { active: true, isFinished: false, questions: qList };
+            saveQuizState();
+            renderQuizView(el('main-content'));
+            const navStats = el('nav-quiz-stats');
+            if (navStats) { navStats.classList.remove('hidden'); navStats.classList.add('flex'); }
+            updateQuizStats();
+        };
+
+        window.updateQuizStats = () => {
+            if (!quizState.active) return;
+            let correct = 0; let incorrect = 0; let answered = 0;
+            const total = quizState.questions.length;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answered++;
+                    if (q.isCorrect) correct++; else incorrect++;
+                }
+            });
+            const progressPercent = (answered / total) * 100;
+            const elCorrect = document.getElementById('nav-stat-correct');
+            const elIncorrect = document.getElementById('nav-stat-incorrect');
+            const elBar = document.getElementById('nav-stat-progress-bar');
+            if (elCorrect) elCorrect.innerText = correct;
+            if (elIncorrect) elIncorrect.innerText = incorrect;
+            if (elBar) elBar.style.width = progressPercent + '%';
+        };
+
+        window.restartQuizWithConfirm = () => {
+            if(confirm('確定要重新開始挑戰嗎？這將會清除目前的畫面，並產生全新的測驗題目！')) startQuiz();
+        };
+
+        const renderQuizWaterfall = (container) => {
+            const total = quizState.questions.length;
+            const isFinished = quizState.isFinished;
+            
+            let headerHtml = isFinished 
+                ? ` <div class="glass-card flex flex-col md:flex-row justify-between items-center rounded-2xl p-5 md:p-6 shadow-lg border border-[#F5A3C8] mb-10 sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-pink-50 to-rose-50">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="text-5xl mr-4 drop-shadow-md">🏆✨</span>
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-extrabold text-pink-900">測驗結算完成 🎉</h2>
+                                <p class="text-pink-700 font-bold text-lg mt-1">總分：<span class="text-3xl md:text-4xl text-[#F5A3C8] font-black">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="switchTab('mistakes')" class="text-base md:text-lg text-pink-600 hover:text-white hover:bg-[#F5A3C8] px-4 py-2 rounded-xl font-bold transition-colors flex items-center border-2 border-pink-200 hover:border-[#F5A3C8] bg-white"><span class="mr-2">🩹</span>錯題本</button>
+                            <button onclick="restartQuizWithConfirm()" class="text-base md:text-lg text-white bg-gradient-to-r from-[#F5A3C8] to-pink-500 hover:from-pink-400 hover:to-rose-500 px-4 py-2 rounded-xl font-bold transition-colors flex items-center shadow-md hover:shadow-lg"><span class="mr-2">🔄</span>重新挑戰</button>
+                        </div>
+                    </div>`
+                : ` <div class="flex justify-end mb-4">
+                        <button onclick="clearQuizHistory()" class="text-sm md:text-base text-red-500 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-red-200 bg-white shadow-sm"><span class="mr-2">🚪</span>放棄作答</button>
+                    </div>`;
+
+            let html = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto relative">
+                        ${headerHtml}
+                        <div id="questions-list" class="space-y-10 w-full">
+            `;
+            quizState.questions.forEach((_, qIdx) => { html += `<div id="q-block-${qIdx}" class="bg-white rounded-3xl shadow-lg overflow-hidden border border-pink-100 transition-all w-full">${generateSingleQuestionHtml(qIdx)}</div>`; });
+            html += `</div>`;
+            
+            if (!isFinished) {
+                html += `
+                        <button onclick="finishQuizWaterfall()" class="w-full mt-16 bg-gradient-to-r from-[#F5A3C8] to-pink-500 hover:from-pink-400 hover:to-rose-500 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-pink-700">
+                            🏁 完成測驗並結算成績 📊🎉
+                        </button>`;
+            } else {
+                 html += `
+                        <button onclick="restartQuizWithConfirm()" class="w-full mt-16 bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-rose-700">
+                            🔄 重新開始挑戰 🚀💪
+                        </button>`;                
+            }
+            html += `</div></div>`;
+            container.innerHTML = html;
+        };
+
+        const generateSingleQuestionHtml = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            let optionsHtml = '';
+            
+            q.opts.forEach((opt, i) => {
+                let btnClass = "w-full text-left p-3 md:p-5 text-xl md:text-2xl rounded-2xl border-2 transition-all duration-200 flex flex-col items-start group relative overflow-hidden ";
+                let iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center mr-3 md:mr-5 font-extrabold text-xl md:text-2xl transition-colors shrink-0 shadow-inner group-hover:bg-pink-100 group-hover:text-pink-700">${String.fromCharCode(65+i)}</span>`;
+                
+                let optExpHtml = '';
+                
+                if (!q.showExplanation) {
+                    btnClass += "border-pink-100 hover:border-[#F5A3C8] hover:bg-pink-50/50 bg-white cursor-pointer hover:shadow-md";
+                } else {
+                    let expText = (q.exps && q.exps[i]) ? q.exps[i] : '無詳細解析';
+                    
+                    if (i === q.ans) {
+                        btnClass += "border-emerald-400 bg-emerald-50/30 text-emerald-900 shadow-md z-10 ring-2 ring-emerald-400/20";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-3 md:mr-5 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">✅</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-emerald-200 bg-emerald-100/60 text-emerald-900 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-emerald-700">🎯 解析：</span>${expText}</div>`;
+                    } else if (i === q.selectedAns) {
+                        btnClass += "border-red-400 bg-red-50/40 text-red-900";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-red-500 text-white flex items-center justify-center mr-3 md:mr-5 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">❌</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-red-200 bg-red-100/60 text-red-900 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-red-700">💡 解析：</span>${expText}</div>`;
+                    } else {
+                        btnClass += "border-slate-200 bg-slate-50/60 opacity-90 cursor-not-allowed";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center mr-3 md:mr-5 font-extrabold text-xl md:text-2xl shrink-0">${String.fromCharCode(65+i)}</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-slate-200 bg-white text-slate-700 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-slate-500">💡 解析：</span>${expText}</div>`;
+                    }
+                }
+
+                optionsHtml += `
+                    <button ${q.showExplanation ? 'disabled' : `onclick="answerWaterfallQuestion(${qIdx}, ${i})"`} class="${btnClass}">
+                        <div class="flex items-center w-full">
+                            ${iconHtml}
+                            <span class="flex-1 leading-relaxed break-words z-10 text-left ${q.showExplanation && i === q.ans ? 'text-emerald-900 font-bold' : 'text-slate-800 font-medium'} group-hover:text-pink-950">${opt}</span>
+                        </div>
+                        ${optExpHtml}
+                    </button>
+                `;
+            });
+
+            let generalExpHtml = '';
+            if (q.showExplanation && q.generalExp) {
+                generalExpHtml = `
+                    <div class="mt-5 p-4 md:p-5 bg-pink-50/80 border border-pink-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-[#F5A3C8]"></div>
+                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-pink-900">${q.generalExp}</p>
+                    </div>
+                `;
+            }
+
+            const isFav = userData.favorites && userData.favorites.includes(q.q);
+            const favIconHtml = isFav 
+                ? '<i class="fa-solid fa-heart text-[#F5A3C8]"></i>' 
+                : '<i class="fa-regular fa-heart text-[#F5A3C8]"></i>';
+
+            let statusTag = '';
+            let bgGradient = '';
+            if (q.showExplanation) {
+                if (q.selectedAns === q.ans) {
+                    statusTag = '<span class="text-emerald-600 font-bold text-lg md:text-xl flex items-center bg-emerald-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">✅</span>答對 🎉</span>';
+                    bgGradient = 'bg-gradient-to-r from-emerald-50 to-white';
+                } else if (q.selectedAns === -1) {
+                    statusTag = '<span class="text-amber-600 font-bold text-lg md:text-xl flex items-center bg-amber-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">⚠️</span>未作答</span>';
+                    bgGradient = 'bg-gradient-to-r from-amber-50 to-white';
+                } else {
+                    statusTag = '<span class="text-red-600 font-bold text-lg md:text-xl flex items-center bg-red-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯 💦</span>';
+                    bgGradient = 'bg-gradient-to-r from-red-50 to-white';
+                }
+            } else {
+                statusTag = '<span class="text-[#F5A3C8] font-bold text-base md:text-lg flex items-center bg-pink-100/50 px-3 py-1 rounded-full border border-pink-200"><span class="mr-2">✍️</span>作答區</span>';
+                bgGradient = 'bg-pink-50/30';
+            }
+
+            return `
+                <div class="px-5 md:px-8 py-4 border-b border-pink-100 flex justify-between items-center transition-colors ${bgGradient}">
+                    <div class="flex items-center">
+                        <span class="font-extrabold text-[#F5A3C8] text-lg md:text-xl bg-white px-3 py-1 rounded-xl border border-pink-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
+                        <button onclick="toggleQuizFavorite(${qIdx})" class="ml-4 text-[1.5rem] md:text-3xl hover:scale-110 transition-transform focus:outline-none drop-shadow-sm" title="加入/取消最愛">
+                            ${favIconHtml}
+                        </button>
+                    </div>
+                    ${statusTag}
+                </div>
+                <div class="p-5 md:p-8 w-full overflow-hidden">
+                    <h3 class="text-2xl md:text-3xl font-extrabold text-slate-800 mb-6 leading-loose break-words text-left">${q.q}</h3>
+                    <div class="space-y-3 w-full">
+                        ${optionsHtml}
+                    </div>
+                    ${generalExpHtml}
+                </div>
+            `;
+        };
+
+        window.toggleQuizFavorite = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            const qText = q.q;
+            if (!userData.favorites) userData.favorites = [];
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) userData.favorites.splice(idx, 1);
+            else userData.favorites.push(qText);
+            saveUserDataToCloud();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
+        };
+
+        window.answerWaterfallQuestion = (qIdx, optIdx) => {
+            const q = quizState.questions[qIdx];
+            if(q.showExplanation) return; 
+
+            const isCorrect = optIdx === q.ans;
+            q.selectedAns = optIdx;
+            q.showExplanation = true;
+            q.isCorrect = isCorrect;
+            
+            if (isCorrect) {
+                playCorrectSound();
+                confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 }, zIndex: 10000, colors: ['#F5A3C8', '#f472b6', '#fbcfe8', '#be185d', '#fda4af'] });
+            } else {
+                playWrongSound();
+                const mistakeId = q.q; 
+                if(!userData.mistakes) userData.mistakes = [];
+                const exists = userData.mistakes.find(m => m.id === mistakeId);
+                if(!exists) {
+                    userData.mistakes.push({
+                        id: mistakeId, q: q.q, opts: q.opts, ans: q.ans, exps: q.exps, generalExp: q.generalExp, time: new Date().toISOString()
+                    });
+                    saveUserDataToCloud();
+                }
+            }
+            saveQuizState();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
+            updateQuizStats();
+        };
+
+        window.finishQuizWaterfall = async () => {
+            let correctCount = 0; let answeredCount = 0;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answeredCount++;
+                    if (q.isCorrect) correctCount++;
+                }
+            });
+            if (answeredCount < quizState.questions.length) {
+                if(!confirm(`您還有 ${quizState.questions.length - answeredCount} 題尚未作答，確定要直接交卷結算嗎？未作答的題目將以錯誤計算。`)) return;
+            }
+            quizState.questions.forEach(q => {
+                if (!q.showExplanation) {
+                    q.showExplanation = true; q.isCorrect = false; q.selectedAns = -1;
+                }
+            });
+            quizState.isFinished = true; quizState.correctCount = correctCount; quizState.answeredCount = answeredCount;
+            const total = quizState.questions.length;
+            const scorePercent = Math.round((correctCount / total) * 100);
+            quizState.scorePercent = scorePercent;
+            saveQuizState();
+            
+            if (!userData.quizHistory) userData.quizHistory = [];
+            userData.quizHistory.push({ date: new Date().toLocaleString(), score: scorePercent, total: total, correct: correctCount });
+            if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
+            saveUserDataToCloud();
+
+            renderQuizView(document.getElementById('main-content'));
+            confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 }, zIndex: 10000, colors: ['#F5A3C8', '#f472b6', '#fbcfe8', '#be185d', '#fda4af'] });
+            
+            setTimeout(() => {
+                const scrollContainer = document.getElementById('quiz-scroll-container');
+                if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+        };
+
+        window.clearQuizHistory = () => {
+            if(confirm('警告：確定要清除目前的作答紀錄嗎？\n(此動作將會遺失目前所有測驗進度)')) {
+                if(confirm('【第二次確認】真的要清除作答紀錄並放棄目前測驗嗎？\n按下「確定」將會清空並返回測驗首頁。')) {
+                    quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                    saveQuizState();
+                    const navStats = document.getElementById('nav-quiz-stats');
+                    if (navStats) { navStats.classList.add('hidden'); navStats.classList.remove('flex'); }
+                    renderQuizView(document.getElementById('main-content'));
+                }
+            }
+        };
+
+        window.renderMistakes = (container) => {
+            if(!container) container = document.getElementById('main-content');
+            if(!userData.mistakes || userData.mistakes.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-[#F5A3C8] flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-emerald-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-emerald-200 text-7xl">🥳</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-pink-950 mb-4">太棒了！✨</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-pink-800/60">目前沒有任何錯題紀錄 🎉</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-pink-200 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-pink-800 flex items-center"><span class="bg-pink-100 text-[#F5A3C8] w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">🩹</span>錯題本 📚</h2>
+                                <p class="text-pink-900/50 mt-3 ml-20 font-bold text-lg md:text-xl">收錄您在測驗中答錯的題目，溫故知新 🔄💡</p>
+                            </div>
+                            <button onclick="clearMistakes()" class="text-base md:text-xl text-[#F5A3C8] hover:text-pink-700 bg-white hover:bg-pink-50 px-5 py-3 rounded-xl border-2 border-pink-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${userData.mistakes.map((m, i) => `
+                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-pink-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-pink-400 to-[#F5A3C8]"></div>
+                                    <h3 class="font-extrabold text-pink-950 mb-6 text-2xl md:text-3xl break-words leading-loose flex items-start text-left">
+                                        <span class="text-[#F5A3C8] mr-3 text-2xl font-black bg-pink-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
+                                    </h3>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-xl md:text-2xl w-full font-medium text-left">
+                                        ${m.opts.map((opt, idx) => `
+                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all flex flex-col ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <div class="flex items-start">
+                                                    <span class="inline-block w-8 md:w-10 font-bold ${idx === m.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> 
+                                                    <span class="flex-1">${opt}</span>
+                                                    ${idx === m.ans ? '<span class="ml-2 text-emerald-500 text-2xl">✅</span>' : ''}
+                                                </div>
+                                                ${(m.exps && m.exps[idx]) ? `<div class="mt-3 p-3 rounded-xl text-base md:text-lg border ${idx === m.ans ? 'border-emerald-200 bg-emerald-100/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'} leading-relaxed font-medium"><span class="font-bold mr-2 ${idx === m.ans ? 'text-emerald-700' : 'text-slate-500'}">${idx === m.ans ? '🎯 解析：' : '💡 解析：'}</span>${m.exps[idx]}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ${m.generalExp ? `
+                                    <div class="mt-5 p-4 md:p-5 bg-pink-50/80 border border-pink-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-[#F5A3C8]"></div>
+                                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-pink-900">${m.generalExp}</p>
+                                    </div>` : ''}
+                                </div>
+                            `).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.clearMistakes = () => {
+            if(confirm('警告：確定要清空所有錯題紀錄嗎？\n(此動作無法復原)')) {
+                if(confirm('【第二次確認】真的要徹底清空錯題本嗎？\n按下「確定」將會刪除所有錯題資料。')) {
+                    userData.mistakes = []; saveUserDataToCloud(); renderMistakes();
+                }
+            }
+        };
+
+        window.renderFavorites = (container) => {
+            if(!container) container = document.getElementById('main-content');
+            if(!userData.favorites || userData.favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-[#F5A3C8] flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-pink-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-pink-100 text-7xl">💔</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-pink-950 mb-4">暫無收藏</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-pink-800/60 mb-10">在測驗中點擊愛心圖示即可收藏題目！ 📌✨</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-pink-200 text-[#F5A3C8] hover:bg-pink-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            const allQList = generate100Questions();
+            const favQuestions = userData.favorites.map(favText => {
+                return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exps: [], generalExp: '題目資料已遺失' };
+            });
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex items-end border-b-4 border-pink-200 pb-5 mb-12">
+                            <h2 class="text-4xl md:text-5xl font-extrabold text-pink-800 flex items-center"><span class="bg-pink-100 text-[#F5A3C8] w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">💖</span>我的最愛 🌟</h2>
+                            <p class="text-pink-900/50 mt-3 ml-8 font-bold text-lg md:text-xl hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${favQuestions.map((qObj, i) => {
+                                if (qObj.opts.length === 0) return '';
+                                return `
+                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-pink-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-pink-400 to-[#F5A3C8]"></div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="font-extrabold text-pink-950 text-2xl md:text-3xl break-words leading-loose flex items-start pr-6 flex-1 text-left">
+                                            <span class="text-[#F5A3C8] mr-3 text-2xl font-black bg-pink-50 px-3 py-1 rounded-xl">📌 Q</span>${qObj.q}
+                                        </h3>
+                                        <button onclick="toggleFavoritePage('${qObj.q}')" class="text-[2rem] md:text-3xl hover:scale-110 transition-transform shrink-0 mt-1 focus:outline-none drop-shadow-sm" title="移除最愛">
+                                            <i class="fa-solid fa-heart text-red-500"></i>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-xl md:text-2xl w-full font-medium text-left">
+                                        ${qObj.opts.map((opt, idx) => `
+                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all flex flex-col ${idx === qObj.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <div class="flex items-start">
+                                                    <span class="inline-block w-8 md:w-10 font-bold ${idx === qObj.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> 
+                                                    <span class="flex-1">${opt}</span>
+                                                    ${idx === qObj.ans ? '<span class="ml-2 text-emerald-500 text-2xl">✅</span>' : ''}
+                                                </div>
+                                                ${(qObj.exps && qObj.exps[idx]) ? `<div class="mt-3 p-3 rounded-xl text-base md:text-lg border ${idx === qObj.ans ? 'border-emerald-200 bg-emerald-100/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'} leading-relaxed font-medium"><span class="font-bold mr-2 ${idx === qObj.ans ? 'text-emerald-700' : 'text-slate-500'}">${idx === qObj.ans ? '🎯 解析：' : '💡 解析：'}</span>${qObj.exps[idx]}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ${qObj.generalExp ? `
+                                    <div class="mt-5 p-4 md:p-5 bg-pink-50/80 border border-pink-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-[#F5A3C8]"></div>
+                                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-pink-900">${qObj.generalExp}</p>
+                                    </div>` : ''}
+                                </div>
+                                `;
+                            }).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.toggleFavoritePage = (qText) => {
+            if (!userData.favorites) return;
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) {
+                if(confirm('確定要從最愛中移除此題嗎？')) {
+                    userData.favorites.splice(idx, 1);
+                    saveUserDataToCloud();
+                    renderFavorites();
+                }
+            }
+        };
+
+        window.renderHistory = (container) => {
+            if(!container) container = document.getElementById('main-content');
+            if((!userData.quizHistory || userData.quizHistory.length === 0) && (!userData.loginHistory || userData.loginHistory.length === 0)) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-[#F5A3C8] flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-slate-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-slate-200 text-7xl">📜</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-pink-950 mb-4">暫無紀錄</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-pink-800/60 mb-10">您還沒有完成任何測驗或留下足跡喔！</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-pink-200 text-[#F5A3C8] hover:bg-pink-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-amber-300 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-amber-800 flex items-center"><span class="bg-amber-100 text-amber-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">📜</span>作答與登入紀錄</h2>
+                                <p class="text-amber-900/60 mt-3 ml-20 font-bold text-lg md:text-xl">追蹤您的學習軌跡，跨裝置同步更新 ☁️</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <!-- 作答紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+                                <div class="bg-amber-50 p-6 border-b border-amber-200">
+                                    <h3 class="text-3xl font-bold text-amber-900 flex items-center"><span class="mr-3 text-3xl">🎯</span>最近作答成績</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                                    ${(userData.quizHistory || []).slice().reverse().map((h, i) => `
+                                        <div class="flex justify-between items-center p-5 rounded-2xl border-2 border-slate-100 ${h.score >= 80 ? 'bg-emerald-50/50 border-emerald-100' : (h.score < 60 ? 'bg-red-50/50 border-red-100' : 'bg-slate-50')} transition-all hover:shadow-md">
+                                            <div>
+                                                <div class="font-bold text-slate-800 text-xl md:text-2xl">${h.date}</div>
+                                                <div class="text-lg text-slate-500 mt-2 font-medium">共 ${h.total} 題，答對 <span class="font-bold text-slate-700">${h.correct}</span> 題</div>
+                                            </div>
+                                            <div class="text-5xl font-black ${h.score >= 80 ? 'text-emerald-600' : (h.score < 60 ? 'text-red-500' : 'text-amber-500')}">${h.score}<span class="text-2xl ml-1 font-bold">分</span></div>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">目前還沒有測驗紀錄喔</p>'}
+                                </div>
+                            </div>
+
+                            <!-- 登入紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden h-fit">
+                                <div class="bg-slate-50 p-6 border-b border-slate-200">
+                                    <h3 class="text-3xl font-bold text-slate-800 flex items-center"><span class="mr-3 text-3xl">👣</span>最近登入足跡</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-4 max-h-[40vh] overflow-y-auto">
+                                    ${(userData.loginHistory || []).slice().reverse().map((time, i) => `
+                                        <div class="flex items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors">
+                                            <span class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 mr-4 text-lg font-bold shadow-inner">${i+1}</span>
+                                            <span class="font-bold text-slate-700 text-xl">${new Date(time).toLocaleString()}</span>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">無登入紀錄</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        initApp();
+
+    </script>
+</body>
+</html>
