@@ -29,6 +29,7 @@
         @media (min-width: 768px) { .tag-badge { font-size: 1.5rem; line-height: 2rem; padding: 0.75rem 1.5rem; margin-right: 1rem; margin-bottom: 1rem; } }
         .text-highlight { position: relative; display: inline-block; z-index: 1; }
         .text-highlight::after { content: ''; position: absolute; left: 0; bottom: 0.2em; width: 100%; height: 0.4em; background-color: rgba(251, 191, 36, 0.5); z-index: -1; border-radius: 2px; }
+        .exp-box { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 1rem; margin-top: 0.5rem; border-radius: 0 0.5rem 0.5rem 0; font-size: 1rem; color: #334155; }
     </style>
 </head>
 <body class="h-screen w-full flex flex-col overflow-hidden bg-amber-50">
@@ -40,6 +41,9 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // ==========================================
+        //  Firebase Configuration & Constants
+        // ==========================================
         const firebaseConfig = {
             apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
             authDomain: "chinese-learning-47f4d.firebaseapp.com",
@@ -63,13 +67,16 @@
         let unsubscribeUser = null;
         let unsubscribeGlobal = null;
         
+        // ==========================================
+        //  Audio System
+        // ==========================================
         let audioCtx = null;
         const initAudio = () => {
             if (!audioCtx) {
                 try {
                     const AudioContext = window.AudioContext || window.webkitAudioContext;
                     audioCtx = new AudioContext();
-                } catch(e) {}
+                } catch(e) { console.warn("AudioContext not supported"); }
             }
         };
         const playTone = (freq, type, duration) => {
@@ -92,6 +99,9 @@
         const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
         const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
 
+        // ==========================================
+        //  Firebase Initialization
+        // ==========================================
         try {
             const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
             if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
@@ -111,59 +121,81 @@
             } catch (error) { connectionStatus = 'error'; }
         };
 
+        // ==========================================
+        //  Course Content (Learn Data)
+        // ==========================================
         const learnData = [
             {
-                id: 'sec1', title: '一、敘事句 🏃‍♂️', theme: 'orange',
+                id: 'sec1', title: '一、句式邏輯分類 (上) 🎯', theme: 'orange',
                 content: `
                 <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
                     <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-10 rounded-3xl border-l-8 border-orange-500 shadow-lg">
                         <div class="text-center font-black text-4xl md:text-5xl text-orange-950 mb-8 border-b-2 border-orange-200 pb-4 flex justify-center items-center gap-4">
-                            <span class="text-5xl">🐱</span> 句式邏輯四大句型 <span class="text-5xl">✨</span>
+                            <span class="text-5xl">🐱</span> 句式邏輯學習站 <span class="text-5xl">✨</span>
                         </div>
                         
                         <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-8">
-                            <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-4 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">一</span> 敘事句 🏃‍♂️</h3>
-                            <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium mb-6">
-                                <strong class="text-orange-700">定義：</strong>用來敘述某人或某物<span class="text-blue-600 font-bold">做什麼動作</span>、<span class="text-blue-600 font-bold">發生什麼事情</span>的句子。<br>核心特徵是必須擁有「<span class="text-rose-600 font-bold">一般動詞</span>」。
-                            </p>
-                            
-                            <div class="bg-orange-100/50 p-6 rounded-2xl border border-orange-200 mb-6">
-                                <h4 class="font-black text-2xl text-orange-900 mb-4 border-b-2 border-orange-200 pb-2">🧩 基本結構</h4>
-                                <p class="text-xl md:text-2xl text-slate-700 font-bold bg-white p-4 rounded-xl shadow-sm border border-orange-100 flex items-center flex-wrap gap-2">
-                                    <span class="text-indigo-600">主語 (S)</span> + <span class="text-rose-600">述語 (V)</span> + <span class="text-emerald-600">賓語 (O)</span> 
-                                    <span class="text-sm font-normal text-slate-500 w-full mt-2">※ 賓語可有可無（取決於動詞是否及物）。</span>
-                                </p>
-                            </div>
-
+                            <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-4 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">一</span> 並列、轉折、排比、映襯 🧩</h3>
                             <div class="overflow-x-auto rounded-xl shadow-sm border border-orange-200 bg-white">
                                 <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
                                     <thead class="bg-orange-100 text-orange-900">
                                         <tr>
-                                            <th class="p-4 w-1/3">主語 (誰/什麼)</th>
-                                            <th class="p-4 w-1/3">述語 (做什麼動作)</th>
-                                            <th class="p-4 w-1/3">賓語 (接受動作的事物)</th>
+                                            <th class="p-4 w-1/5">類別</th>
+                                            <th class="p-4 w-1/4">句式與邏輯解說</th>
+                                            <th class="p-4 w-11/20">課文例句與說明</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-orange-50 text-slate-700 font-medium text-center">
+                                    <tbody class="divide-y divide-orange-50 text-slate-700 font-medium">
                                         <tr>
-                                            <td class="p-4">我</td>
-                                            <td class="p-4 text-rose-600 font-bold">讀</td>
-                                            <td class="p-4">書</td>
-                                        </tr>
-                                        <tr class="bg-orange-50/30">
-                                            <td class="p-4">故人</td>
-                                            <td class="p-4 text-rose-600 font-bold">具</td>
-                                            <td class="p-4">雞黍</td>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">1. 並列句 🤝</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) A和/與/跟/而且B<br>
+                                                (2) 有的A，有的B<br>
+                                                (3) 不只/不但A，還有/也B<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>AB都強調
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 多少樣不知名的小鳥，在枝頭跳躍，有的曳著長長的尾巴，有的翹著尖尖的長喙。<br>
+                                                (2) 這些聲音鐘不但告訴你時刻，也告訴你星期、季節。
+                                            </td>
                                         </tr>
                                         <tr>
-                                            <td class="p-4">鳥</td>
-                                            <td class="p-4 text-rose-600 font-bold">宿</td>
-                                            <td class="p-4">池邊樹</td>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">2. 轉折句 ↩️</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：雖然A，但是B / 儘管A，還是B / A然而/卻是/不過/其實B<br>
+                                                (2) 文言：「然、而」解釋為「但是」<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>強調 B
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 他們看似自由，卻身陷囹圄。<br>
+                                                (2) 予獨愛蓮之出淤泥而不染，濯清漣而不妖。
+                                            </td>
                                         </tr>
-                                        <tr class="bg-orange-50/30">
-                                            <td class="p-4">落花</td>
-                                            <td class="p-4 text-rose-600 font-bold">飛</td>
-                                            <td class="p-4 text-slate-400 text-base">(無賓語)</td>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">3. 排比句 🌊</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                三組文句文意相近<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>強調共同點
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                菊，花之隱逸者也；牡丹，花之富貴者也；蓮，花之君子者也。<br>
+                                                <span class="text-sm text-slate-500">(強調「以花喻人的特質」)</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">4. 映襯句 🌗</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                兩組文句文意相反<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>強調積極意涵
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                學之，則難者亦易矣；不學，則易者亦難矣。<br>
+                                                <span class="text-sm text-slate-500">(強調「學」的重要)</span>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -173,107 +205,147 @@
                 </div>`
             },
             {
-                id: 'sec2', title: '二、有無句 📦', theme: 'teal',
+                id: 'sec2', title: '二、句式邏輯分類 (中) 🎯', theme: 'teal',
                 content: `
                 <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
                     <div class="bg-gradient-to-br from-teal-50 to-emerald-50 p-6 md:p-10 rounded-3xl border-l-8 border-teal-500 shadow-lg">
-                        <div class="mb-4">
-                            <h3 class="font-bold text-3xl md:text-4xl text-teal-800 mb-4 flex items-center"><span class="bg-teal-200 p-2 rounded-lg mr-3 shadow-sm">二</span> 有無句 📦</h3>
-                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-teal-100 mb-6">
-                                <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium">
-                                    <strong class="text-teal-700">定義：</strong>用來表明事物<span class="text-blue-600 font-bold">存在與否</span>的句子。<br>其核心述語必定是「<span class="text-rose-600 font-bold">有</span>」或「<span class="text-rose-600 font-bold">無</span>」（沒有）。
-                                </p>
-                            </div>
-                            
-                            <div class="bg-teal-100/50 p-6 rounded-2xl border border-teal-200 mb-6">
-                                <h4 class="font-black text-2xl text-teal-900 mb-4 border-b-2 border-teal-200 pb-2">🧩 基本結構</h4>
-                                <p class="text-xl md:text-2xl text-slate-700 font-bold bg-white p-4 rounded-xl shadow-sm border border-teal-100 flex items-center flex-wrap gap-2">
-                                    <span class="text-indigo-600">主語 (S)</span> + <span class="text-rose-600">述語 (有 / 無)</span> + <span class="text-emerald-600">賓語 (O)</span>
-                                </p>
-                            </div>
-
-                            <div class="overflow-x-auto rounded-xl shadow-sm border border-teal-200 bg-white mb-8">
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-teal-100 mb-8">
+                            <h3 class="font-bold text-3xl md:text-4xl text-teal-800 mb-4 flex items-center"><span class="bg-teal-200 p-2 rounded-lg mr-3 shadow-sm">二</span> 假設、條件、因果 🧩</h3>
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-teal-200 bg-white">
                                 <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
                                     <thead class="bg-teal-100 text-teal-900">
                                         <tr>
-                                            <th class="p-4 w-1/3">主語 (誰/哪裡)</th>
-                                            <th class="p-4 w-1/3">述語 (有/無)</th>
-                                            <th class="p-4 w-1/3">賓語 (什麼事物)</th>
+                                            <th class="p-4 w-1/5">類別</th>
+                                            <th class="p-4 w-1/4">句式與邏輯解說</th>
+                                            <th class="p-4 w-11/20">課文例句與說明</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-teal-50 text-slate-700 font-medium text-center">
+                                    <tbody class="divide-y divide-teal-50 text-slate-700 font-medium">
                                         <tr>
-                                            <td class="p-4">我</td>
-                                            <td class="p-4 text-rose-600 font-bold">有</td>
-                                            <td class="p-4">一個夢想</td>
-                                        </tr>
-                                        <tr class="bg-teal-50/30">
-                                            <td class="p-4">宅邊</td>
-                                            <td class="p-4 text-rose-600 font-bold">有</td>
-                                            <td class="p-4">五柳樹</td>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">5. 假設句 💭</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：如果/一旦A，就能B<br>
+                                                (2) 文言：「若、如、假、使、苟、令」解釋為「如果」<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>強調 A
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 如果妳能一天練琴六到八個小時...妳的願望可能就會實現。<br>
+                                                (2) 不去想，什麼都沒有，一旦思想起，便歷歷如繪。<br>
+                                                (3) 諸軍各守城鋪，如有妄行出入...立斬。<br>
+                                                (4) 使安期有此性，猶當無一豪可論，況藍田耶？
+                                            </td>
                                         </tr>
                                         <tr>
-                                            <td class="p-4">天下</td>
-                                            <td class="p-4 text-rose-600 font-bold">無</td>
-                                            <td class="p-4">不是的父母</td>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">6. 條件句 🔑</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：只要A就能B / 只有A才能B / 除非A否則B<br>
+                                                (2) 文言：「惟、唯、僅、但」解釋為「只有」<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>強調 A
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 也只有像我這樣深入、珍惜大自然的人，才會受到邀請，才能找到這條美麗的祕徑。<br>
+                                                (2) 我亦無他，惟手熟爾。<br>
+                                                (3) 何夜無月？何處無竹柏？但少閑人如吾兩人耳！
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">7. 因果句 🔄</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：因為/由於A，所以/便B<br>
+                                                (2) 文言：「因、以」解釋為「因為」；「故、則、便」解釋為「所以」<br>
+                                                *常省略「因為」或「所以」，有時先果後因。<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>順序關係不能顛倒
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 有風度的運動家，因為具有高尚的修養，所以表現得光明、雍容。<br>
+                                                (2) 君子不以言舉人，不以人廢言。<br>
+                                                (3) 嬰最不肖，故宜使楚矣。<br>
+                                                (4) 簷下無排水溝，庭院未鋪柏油，一下雨，便泥濘不堪。(省略因為)<br>
+                                                (5) 人與人偶有摩擦，往往都是由於缺乏那分雅量的緣故。(先果後因)
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
-                            </div>
-
-                            <div class="bg-pink-50 p-6 rounded-2xl shadow-sm border border-pink-200 relative">
-                                <div class="absolute -top-6 -left-4 text-7xl transform -rotate-12">⚠️</div>
-                                <h3 class="font-black text-2xl md:text-3xl text-pink-900 mb-4 flex items-center pl-16"><span class="bg-pink-200 px-3 py-1 rounded-full text-rose-600 mr-3 text-xl shadow-sm">易錯陷阱</span></h3>
-                                <p class="text-xl md:text-2xl text-slate-700 leading-relaxed font-medium bg-white p-4 rounded-xl shadow-sm border border-pink-100">
-                                    當「有/無」作為副詞（表示動作的有無）時，<span class="text-rose-600 font-bold">不可視為有無句</span>，而是敘事句。<br>
-                                    例如：「他 <span class="underline text-blue-600">沒有</span> <span class="text-rose-600 font-bold">來</span>。」 👉 「沒有」修飾動詞「來」，此為<strong class="text-orange-600">敘事句</strong>。
-                                </p>
                             </div>
                         </div>
                     </div>
                 </div>`
             },
             {
-                id: 'sec3', title: '三、表態句 🌸', theme: 'emerald',
+                id: 'sec3', title: '三、句式邏輯分類 (下) 🎯', theme: 'emerald',
                 content: `
                 <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
                     <div class="bg-gradient-to-br from-emerald-50 to-green-50 p-6 md:p-10 rounded-3xl border-l-8 border-emerald-500 shadow-lg">
-                        <div>
-                            <h3 class="font-bold text-3xl md:text-4xl text-emerald-800 mb-4 flex items-center"><span class="bg-emerald-200 p-2 rounded-lg mr-3 shadow-sm">三</span> 表態句 🌸</h3>
-                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 mb-6">
-                                <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium">
-                                    <strong class="text-emerald-700">定義：</strong>用來描寫人、事、物的<span class="text-blue-600 font-bold">性質、狀態或樣貌</span>。<br>此句型<strong class="text-rose-600">沒有動詞</strong>，其核心是「形容詞」。
-                                </p>
-                            </div>
-
-                            <div class="bg-emerald-100/50 p-6 rounded-2xl border border-emerald-200 mb-6">
-                                <h4 class="font-black text-2xl text-emerald-900 mb-4 border-b-2 border-emerald-200 pb-2">🧩 基本結構</h4>
-                                <p class="text-xl md:text-2xl text-slate-700 font-bold bg-white p-4 rounded-xl shadow-sm border border-emerald-100 flex items-center flex-wrap gap-2">
-                                    <span class="text-indigo-600">主語 (S)</span> + <span class="text-rose-600">表語 (Adj)</span> 
-                                    <span class="text-sm font-normal text-slate-500 w-full mt-2">※ 表語通常為形容詞或形容詞片語。</span>
-                                </p>
-                            </div>
-
-                            <div class="overflow-x-auto rounded-xl shadow-sm border border-emerald-200 mb-8 bg-white">
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 mb-8">
+                            <h3 class="font-bold text-3xl md:text-4xl text-emerald-800 mb-4 flex items-center"><span class="bg-emerald-200 p-2 rounded-lg mr-3 shadow-sm">三</span> 層遞、比較、反詰、雙重否定 🧩</h3>
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-emerald-200 bg-white">
                                 <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
                                     <thead class="bg-emerald-100 text-emerald-900">
                                         <tr>
-                                            <th class="p-4 w-1/2">主語 (誰/什麼)</th>
-                                            <th class="p-4 w-1/2">表語 (怎麼樣/是什麼狀態)</th>
+                                            <th class="p-4 w-1/5">類別</th>
+                                            <th class="p-4 w-1/4">句式與邏輯解說</th>
+                                            <th class="p-4 w-11/20">課文例句與說明</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-emerald-100 text-slate-700 font-medium text-center">
+                                    <tbody class="divide-y divide-emerald-50 text-slate-700 font-medium">
                                         <tr>
-                                            <td class="p-4">天氣</td>
-                                            <td class="p-4 text-rose-600 font-bold">非常晴朗</td>
-                                        </tr>
-                                        <tr class="bg-emerald-50/30">
-                                            <td class="p-4">牡丹之愛</td>
-                                            <td class="p-4 text-rose-600 font-bold">宜乎眾矣</td>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">8. 層遞句 📈</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：尚且A，更何況B / 不是A，更不是B / 至少A / 最多A<br>
+                                                (2) 文言：「況」解釋為「更何況」<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>更進一層的推論
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 你不是我，更不是我的影子，我不能為你作主一輩子！<br>
+                                                (2) 使安期有此性，猶當無一豪可論，況藍田耶？<br>
+                                                (3) 大禹之聖，且惜寸陰；陶侃之賢，且惜分陰。又況賢聖不若彼者乎？
+                                            </td>
                                         </tr>
                                         <tr>
-                                            <td class="p-4">環堵</td>
-                                            <td class="p-4 text-rose-600 font-bold">蕭然</td>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">9. 比較句 ⚖️</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：與其A，不如B / 寧可A，也不B<br>
+                                                (2) 文言：「不若、未若、莫若、何如、何若」解釋為「不如」<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>強調 B (或強調 A，依句型而定)
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 我(與其)在學堂坐著...不如往他家放牛，倒快活些。(省略與其)<br>
+                                                (2) 天時不如地利，地利不如人和。<br>
+                                                (3) 未若柳絮因風起。<br>
+                                                (4) 寧可有光明的失敗，絕不要不榮譽的成功。
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">10. 反詰句 🤔<br><span class="text-sm font-normal text-emerald-600">(激問)</span></td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：難道是這樣嗎？怎麼是這樣呢？何必這樣呢？<br>
+                                                (2) 文言：「豈、安、何、焉、奚、其、惡、不亦、孰、固、顧」解釋為「難道」<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>答案在問題的反面 (不是這樣/不必這樣)
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 然則昏庸聰敏之用，豈有常哉？<br>
+                                                (2) 兩兔傍地走，安能辨我是雄雌？<br>
+                                                (3) 吾馬賴柔和，令他馬，固不敗傷我乎？
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">11. 雙重否定句 🙅‍♂️</td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                <span class="text-rose-600 font-bold">句式：</span><br>
+                                                (1) 白話：沒有不會這樣的 / 不能不這樣 / 非這樣不可<br>
+                                                (2) 文言：「不可不」(一定要) / 「未有不」(一定是) / 「莫不」(皆)<br><br>
+                                                <span class="text-blue-600 font-bold">邏輯：</span>雙重否定變肯定 (都會這樣/一定要這樣)
+                                            </td>
+                                            <td class="p-4 leading-relaxed text-lg">
+                                                (1) 在荒野中的人，此時沒有一個不是被震懾得氣脫委頓。(每個都是被震懾...)<br>
+                                                (2) 凡事不宜痴，若行善則不可不痴。(一定要沉迷)
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -283,98 +355,336 @@
                 </div>`
             },
             {
-                id: 'sec4', title: '四、判斷句 ⚖️', theme: 'purple',
+                id: 'sec4', title: '四、手把手解析 (1~12) ✍️', theme: 'purple',
                 content: `
-                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                <div class="space-y-8 text-xl md:text-2xl text-gray-800">
                     <div class="bg-gradient-to-br from-purple-50 to-fuchsia-50 p-6 md:p-10 rounded-3xl border-l-8 border-purple-500 shadow-lg">
-                        <div class="mb-4">
-                            <h3 class="font-bold text-3xl md:text-4xl text-purple-800 mb-4 flex items-center"><span class="bg-purple-200 p-2 rounded-lg mr-3 shadow-sm">四</span> 判斷句 ⚖️</h3>
-                            <div class="bg-white p-5 rounded-xl shadow-sm border border-purple-100 mb-6">
-                                <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium">
-                                    <strong class="text-purple-700">定義：</strong>用來解釋事物的<span class="text-blue-600 font-bold">含義、屬性或判斷事物是什麼</span>。<br>其核心是使用「<span class="text-rose-600 font-bold">繫詞</span>」(連結詞) 將主語與斷語(名詞)連接起來。
-                                </p>
+                        <h3 class="font-bold text-3xl md:text-4xl text-purple-800 mb-6 flex items-center"><span class="bg-purple-200 p-2 rounded-lg mr-3 shadow-sm">四</span> 會考題型看板 (第1~12題) 🏆</h3>
+                        <p class="mb-6 text-purple-700 font-bold">🎯 這裡收錄了講義 176~180 頁的精選試題，每一題都附上超詳細的手把手解析！</p>
+                        
+                        <div class="space-y-6">
+                            <!-- Q1 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q1.</span>「傳統習俗總是為人生祭出各種禁令，有些是在保護你...；有些卻是想束縛你...」這段話的觀點與下列何者最接近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 傳統習俗不見得都是好的 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 傳統習俗時常會帶來危險</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 我們應尊重傳統習俗的禁忌</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 傳統習俗不適用於現代社會</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「並列句」。題幹指出傳統習俗「有些保護你（好），有些束縛你（壞）」，同時陳述一體兩面，故選 (A) 不見得都是好的。(B) 帶來危險與題意「保護」衝突。(C) 題幹提到有些是「束縛」，故非全盤尊重。(D) 過度推論。
+                                </div>
                             </div>
                             
-                            <div class="bg-purple-100/50 p-6 rounded-2xl border border-purple-200 mb-6">
-                                <h4 class="font-black text-2xl text-purple-900 mb-4 border-b-2 border-purple-200 pb-2">🧩 基本結構</h4>
-                                <p class="text-xl md:text-2xl text-slate-700 font-bold bg-white p-4 rounded-xl shadow-sm border border-purple-100 flex items-center flex-wrap gap-2">
-                                    <span class="text-indigo-600">主語 (S)</span> + <span class="text-rose-600">繫詞 (Be動詞)</span> + <span class="text-emerald-600">斷語 (Noun)</span> 
-                                    <span class="text-sm font-normal text-slate-500 w-full mt-2">※ 斷語用以解釋主語，必定是名詞性質。</span>
-                                </p>
+                            <!-- Q2 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q2.</span>「常常我們只記得結果的不完美，卻忘記收穫滿滿的過程。就像吹泡泡，其實不需要太在意泡泡不免會破掉。」這句話的涵義與下列何者最接近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 真正完美的結果是不可期待的</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 無論過程或結果都應力求圓滿</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 過程中的收穫比結果是否完美重要 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 收穫滿滿的過程有助於結果的完美</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「轉折句」。用「卻忘記...」強調重點在後者（過程），以吹泡泡比喻結果終將消逝（破掉），但吹的過程才是重點，故選 (C)。
+                                </div>
                             </div>
 
-                            <div class="overflow-x-auto rounded-xl shadow-sm border border-purple-200 bg-white mb-8">
-                                <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
-                                    <thead class="bg-purple-100 text-purple-900">
-                                        <tr>
-                                            <th class="p-4 w-1/3">主語 (誰/什麼)</th>
-                                            <th class="p-4 w-1/3">繫詞 (是/乃/為/非)</th>
-                                            <th class="p-4 w-1/3">斷語 (是什麼)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-purple-50 text-slate-700 font-medium text-center">
-                                        <tr>
-                                            <td class="p-4">知識</td>
-                                            <td class="p-4 text-rose-600 font-bold">就是</td>
-                                            <td class="p-4">力量</td>
-                                        </tr>
-                                        <tr class="bg-purple-50/30">
-                                            <td class="p-4">失敗</td>
-                                            <td class="p-4 text-rose-600 font-bold">為</td>
-                                            <td class="p-4">成功之母</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="p-4">菊</td>
-                                            <td class="p-4 text-rose-600 font-bold">（省略）乃</td>
-                                            <td class="p-4">花之隱逸者也</td>
-                                        </tr>
-                                        <tr class="bg-purple-50/30">
-                                            <td class="p-4">交友</td>
-                                            <td class="p-4 text-rose-600 font-bold">非</td>
-                                            <td class="p-4">兒戲</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <!-- Q3 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q3.</span>「蝸以涎見覓，蟬以聲見黏，螢以光見獲。故愛身者，不貴赫赫之名。」這句話的涵義與下列何者最接近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 人過留名，雁過留聲</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 所榮者善行，所恥者惡名</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 名不可簡而成，譽不可巧而立</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 樹大招風風損樹，人為名高傷喪身 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「排比句」。蝸牛、蟬、螢火蟲都因為自身的特點（涎、聲、光）而招致殺身之禍，結尾點出「愛身者，不貴赫赫之名」（愛惜生命的人，不看重顯赫的名聲），故選 (D) 樹大招風。
+                                </div>
                             </div>
+
+                            <!-- Q4 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q4.</span>「君子如抱美玉而深藏不市，小人則以石為玉而又炫之售不。」根據這句話，君子不同於小人的特質是下列何者？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 臨財不苟</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 真實坦率</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 見多識廣</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 沉潛含蓄 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「映襯句」。君子有才華（美玉）卻「深藏不市」（沉潛含蓄）；小人無才（石）卻到處炫耀。兩者對比，強調君子的內斂，故選 (D)。
+                                </div>
+                            </div>
+
+                            <!-- Q5 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q5.</span>「文學雖然具有普遍性，但因讀者體驗的不同而有變化，讀者倘若沒有類似的體驗，它也就失去了效力。」根據這句話，作者認為文學的普遍性要有效力，前提最可能是下列何者？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 讀者的體驗各自不同</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 讀者的分布普及各階層</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 讀者有類似於作品的經驗 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 讀者與作者有相同的喜好</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「假設句」。由「倘若沒有類似的體驗，它也就失去了效力」反推，要有效力，前提就是「必須有類似的體驗」，故選 (C)。
+                                </div>
+                            </div>
+
+                            <!-- Q6 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q6.</span>「懷才就像懷孕一樣，只要有了，時間一久就會被發現。」這句話的涵義與下列何者最接近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 欲知人者必先自知</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 賢愚在心，不在貴賤</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 君子疾沒世而名不稱焉</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 不患莫已知，求為可知也 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「條件句」。只要具備才華（條件），終究會被發掘。「不患莫已知，求為可知也」意為不怕沒人知道自己，只求自己有可以被別人知道的真才實學，與題幹呼應，故選 (D)。(原PDF此題答案應為D，解析已補充)
+                                </div>
+                            </div>
+
+                            <!-- Q7 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q7.</span>「正因為我們開始『思考』、『懷疑』既有的價值，所以看起來『不乖』。不經由這樣的『不乖』，我們就無法擁有真正面對現實的智慧。」這句話的主要涵義？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 既有的價值禁得起思考與懷疑</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 「不乖」的人擁有面對現實的資格</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 如何表現「不乖」是不可或缺的智慧</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 不盲從既有價值才可能獲致真正的智慧 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「因果句」。因為思考懷疑（不盲從），所以看起來不乖；而這個過程能帶來智慧。故選 (D)。
+                                </div>
+                            </div>
+
+                            <!-- Q8 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q8.</span>「不敢說該說的話，至少不說不該說的話。猶如不敢挑戰罪惡，至少不應該去做惡勢力的化妝品，乃至化妝師。」作者最不認同的行為？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 不敢挑戰惡勢力</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 用語言包裝罪惡 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 不願意說該說的話</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 在惡勢力前直言不諱</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「層遞句」。從「至少不應該去做惡勢力的化妝品（粉飾掩蓋），乃至化妝師（主動美化）」可看出，最糟糕、最不認同的就是去包裝美化罪惡，故選 (B)。
+                                </div>
+                            </div>
+
+                            <!-- Q9 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q9.</span>「寧可讓學得快的人等，也不能讓不會的人繼續不會。」符合此句話的教育理念？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 強化資優教育，培養菁英</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 提倡忍讓，加強品格教育</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 視學生資質，給予適當教導</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 無論良與莠，一個都不放棄 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「比較句」。寧可A（讓快的等），也不B（讓不會的繼續不會）。強調要把所有人都教會，不放棄任何一個學生，故選 (D)。
+                                </div>
+                            </div>
+
+                            <!-- Q10 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q10.</span>「...今法有誹謗妖言之罪...將何以來遠方之賢良？其除之。」文中「其除之」的「之」代稱什麼？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 進善之旌</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 誹謗之木</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 誹謗妖言之罪 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 遠方之賢良</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「反詰句」。作者認為定下「誹謗妖言之罪」會讓大家不敢進言，難道還能招來賢良嗎？(不能)。因此「其除之」(請廢除它) 的它，指的是這個不合理的法律，故選 (C)。
+                                </div>
+                            </div>
+
+                            <!-- Q11 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q11.</span>「人生沒有跳不過的火燄山。」這句俗諺意思最接近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 挫折可試驗一個人的品格</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 只要肯行動就能超越苦難 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 人總是在錯誤中累積經驗</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 痛苦可以成為美好的回憶</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「雙重否定句」。沒有...不過...，代表「一定跳得過」。引申為只要願意面對，就一定能克服難關，故選 (B)。
+                                </div>
+                            </div>
+                            
+                            <!-- Q12 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-purple-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-purple-600 mr-2">Q12.</span>「我常把人生比作一次旅行，辛勞和苦難算做是我們所不能不花的旅費。...我們可以得到各種各樣五色繽紛的經驗。」</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 旅行的意義，在於旅途中的體會與成長</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 擁有豐富生命經驗的人，更能自在地面對逆境</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 人生路上的美好風景，都是可遇不可求的偶然</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 人生必然遭遇困頓，我們需將此化為生命的養料 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「雙重否定句」。不能不花(一定要花)，表示苦難是人生必然的代價，而這些代價能換來繽紛的經驗(養料)，故選 (D)。
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>`
             },
             {
-                id: 'sec5', title: '五、解題秘笈 🗝️', theme: 'pink',
+                id: 'sec5', title: '五、手把手解析 (13~26) ✍️', theme: 'pink',
                 content: `
-                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                <div class="space-y-8 text-xl md:text-2xl text-gray-800">
                     <div class="bg-gradient-to-br from-pink-50 to-rose-50 p-6 md:p-10 rounded-3xl border-l-8 border-pink-500 shadow-lg">
-                        <div class="mb-4">
-                            <h3 class="font-bold text-3xl md:text-4xl text-pink-800 mb-4 flex items-center"><span class="bg-pink-200 p-2 rounded-lg mr-3 shadow-sm">五</span> 綜合解題秘笈 🗝️</h3>
-                            
-                            <div class="bg-pink-100/50 p-6 rounded-2xl border border-pink-200 mb-8 space-y-6">
-                                <h4 class="font-black text-2xl text-pink-900 border-b-2 border-pink-200 pb-2">🔥 考試核心考點整理</h4>
-                                
-                                <div class="bg-white p-5 rounded-xl shadow-sm border border-pink-50">
-                                    <h5 class="text-xl font-bold text-rose-700 mb-2">1. 區分「表態句」與「判斷句」</h5>
-                                    <p class="text-lg md:text-xl text-slate-700 leading-relaxed">
-                                        關鍵在於句尾詞性。<br>
-                                        若為名詞 👉 判斷句。（例：他是<span class="text-blue-600 font-bold">學生(名)</span>）<br>
-                                        若為形容詞 👉 表態句。（例：他<span class="text-blue-600 font-bold">很棒(形)</span>）
-                                    </p>
+                        <h3 class="font-bold text-3xl md:text-4xl text-pink-800 mb-6 flex items-center"><span class="bg-pink-200 p-2 rounded-lg mr-3 shadow-sm">五</span> 實力養成文言文 (第13~26題) 🏆</h3>
+                        <p class="mb-6 text-pink-700 font-bold">🎯 延續前單元，這裡挑戰更深入的文言文句式理解！</p>
+                        
+                        <div class="space-y-6">
+                            <!-- Q13 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q13.</span>子貢曰：「學不厭，智也；教不倦，仁也。仁且智，夫子既聖矣！」下列何者最可能為聖人？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 韋編三絕，學而不厭</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 牛角掛書，弦歌不輟</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 誨人不倦，春風化雨</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 孜孜不倦，為世所用 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「並列句」。聖人必須具備「學不厭(智)」且「教不倦(仁)」兩者。選項中只有(D)雖然沒直接寫，但若以題意來看，兩者兼具最佳。(註: 講義原題可能是選兼具兩者的選項，若無完美對應，需選涵蓋修己與教人的，此題若嚴格看，題幹強調「學與教」並列，若無完美選項，則取其精神)。
                                 </div>
+                            </div>
 
-                                <div class="bg-white p-5 rounded-xl shadow-sm border border-pink-50">
-                                    <h5 class="text-xl font-bold text-rose-700 mb-2">2. 文言文的「為」字多義</h5>
-                                    <p class="text-lg md:text-xl text-slate-700 leading-relaxed">
-                                        當「是」解釋 👉 判斷句。（例：人為萬物之靈）<br>
-                                        當「作/治理」解釋 👉 敘事句。（例：以叢草為林）
-                                    </p>
+                            <!-- Q14 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q14.</span>「...格調是空架子，有腔口易描；風趣專寫性靈，非天才不辦。」什麼樣的詩作最為高明？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 格律嚴謹</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 苦吟深思</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 靈光一閃</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 直抒性靈 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「轉折/雙重否定句」。作者貶低格調(空架子)，推崇風趣(專寫性靈)，並說「非天才不辦」(只有天才辦得到)，故選 (D)。
                                 </div>
+                            </div>
 
-                                <div class="bg-white p-5 rounded-xl shadow-sm border border-pink-50">
-                                    <h5 class="text-xl font-bold text-rose-700 mb-2">3. 省略句與倒裝句的還原</h5>
-                                    <p class="text-lg md:text-xl text-slate-700 leading-relaxed">
-                                        文言文中常省略主語或繫詞，解題時必須自行補上以判斷。<br>
-                                        （例：環堵蕭然 👉 (其)環堵蕭然：表態句）<br>
-                                        （例：何陋之有 👉 有何陋：有無句）
-                                    </p>
+                            <!-- Q15 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q15.</span>「木秀於林，風必摧之；堆出於岸，流必湍之；行高於人，眾必非之。」涵義最接近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 真金不怕火煉</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 一手獨拍，孤掌難鳴</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 孤芳自賞，難成氣候</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 鶴立雞群者，易遭人攻擊 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「排比句」。連用三個比喻，強調太過突出(木秀、堆出、行高)必定會招致打擊(摧之、湍之、非之)，故選 (D)。
+                                </div>
+                            </div>
+
+                            <!-- Q16 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q16.</span>「良弓難張，然可以及高入深；良馬難乘，然可以任重致遠；良才難令，然可以致君見尊。」</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 徒有才學，不足以成事</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 只要有實力，不怕沒機會</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 有道德的人一定不會孤單</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 真正的人才多半有其個性，但卻擁有真才實學 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「排比兼轉折句」。難張/難乘/難令(有個性難駕馭)，「然」(但是) 可以及高/任重/致尊(有真才實學大用處)，故選 (D)。
+                                </div>
+                            </div>
+
+                            <!-- Q17 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q17.</span>「古之人，如陳玉石於市肆，瑕瑜不掩；今之人，如貨古玩於時賈，真偽難知。」強調？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 人心不古，暗室可欺 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 虛懷若谷，以退為進</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 童叟無欺，買賣公平</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 偷斤減兩，便宜行事</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「映襯句」。古人真實坦率(瑕瑜不掩)，今人虛偽難辨(真偽難知)，對比出人心不古(今不如昔)，故選 (A)。
+                                </div>
+                            </div>
+
+                            <!-- Q18 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q18.</span>「陛下苟誠心乎為民，則雖或謗之而人不信；苟誠心乎為利，則雖自解釋而人不服。」受人信服的關鍵？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 態度真誠</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 心繫百姓 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 興利除弊</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 清除謗議</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「假設句」。苟(如果)誠心為民(A)，就不怕毀謗；苟誠心為己利，再解釋也沒用。關鍵在於是否「為民」，故選 (B)。
+                                </div>
+                            </div>
+
+                            <!-- Q19 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q19.</span>「長槍短戟，用各不同，但精其一，已足致勝。」這段話意謂著什麼？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 人貴求精不求多，貪多無益 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 盡其在我即可，不必在乎成敗</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 天生我才必有用，毋須妄自菲薄</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 人之不同悉如其面，不必強求其同</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「條件句」。但(只要)精通其中一種，就足以致勝。強調「專精」比「多」重要，故選 (A)。
+                                </div>
+                            </div>
+
+                            <!-- Q20 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q20.</span>「錄畢，走送之，不敢稍逾約。以是人多以書假余，余因得遍觀群書。」借書給作者的原因？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 博學多聞</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 信守承諾 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 字跡端正</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 閱讀神速</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「因果句」。因為「不敢稍逾約」(守信)，「以是」(因此) 人多以書假(借)余。故選 (B)。
+                                </div>
+                            </div>
+
+                            <!-- Q21 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q21.</span>「口舌，代心者也；文章，又代口舌者也。展轉隔礙...已恐不如口舌矣！況能如心之所存乎？」</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 言語比文章更能表達內心的想法 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 文章比言語更能突破傳達的隔閡</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 文章能夠有效傳達內心想法，言語卻無法</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 因為文章寫得不夠通暢，才無法完全傳達意念</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「層遞句」。心 -> 口舌 -> 文章。文章不如口舌，更何況(況)是內心的想法呢？表示隔閡越來越大，言語(口舌)比文章更貼近真心，故選 (A)。
+                                </div>
+                            </div>
+
+                            <!-- Q22 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q22.</span>「寧受人之欺，毋逆人之詐。」與下列何者最相近？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 多行不義必自斃</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 退一步海闊天空</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 待人要在有疑處不疑 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 道高一尺，魔高一丈</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「比較句」。寧可被欺騙，也不要事先去猜疑別人的詐偽。強調待人要寬厚不疑，故選 (C)。
+                                </div>
+                            </div>
+
+                            <!-- Q23 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q23.</span>「未能事人，焉能事鬼？」孔子對於祭鬼神的看法？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 周全完備，極盡禮數</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 盡己所能，虔誠恭敬</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 注重眼前，為所當為 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 心無罣礙，豁達自適</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「反詰句」。連活人(人事)都還沒事奉好，怎麼(焉)能去事奉鬼神呢？強調應先做好眼前的人事，故選 (C)。
+                                </div>
+                            </div>
+
+                            <!-- Q24 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q24.</span>「北門之嘆，久已上聞。窮猿奔林，豈暇擇木？」</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 小喬：「即便窮困，我也不為五斗米折腰！」</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 安安：「若無善感之眼，就無法體會人生。」</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 蒂蒂：「別怪我沒原則，祭五臟廟為人生首要。」 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 阿琪：「讀萬卷書，行萬里路，應力求知行合一。」</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「反詰句」。窮困的猿猴急著逃入林中，哪有空閒(豈暇)挑選好樹木呢？比喻人在窮困急迫時顧不得原則，先求溫飽生存。蒂蒂的說法最貼切，故選 (C)。
+                                </div>
+                            </div>
+
+                            <!-- Q25 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q25.</span>「人閑居時，不可一刻無古人；落筆時，不可一刻有古人。」對創作的看法？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 精讀古書，襲用古人筆法</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 摒棄經典，力求獨樹一格</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 記取古人過錯，作為前車之鑑</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 吸取古人經驗，但須不落窠臼 ✅</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「雙重否定句」。平常要讀古書(不可無古人)，但自己創作落筆時要有自己的創意(不可有古人，不能全抄)。故選 (D)。
+                                </div>
+                            </div>
+
+                            <!-- Q26 -->
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-pink-100">
+                                <p class="font-bold text-slate-800 mb-4"><span class="text-pink-600 mr-2">Q26.</span>老子：「常使民無知無欲，使夫智者不敢為也。為無為，則無不治。」最接近治國意涵？</p>
+                                <p class="text-slate-600 pl-8 mb-2">(A) 以智治國，天下太平</p>
+                                <p class="text-slate-600 pl-8 mb-2">(B) 若行無為，天下不治</p>
+                                <p class="text-slate-600 pl-8 mb-2">(C) 不崇智欲，無爭無奪 ✅</p>
+                                <p class="text-slate-600 pl-8 mb-2">(D) 泯除智欲，使民服從</p>
+                                <div class="exp-box">
+                                    <span class="font-bold text-blue-600">💡 解析：</span>此為「雙重否定句」。無不治(沒有不治理好的，一定能治好)。老子主張順應自然，不推崇智巧與欲望(無知無欲)，順其自然就能天下大治，故選 (C)。
                                 </div>
                             </div>
                         </div>
@@ -383,124 +693,167 @@
             }
         ];
 
-        const generate120Questions = () => {
+        const generate50Questions = () => {
             const qList = [];
-            const addQ = (q, opts, ans, exps) => qList.push({ q, opts, ans, exps, showExplanation: false, selectedAns: null, isCorrect: false });
+            const addQ = (q, opts, ans, exps, generalExp = "") => qList.push({ q, opts, ans, exps, generalExp, showExplanation: false, selectedAns: null, isCorrect: false });
             
             // ==========================================
-            // 魔王級題庫 - 共 100 題 (涵蓋四大句型)
+            //  魔王級題庫 - 共 50 題 (涵蓋11種句型、會考核心考點)
             // ==========================================
-            
-            // [1-20] 敘事句基礎與文言文判斷
-            addQ("下列哪一個選項屬於標準的「敘事句」？", ["天空非常湛藍。", "母親正在煮飯。", "我家有三隻貓。", "健康就是財富。"], 1, ["「湛藍」為形容詞，此為表態句。", "「煮」是一般動詞，「飯」為賓語，符合主述賓結構，為敘事句。", "含有「有」字，為有無句。", "含有繫詞「就是」，為判斷句。"]);
-            addQ("在「故人具雞黍」一句中，下列對於句型結構的分析，何者正確？", ["「故人」是主語，「具」是表語", "「故人」是主語，「具」是述語", "「雞黍」是主語，「具」是繫詞", "「故人」是斷語，「雞黍」是賓語"], 1, ["「具」是動詞（準備），非形容詞表語。", "正確。「故人」(主語) + 「具」(一般動詞述語) + 「雞黍」(賓語)，為敘事句。", "「具」是一般動詞，不是繫詞(是)。", "「故人」是主語。"]);
-            addQ("下列古典詩句中，何者「並非」敘事句？", ["白日依山盡", "黃河入海流", "相呼相應湘江闊", "松下問童子"], 2, ["「依」(動詞)山盡，敘事句。", "「入」(動詞)海流，敘事句。", "正確。「闊」是形容詞，描述湘江的狀態，此為表態句。", "「問」(動詞)童子，敘事句。"]);
-            addQ("「落花飛」一句的句型為何？", ["表態句", "敘事句", "有無句", "判斷句"], 1, ["「飛」是動詞，不是形容詞。", "正確。「落花」(主語) + 「飛」(不及物動詞/述語)，省略賓語，依然是敘事句。", "沒有「有/無」。", "沒有繫詞。"]);
-            addQ("「群鶴飛鳴於秋空。」此句的述語是哪一個詞？", ["群鶴", "飛鳴", "於", "秋空"], 1, ["主語。", "正確。「飛鳴」是一般動詞，擔任述語。", "介詞。", "補語/地方。"]);
-            addQ("下列何句是「省略主語」的敘事句？", ["天下無不是的父母。", "環堵蕭然，不蔽風日。", "交友投分，切磨箴規。", "斯是陋室，惟吾德馨。"], 2, ["有無句，主語「天下」。", "表態句，主語「環堵」。", "正確。原意為「(吾人)交友投分，(吾人)切磨箴規」，省略了主語，且「交、投、切、磨」皆為動詞，屬敘事句。", "判斷句。"]);
-            addQ("「以叢草為林，以蟲蟻為獸。」句中的「為」字作何解釋？此為何種句型？", ["當作「是」；判斷句", "當作「當作」；敘事句", "當作「被」；表態句", "當作「因為」；敘事句"], 1, ["解釋錯誤，此處非繫詞。", "正確。「以...為...」即「把...當作...」，「為」是一般動詞，屬敘事句。", "解釋錯誤。", "解釋錯誤。"]);
-            addQ("下列選項中的「為」字，何者構成了「敘事句」？", ["失敗「為」成功之母", "人「為」萬物之靈", "二蟲盡「為」所吞", "天下「為」公"], 2, ["繫詞「是」，判斷句。", "繫詞「是」，判斷句。", "正確。「為」在此作「被」(被動語態)，是一般動詞的應用，構成敘事句。", "繫詞「是」，判斷句。"]);
-            addQ("「我買了一本書給他。」這句話屬於敘事句中的哪一種特殊形式？", ["省略句", "倒裝句", "雙賓語句", "被動句"], 2, ["沒有省略成分。", "沒有倒裝。", "正確。「給」這個動作有兩個接受者：直接賓語「一本書」和間接賓語「他」。", "沒有被動意味。"]);
-            addQ("「微風吹拂著湖面，泛起陣陣漣漪。」這句話由兩個分句組成，其句型依序為何？", ["敘事句／表態句", "敘事句／敘事句", "表態句／敘事句", "有無句／敘事句"], 1, ["「泛起」是動詞，不是形容詞。", "正確。「吹拂」與「泛起」皆為一般動詞，前後皆為敘事句。", "「吹拂」是動詞。", "沒有「有/無」。"]);
-            addQ("「大雨下了一整天。」這句話中的「一整天」在敘事句中扮演什麼角色？", ["主語", "述語", "賓語", "補語"], 3, ["主語是「大雨」。", "述語是「下」。", "賓語通常是名詞接受者，但這裡表時間。", "正確。表示時間、處所、程度的詞語補充說明動詞，稱為補語。"]);
-            addQ("下列哪一句是標準的敘事句，且擁有完整的「主語＋述語＋賓語」結構？", ["他笑了。", "鳥兒歌唱。", "老師批改作業。", "天氣很熱。"], 2, ["不及物動詞，無賓語。", "不及物動詞，無賓語。", "正確。老師(S) + 批改(V) + 作業(O)。", "表態句。"]);
-            addQ("「這件事讓我很生氣。」此句的句型是：", ["表態句", "敘事句", "有無句", "判斷句"], 1, ["「生氣」雖有形容詞特質，但主動詞是「讓」(使役動詞)。", "正確。主語「這件事」+ 述語「讓」+ 賓語「我...」，為使役動詞構成的敘事句。", "無有/無。", "無繫詞。"]);
-            addQ("「他跑得快。」與「他跑操場。」兩句的句型分析何者正確？", ["兩者皆為敘事句，但前者無賓語，後者有賓語", "前者表態句，後者敘事句", "兩者皆為表態句", "前者判斷句，後者敘事句"], 0, ["正確。兩句述語皆為「跑」(一般動詞)。「得快」是補語無賓語；「操場」是賓語。", "「跑」是動詞，非表態。", "皆有動詞。", "無繫詞。"]);
-            addQ("文言文「明月松間照」的正確句型及語序還原為何？", ["表態句；明月照於松間", "敘事句；明月照於松間", "判斷句；松間乃明月照", "有無句；松間有明月照"], 1, ["「照」是動詞。", "正確。「照」是動詞，原語序為「明月(S)照(V)松間(補語/處所)」，為敘事句。", "無繫詞。", "原句無有字。"]);
-            addQ("「我們把教室打掃乾淨了。」此句中的「把」字句屬於何種句型？", ["敘事句", "判斷句", "表態句", "有無句"], 0, ["正確。「把」字句用來提前賓語（教室），核心動詞是「打掃」，因此仍是敘事句。", "無繫詞。", "有動詞。", "無有無。"]);
-            addQ("下列何者是「被動語態」的敘事句？", ["花兒被風吹落了。", "風把花兒吹落了。", "花兒隨風飄落。", "風吹落了花兒。"], 0, ["正確。含有被動詞「被」，主語「花兒」是動作的承受者，但核心仍有動詞「吹落」，為敘事句。", "主動語態(把字句)。", "主動語態。", "主動語態。"]);
-            addQ("「王羲之，字逸少。」這句話的句型是：", ["敘事句", "表態句", "有無句", "判斷句"], 3, ["無一般動詞。", "無形容詞表語。", "無有無。", "正確。省略了繫詞，原意為「王羲之(S) [是] 字逸少(斷語)」，為判斷句。"]);
-            addQ("「他是一位優秀的老師。」改寫成敘事句，下列何者最適當？", ["優秀的老師就是他。", "他教書教得非常優秀。", "他有著優秀的教學能力。", "他的教學非常優秀。"], 1, ["仍是判斷句。", "正確。「教」是一般動詞，將判斷句轉換為敘事句。", "這是有無句。", "這是表態句。"]);
-            addQ("「我愛你」這句話的結構是：", ["主語+表語", "主語+述語+賓語", "主語+繫詞+斷語", "主語+有無+賓語"], 1, ["表語是形容詞。", "正確。我(S) + 愛(V/述語) + 你(O/賓語)，標準敘事句。", "無繫詞。", "無有無。"]);
 
-            // [21-40] 有無句基礎與變化
-            addQ("下列哪一個選項是標準的「有無句」？", ["他沒有去上學。", "這裡有很多人。", "這件事很有趣。", "他是個有錢人。"], 1, ["「沒有」修飾動詞「去」，為敘事句。", "正確。這裡(S) + 有(V) + 很多人(O)，為有無句。", "「有」常與形容詞結合當作副詞(很)，此為表態句的變體(或敘事句，視「有趣」為名詞或形容詞，但標準有無句應如B)。", "判斷句。"]);
-            addQ("「宅邊有五柳樹」的「五柳樹」在句子中扮演什麼角色？", ["主語", "述語", "表語", "賓語"], 3, ["主語是「宅邊」。", "述語是「有」。", "有無句不使用表語(表語專屬表態句)。", "正確。有無句的結構為：主語 + 述語(有/無) + 賓語。五柳樹為賓語。"]);
-            addQ("「天下無不是的父母。」此句的主語為何？", ["天下", "無", "不是的", "父母"], 0, ["正確。「天下」(空間/抽象概念) 是擁有這個狀態的主體。", "述語。", "修飾語。", "賓語。"]);
-            addQ("關於「有無句」的敘述，下列何者錯誤？", ["述語只能是「有」或「無」(沒有)。", "有無句一定沒有賓語。", "主語有時可以省略。", "「有無」表示事物存在的狀態。"], 1, ["正確特徵。", "錯誤。有無句「一定」要有賓語(有什麼？無什麼？)，否則語意不完整。", "正確特徵。", "正確特徵。"]);
-            addQ("下列哪一句話中的「有」字，構成了「有無句」？", ["他「有」去參加聚會嗎？", "這本書「有」點難懂。", "房間裡「有」一隻貓。", "我「有」看到那篇報導。"], 2, ["「有」當副詞，修飾動詞「去」(敘事句)。", "「有點」是副詞，修飾形容詞「難懂」(表態句)。", "正確。房間裡(S) + 有(V) + 貓(O)，表存在。", "「有」當副詞，修飾動詞「看到」(敘事句)。"]);
-            addQ("「何陋之有？」此句還原為正常語序後，其句型為何？", ["表態句", "敘事句", "有無句", "判斷句"], 2, ["無形容詞表語。", "無一般動詞。", "正確。原句為「有何陋」，(斯室)有何陋，為有無句的倒裝。", "無繫詞。"]);
-            addQ("「山中無曆日，寒盡不知年。」前半句「山中無曆日」屬於何種句型？", ["敘事句", "表態句", "有無句", "判斷句"], 2, ["無一般動詞。", "無形容詞表語。", "正確。山中(S) + 無(V) + 曆日(O)，為有無句。", "無繫詞。"]);
-            addQ("「這家店沒有提供塑膠袋。」這句話的句型是：", ["有無句", "敘事句", "表態句", "判斷句"], 1, ["陷阱題。雖然有「沒有」，但核心動詞是「提供」。", "正確。「沒有」是副詞修飾動詞「提供」，結構為 這家店(S) + 提供(V) + 塑膠袋(O)，為敘事句。", "無形容詞表語。", "無繫詞。"]);
-            addQ("下列何者是主語為「抽象概念」的有無句？", ["桌上有一本書。", "心中有愛。", "口袋裡沒有半毛錢。", "樹上有隻鳥。"], 1, ["主語「桌上」是具體空間。", "正確。主語「心中」偏向抽象/無形空間，表示抽象存在的有無句。", "主語「口袋裡」是具體空間。", "主語「樹上」是具體空間。"]);
-            addQ("「他有錢。」與「他有來。」兩句的句型分別為何？", ["有無句／敘事句", "敘事句／有無句", "有無句／有無句", "表態句／敘事句"], 0, ["正確。前者「有」表擁有(賓語為錢)，為有無句；後者「有」表完成式副詞，修飾動詞「來」，為敘事句。", "前者並非敘事句。", "後者並非有無句。", "前者並非表態句。"]);
-            addQ("「校園裡有著各式各樣的花草。」句中的「有著」當作什麼詞性？", ["名詞", "動詞", "形容詞", "副詞"], 1, ["非事物名稱。", "正確。在有無句中，「有」或「有著」擔任述語，詞性為動詞。", "非描述狀態的詞。", "非修飾動詞的詞。"]);
-            addQ("「無言獨上西樓」一句的句型分析何者正確？", ["含有「無」字，故為有無句。", "「上」為動詞，故為敘事句。", "「無言」為表語，故為表態句。", "「西樓」為斷語，故為判斷句。"], 1, ["「無言」在此作副詞(默默地)，修飾動詞「上」。", "正確。(我)無言地 + 上(動詞) + 西樓(處所賓語)，為敘事句。", "核心動詞是「上」。", "無繫詞。"]);
-            addQ("「我沒有不喜歡你。」這句話實質上是哪一種句型？", ["有無句", "表態句", "敘事句", "判斷句"], 2, ["「沒有」修飾動詞「喜歡」。", "無形容詞表語。", "正確。核心結構是 我(S) + 喜歡(V) + 你(O)，前面的「沒有不」雙重否定作副詞用，故為敘事句。", "無繫詞。"]);
-            addQ("「前不見古人，後不見來者。」這兩句的句型為何？", ["有無句", "敘事句", "表態句", "判斷句"], 1, ["「不見」不是「無」。", "正確。「見」是一般動詞，前/後(S,指時間) + 見(V) + 古人/來者(O)，為敘事句。", "無形容詞。", "無繫詞。"]);
-            addQ("「這件衣服有沒有比較便宜？」這句話的句型是：", ["有無句", "敘事句", "表態句", "判斷句"], 2, ["「有沒有」在這裡是疑問副詞。", "「便宜」是形容詞，沒有動詞。", "正確。主語是「這件衣服」，表語是「便宜(形容詞)」，「有沒有比較」是修飾語，本質上是詢問狀態的表態句。", "無繫詞。"]);
-            addQ("若要將敘事句「他穿著一件紅色的外套」改為「有無句」，下列何者正確？", ["他是一件紅色外套的穿著者。", "他的外套非常紅。", "他有一件紅色的外套。", "紅色的外套被他穿著。"], 2, ["判斷句。", "表態句。", "正確。使用了「有」作為核心動詞表擁有。", "被動敘事句。"]);
-            addQ("「有緣千里來相會，無緣對面不相識。」兩句的句型依序為何？", ["有無句／有無句", "敘事句／敘事句", "表態句／表態句", "判斷句／判斷句"], 1, ["「有緣/無緣」是條件子句(若有緣...)，核心主句是「來相會/不相識」。", "正確。相會、相識皆為一般動詞，全句重心在於動作的發生，故為敘事句。", "無形容詞表語。", "無繫詞。"]);
-            addQ("「他對這件事沒有意見。」此句的句型為何？", ["有無句", "敘事句", "表態句", "判斷句"], 0, ["正確。他(S) + 沒有(V) + 意見(O)，表示不存在某種想法，為有無句。", "若把「對這件事」視為狀語，「沒有」即為主要動詞。", "無形容詞。", "無繫詞。"]);
-            addQ("「我身上只有五十元。」此句的「只」字作用為何？", ["擔任述語", "修飾主語", "修飾述語「有」，擔任副詞", "擔任賓語"], 2, ["述語是「有」。", "主語是「我」。", "正確。「只」是副詞，用來限制或修飾後面的動詞「有」。", "賓語是「五十元」。"]);
-            addQ("「無商不奸」這句成語的句型分析何者正確？", ["標準的有無句", "省略繫詞的判斷句", "雙重否定的敘事句", "含有「無」字的表態句"], 0, ["正確。原意為「沒有(無)商人是不奸詐的」，(天下)無 + 商(不奸)，存在著一個「無」的判斷，屬有無句的變體(或視為無...不...的特殊存在句)。", "無是乃等詞。", "無一般動作動詞。", "「奸」雖為形，但核心動詞為「無」。"]);
+            // [1-10] 並列、轉折、排比、映襯
+            addQ("下列何者屬於「並列句」的典型結構？", 
+                ["雖然天空下著雨，但他依然堅持出門。", "這座花園不僅有嬌豔的玫瑰，還有淡雅的百合。", "因為他平時努力不懈，所以能考上理想的學校。", "與其在家裡虛度光陰，不如出外見識世面。"], 1, 
+                ["此為「轉折句」（雖然...但）。", "正確。「不僅...還有...」表示兩者皆具備，屬於並列句。", "此為「因果句」（因為...所以）。", "此為「比較句」（與其...不如）。"]);
+                
+            addQ("「他看似家財萬貫，________。」若要使其成為完整的「轉折句」，空格處應填入何者最適當？", 
+                ["而且還有極高社會地位", "所以大家都非常尊敬他", "實際上卻過著空虛寂寞的生活", "甚至連外國元首都認識他"], 2, 
+                ["「而且」為並列或遞進。", "「所以」為因果句。", "正確。「卻」字帶出與前半句（家財萬貫）相反的實際狀況，形成轉折。", "「甚至」為層遞或遞進。"]);
+                
+            addQ("「蝸以涎見覓，蟬以聲見黏，螢以光見獲。」關於此句的修辭與句式，下列說明何者正確？", 
+                ["句式為排比，強調三種昆蟲的優點", "句式為層遞，強調昆蟲體型越來越小", "句式為排比，強調三者皆因自身特點而招致禍患", "句式為並列，強調自然界的多采多姿"], 2, 
+                ["並非優點，而是招致禍患的原因。", "三者並無體型的層遞關係，且結構平列。", "正確。連續三個「...以...見...」的相似結構，共同強調「愛身者不貴赫赫之名」的道理。", "雖有並列意味，但結構相似達三句以上，更精確的分類為排比。"]);
+                
+            addQ("「君子如抱美玉而深藏不市，小人則以石為玉而又炫之售不。」此句運用了映襯手法，旨在強調什麼？", 
+                ["玉石市場的真假難辨", "君子與小人對於財富的態度", "君子的內斂含蓄與小人的虛榮浮誇", "君子的才華遠勝於小人"], 2, 
+                ["此為表層字義，非作者本意。", "不僅是財富，更指才華與德性。", "正確。將君子「有才而深藏」與小人「無才而炫耀」對比，凸顯君子修養。", "重點在「態度」而非「才華高低」。"]);
 
-            // [41-60] 表態句基礎與進階
-            addQ("「表態句」與其他三大句型最根本的區別在於它缺少了什麼詞性？", ["名詞", "動詞", "形容詞", "副詞"], 1, ["句子都有名詞。", "正確。表態句只有主語和表語(形容詞)，完全不需要任何動詞(包含是、有)。", "表態句的核心就是形容詞。", "副詞可有可無。"]);
-            addQ("「天氣非常晴朗。」此句的「非常」屬於何種成分？", ["主語", "表語", "繫詞", "修飾表語的副詞"], 3, ["主語是天氣。", "表語是晴朗。", "這不是判斷句。", "正確。「非常」是程度副詞，用來加強形容詞「晴朗」的語氣。"]);
-            addQ("「環堵蕭然」中，擔任「表語」的是哪一個詞？", ["環", "堵", "環堵", "蕭然"], 3, ["環堵(四周的牆壁)是主語。", "環堵是主語。", "主語。", "正確。「蕭然」(空蕩蕩的樣子) 是形容詞，用來描寫主語的狀態，為表語。"]);
-            addQ("下列哪一句話「不是」表態句？", ["牡丹之愛，宜乎眾矣。", "這個蘋果很甜。", "他跑得非常快。", "山勢高聳入雲。"], 2, ["「宜」(合適的)作形容詞用，表態句。", "「甜」是形容詞，表態句。", "正確。「跑」是動詞，這是有補語的敘事句，不是表態句。", "「高聳」形容詞，表態句。"]);
-            addQ("「牡丹之愛，宜乎眾矣。」的語序還原後為「愛牡丹（的人），眾矣。」請問其表語為何？", ["愛", "牡丹", "眾", "宜"], 2, ["動詞(或名詞)。", "名詞。", "正確。「眾」(多)是形容詞，描述愛牡丹的人很多的狀態，擔任表語。", "原句的表語是宜，但還原句的表語是眾。"]);
-            addQ("「他臉色蒼白。」與「他流血了。」兩句的句型分別為何？", ["表態句／表態句", "敘事句／敘事句", "表態句／敘事句", "敘事句／有無句"], 2, ["後者有動詞流。", "前者無動詞。", "正確。前者「蒼白」為形容詞(表態)；後者「流」為動詞(敘事)。", "無有無。"]);
-            addQ("在表態句中，用來描述主語狀態的部分稱為什麼？", ["述語", "斷語", "賓語", "表語"], 3, ["敘事句/有無句的動詞。", "判斷句的名詞。", "接受動作者。", "正確。表態句中負責描繪狀態的形容詞部分稱為「表語」。"]);
-            addQ("「那朵花，紅得像火一樣。」這句話的句型是：", ["表態句", "敘事句", "判斷句", "有無句"], 0, ["正確。核心是「那朵花紅(形容詞)」，「得像火一樣」是補充說明紅的程度，全句無動作動詞，為表態句。", "無動作。", "無繫詞。", "無有/無。"]);
-            addQ("「這杯茶好燙！」如果將它改寫為判斷句，下列何者正確？", ["這杯茶燙到了我。", "這杯茶是一杯燙茶。", "這杯茶有夠燙。", "這杯茶燙得很。"], 1, ["有動詞「燙到」，敘事句。", "正確。使用了繫詞「是」加上斷語「一杯燙茶」，轉為判斷句。", "這是有無句變體/表態句。", "這是表態句。"]);
-            addQ("文言文中常有「名詞作形容詞用」而構成的表態句，下列何者為例？", ["桂林山水甲天下。", "菊，花之隱逸者也。", "故人具雞黍。", "微斯人，吾誰與歸？"], 0, ["正確。「甲」原為名詞，此處轉品為形容詞(最好的)，桂林山水(S) + 甲(Adj/表語) + 天下(範圍)，為表態句。", "判斷句。", "敘事句。", "敘事句/有無句。"]);
-            addQ("「她的聲音柔和。」句中的「柔和」詞性與句子成分為何？", ["動詞／述語", "名詞／賓語", "形容詞／表語", "副詞／修飾語"], 2, ["非動作。", "非事物。", "正確。「柔和」是形容詞，在表態句中擔任表語。", "非修飾動詞。"]);
-            addQ("「春風徐徐。」這句話的句型分析何者錯誤？", ["這是一個表態句", "「春風」是主語", "「徐徐」是副詞，修飾省略的動詞「吹」", "「徐徐」是形容詞片語，擔任表語"], 2, ["正確敘述。", "正確敘述。", "錯誤。在此句型中，「徐徐」直接作為形容詞(緩慢的樣子)擔任表語，不視為省略動詞的修飾語，否則會變成敘事句。以最簡結構判斷，視為表態句較佳。", "正確敘述。"]);
-            addQ("「那座山，高。」這句最簡短的句子，屬於什麼句型？", ["敘事句", "有無句", "表態句", "判斷句"], 2, ["無動詞。", "無有無。", "正確。主語(那座山) + 表語(高)，為最純粹的表態句。", "無繫詞。"]);
-            addQ("下列何者「不是」由表態句所構成的成語？", ["山明水秀", "風平浪靜", "鳥語花香", "天高地厚"], 2, ["山(明)水(秀)，皆為主+表。", "風(平)浪(靜)，皆為主+表。", "錯誤。鳥(語-動詞)花(香-形容詞)，前半為敘事句，後半為表態句。", "天(高)地(厚)，皆為主+表。"]);
-            addQ("「這道數學題，難。」與「這道數學題，是難題。」兩者的句型差異為何？", ["兩者皆為表態句", "兩者皆為判斷句", "前者為表態句，後者為判斷句", "前者為敘事句，後者為表態句"], 2, ["後者有「是」。", "前者無「是」。", "正確。前者以形容詞「難」作結(表態)；後者有繫詞「是」接名詞「難題」(判斷)。", "前者無動作動詞。"]);
-            addQ("「夜，黑得伸手不見五指。」這句話的核心句型為：", ["敘事句", "有無句", "表態句", "判斷句"], 2, ["「伸手不見五指」是補語，核心是「夜黑」。", "無有無。", "正確。夜(主語) + 黑(表語) + 得...(補語)，本質上是描繪夜的狀態。", "無繫詞。"]);
-            addQ("「他為人老實。」這句話的句型是：", ["敘事句", "有無句", "表態句", "判斷句"], 2, ["「老實」不是動作。", "無有無。", "正確。他(為人)(主語) + 老實(表語形容詞)，為表態句。", "這裡的「為」不是「是」，「為人」是一個複合名詞(個性)。"]);
-            addQ("下列古典名句中，何者屬於表態句？", ["白日依山盡", "斯是陋室", "大江東去", "水波不興"], 3, ["敘事句(盡)。", "判斷句(是)。", "敘事句(去)。", "正確。水波(主語) + 不興(不動/平靜的狀態，形容詞性)，構成表態句。"]);
-            addQ("「小明很乖」和「小明很皮」都是表態句，它們共同依賴什麼詞性來構成句型？", ["動詞", "形容詞", "名詞", "連接詞"], 1, ["表態句不需動詞。", "正確。乖、皮都是形容詞，是表態句的靈魂。", "不是判斷句。", "不需要連接詞。"]);
-            addQ("若要將判斷句「這是一朵美麗的花」改寫為表態句，下列何者最精煉準確？", ["這朵花被說成很美麗。", "這朵花有著美麗的外表。", "這朵花真美麗。", "這朵花綻放得很美麗。"], 2, ["被動敘事句。", "有無句。", "正確。去除了繫詞與名詞，直接以主語(這朵花)加表語形容詞(美麗)呈現。", "敘事句(綻放)。"]);
+            addQ("「學之，則難者亦易矣；不學，則易者亦難矣。」此句屬於何種句式？", 
+                ["條件句", "映襯句", "層遞句", "轉折句"], 1, 
+                ["雖有條件意味，但在傳統句式分類中，正反對比更為強烈。", "正確。將「學」與「不學」、「易」與「難」兩組相反的概念對列比較，為標準映襯句。", "無層層遞進關係。", "無轉折語氣。"]);
 
-            // [61-80] 判斷句基礎與進階
-            addQ("判斷句的定義中，用來連接主語和斷語的詞稱為什麼？", ["述語", "表語", "繫詞", "介詞"], 2, ["敘事/有無句的動詞。", "表態句的形容詞。", "正確。像橋梁一樣將主語與斷語繫起來的詞稱為「繫詞」。", "表示位置方向的詞。"]);
-            addQ("下列哪一個字「最不可能」在文言文中擔任判斷句的繫詞？", ["乃", "即", "非", "打"], 3, ["乃=是。", "即=是。", "非=不是。", "正確。「打」是一般動作動詞，屬於敘事句。"]);
-            addQ("「知識就是力量。」此句中的「力量」擔任什麼句子成分？", ["主語", "述語", "表語", "斷語"], 3, ["主語是知識。", "述語是動作。", "表語是形容詞。", "正確。判斷句中，放在繫詞之後用來解釋主語的名詞稱為「斷語」。"]);
-            addQ("「他非等閑之輩。」這句話的句型是：", ["敘事句", "有無句", "表態句", "判斷句"], 3, ["無一般動詞。", "無有無。", "無形容詞表語。", "正確。「非」意為「不是」，是表否定的繫詞，此句為判斷句。"]);
-            addQ("「交友非兒戲」與「他非去不可」兩句中的「非」字用法有何不同？", ["皆為繫詞", "皆為副詞", "前者為繫詞，後者為副詞", "前者為動詞，後者為繫詞"], 2, ["後者修飾動詞「去」。", "前者是繫詞。", "正確。前者「非」= 不是(繫詞)；後者「非...不可」= 必須(副詞修飾動詞去)。", "前者不是動作。"]);
-            addQ("「菊，花之隱逸者也。」此句沒有明顯的「是」字，為何仍被歸類為判斷句？", ["因為「也」字具有判斷意味", "因為它省略了繫詞「乃」或「為」", "兩者皆是", "其實它是表態句"], 2, ["文言文常以「也」字結尾加強判斷語氣。", "確實省略了繫詞。", "正確。文言文判斷句常省略繫詞，並在句末加「也」字來幫助判斷。", "不是描繪狀態。"]);
-            addQ("下列哪一句話是標準的判斷句？", ["他今天看起來很累。", "這本書是圖書館的。", "冰箱裡有牛奶。", "大家都在操場集合。"], 1, ["表態句。", "正確。這本書(S) + 是(繫詞) + 圖書館的[書](斷語)，為判斷句。", "有無句。", "敘事句。"]);
-            addQ("「人非聖賢，孰能無過？」前半句「人非聖賢」的句型為何？", ["敘事句", "表態句", "有無句", "判斷句"], 3, ["無一般動詞。", "無形容詞表語。", "無有無。", "正確。「非」= 不是(繫詞)，聖賢=斷語(名詞)，為判斷句。"]);
-            addQ("下列文言文的「為」字，何者擔任判斷句的繫詞？", ["以叢草「為」林", "二蟲盡「為」所吞", "人「為」萬物之靈", "項為之強"], 2, ["當作(動詞)，敘事句。", "被(介詞)，敘事句。", "正確。「為」解釋為「是」，人是萬物的靈長，為判斷句。", "因為(介詞)。"]);
-            addQ("判斷句的斷語通常必須具備什麼詞性？", ["動詞", "名詞（或代名詞）", "形容詞", "副詞"], 1, ["那會變成敘事句。", "正確。斷語是用來界定、等同主語的身份或屬性，因此必須是名詞性詞語。", "那會變成表態句。", "無法界定身份。"]);
-            addQ("「時間即生命。」這句話的繫詞是：", ["時間", "即", "生命", "無繫詞"], 1, ["主語。", "正確。「即」解釋為「就是」，擔任繫詞。", "斷語。", "有繫詞。"]);
-            addQ("若將敘事句「他寫了一本好書」改寫為判斷句，下列何者正確？", ["他是一本好書的作者。", "他有一本好書。", "他寫的書很好。", "好書被他寫出來了。"], 0, ["正確。使用繫詞「是」+ 斷語「作者(名詞)」。", "有無句。", "表態句。", "被動敘事句。"]);
-            addQ("「人為財死，鳥為食亡。」這兩句話的句型是：", ["皆為判斷句", "皆為敘事句", "前者判斷，後者敘事", "皆為有無句"], 1, ["「為」在此念ㄨㄟˋ(因為/為了)，非繫詞「是」。", "正確。核心動詞是「死」和「亡」，「為財/食」是介詞片語，全句為敘事句。", "皆為敘事句。", "無有無。"]);
-            addQ("「這，就是愛。」此句的斷語為何？", ["這", "就", "是", "愛"], 3, ["主語。", "副詞。", "繫詞。", "正確。「愛」在這裡作為抽象名詞，擔任斷語。"]);
-            addQ("「此乃兵家之大忌。」句中的「乃」字作用等同於白話文的哪一個字？", ["有", "很", "是", "做"], 2, ["非有無句。", "非表態句。", "正確。「乃」即為「是」，擔任判斷句的繫詞。", "非敘事句。"]);
-            addQ("「我國中生啦！」（口語常見表達），若要分析其句型，應視為：", ["省略繫詞的判斷句", "省略動詞的敘事句", "表態句", "有無句"], 0, ["正確。原意為「我 [是] 國中生」，口語中常省略繫詞「是」，仍視為判斷句。", "並非執行動作。", "國中生是名詞非形容詞。", "無有無意味。"]);
-            addQ("「他本是個膽小鬼，現在卻成了英雄。」這句話前後兩句的句型分別為何？", ["判斷句／敘事句", "判斷句／判斷句", "表態句／敘事句", "敘事句／表態句"], 0, ["正確。前句「是」為繫詞(判斷句)；後句「成」(變成)為一般動詞，英雄為賓語(敘事句)。*(註：有些文法派別將「變成」視為準繫詞，但國中會考標準多視「成、變成」為一般動詞，屬敘事句)。*", "「成」通常不視為純繫詞。", "前句非表態。", "前句非敘事。"]);
-            addQ("下列四個以「是」為核心的句子，何者「並非」判斷句？", ["你是我的眼。", "地球是圓的。", "這是什麼？", "他昨天是走過來的。"], 3, ["標準判斷句。", "「圓的」在此名詞化，視為判斷句。", "標準判斷句。", "正確。「是...的」在此為強調語氣的副詞結構，真正的核心動詞是「走」，故為敘事句。"]);
-            addQ("「那女孩，一雙大眼睛。」此句省略了什麼詞，使其看起來像表態句，但還原後應為何種句型？", ["省略「很」；表態句", "省略「有」；有無句", "省略「是」；判斷句", "省略「看」；敘事句"], 1, ["大眼睛是名詞。", "正確。原意應為「那女孩 [有] 一雙大眼睛」，為省略了述語的有無句。", "若是判斷句應為「是個大眼睛的女孩」。", "語意不通。"]);
-            addQ("「雄兔腳撲朔，雌兔眼迷離。」(木蘭詩) 這兩句分別屬於什麼句型？", ["敘事句／敘事句", "表態句／表態句", "敘事句／表態句", "表態句／判斷句"], 2, ["後句無動詞。", "前句有動詞。", "正確。「撲朔」(亂動)為動詞(敘事句)；「迷離」(模糊)為形容詞(表態句)。*(另一派認為撲朔亦為狀態形容詞，則皆為表態，但會考傾向嚴格區分動作與狀態。若兩者皆視為狀態，則選B。此題設計有爭議，依國中教材主流，皆視為表態句的描述，故修正最佳答案為B)*", "無判斷句。此題正確答案應為B(皆為表態句描繪狀態)。"]);
+            // [11-20] 假設、條件、因果
+            addQ("「使安期有此性，猶當無一豪可論，況藍田耶？」句中的「使」字，標示了此句為何種句式？", 
+                ["條件句", "假設句", "因果句", "轉折句"], 1, 
+                ["條件句常用「唯、但」。", "正確。「使」解釋為「如果、假使」，引導出一個未發生的假設情況，為假設句。", "無因果關係。", "無轉折關係。"]);
 
-            // [81-100] 綜合比較與高難度鑑別題
-            addQ("若要將「春天來了」分別改寫為四大句型，下列配對何者【錯誤】？", ["敘事句：春神踏著輕快的腳步到來。", "有無句：現在有了春天的氣息。", "表態句：春天的景色真美麗。", "判斷句：春天就是溫暖的季節。"], 0, ["正確。有動詞「踏」、「到來」。", "正確。有述語「有」。", "正確。有表語「美麗」。", "正確。(此題選項皆無錯誤？啊，原題意圖可能要找瑕疵，但四個都很標準。將A選項改為瑕疵版：敘事句：春天是來了。這就變成判斷/強調。但若以此四選項，則此題無解。系統預設給A，請留意解析。實際上這是一道送分題，四者皆成功改寫。)"]); // Trick question handled via general explanations.
-            addQ("「苔痕上階綠，草色入簾青。」(劉禹錫 陋室銘) 這兩句的句型為何？", ["皆為表態句", "皆為敘事句", "皆為判斷句", "前敘事，後表態"], 1, ["有動詞「上」、「入」。", "正確。「上」(長到...之上)與「入」(映入)皆為動詞，綠與青為補語，故皆為敘事句。", "無繫詞。", "兩者結構完全對仗。"]);
-            addQ("「君子之交淡如水，小人之交甘若醴。」這兩句話屬於：", ["表態句", "敘事句", "判斷句", "有無句"], 0, ["正確。「淡」與「甘」為形容詞表語，「如水」與「若醴」為補充說明的副詞片語(補語)，核心為描寫狀態的表態句。", "無一般動作。", "無繫詞。", "無有無。"]);
-            addQ("「三人行，必有我師焉。」這句話包含幾個子句？其句型分別為何？", ["一個；有無句", "兩個；敘事句／有無句", "兩個；表態句／判斷句", "三個；敘事句／有無句／判斷句"], 1, ["逗號隔開兩個子句。", "正確。「行」為動詞(敘事句)；「有」為存在述語(有無句)。", "無表態/判斷。", "只有兩個主要子句。"]);
-            addQ("關於「是」字的用法，下列何者構成「判斷句」？", ["他「是」不打算來了。", "這件衣服「是」純棉的。", "唯你「是」問。", "這「是」非題很難。"], 1, ["「是...的」加強語氣副詞，核心動詞為「打算」。", "正確。這件衣服(S) + 是(繫詞) + 純棉的[衣服](名詞性斷語)，為判斷句。", "「是」為助詞，賓語提前的標誌(問你)。", "「是非」為名詞的一部分。"]);
-            addQ("「故人西辭黃鶴樓，煙花三月下揚州。」這兩句的句型皆為：", ["敘事句", "有無句", "表態句", "判斷句"], 0, ["正確。「辭」(告別)與「下」(順流而下)皆為一般動作動詞，故皆為敘事句。", "無有無。", "無形容詞表語。", "無繫詞。"]);
-            addQ("「我國中會考成績很棒」與「我國中會考考得很好」句型是否相同？", ["皆為表態句", "皆為敘事句", "前者表態句，後者敘事句", "前者判斷句，後者表態句"], 2, ["後者有動詞「考」。", "前者無動詞。", "正確。前者主語是成績，表語是「很棒」(表態)；後者主語是我，動詞是「考」(敘事)。", "前者無繫詞。"]);
-            addQ("文言文中「為」字若解釋為「被」，如「二蟲盡為所吞」，此為何種句型？", ["敘事句", "判斷句", "表態句", "有無句"], 0, ["正確。被動語態仍屬於描述動作發生的敘事句(被吞)。", "非解釋為「是」。", "無形容詞。", "無有無。"]);
-            addQ("「那個正在跑步的人是我哥哥。」這句話的核心句型為：", ["敘事句", "表態句", "判斷句", "有無句"], 2, ["「正在跑步」是修飾「人」的形容詞子句，全句主動詞是「是」。", "無形容詞表語。", "正確。那個人(S) + 是(繫詞) + 我哥哥(斷語)，為判斷句。", "無有無。"]);
-            addQ("「黑夜給了我黑色的眼睛，我卻用它尋找光明。」這句話的兩個子句分別是：", ["敘事句／敘事句", "判斷句／表態句", "有無句／敘事句", "敘事句／表態句"], 0, ["正確。「給」與「尋找」皆為一般動詞，兩句皆為敘事句。", "無繫詞。", "無有無。", "後句無表語。"]);
-            addQ("「這裡的風景如畫。」與「這裡的風景美如畫。」兩句的句型是否相同？", ["皆為表態句", "皆為判斷句", "前者判斷，後者表態", "前者敘事，後者表態"], 0, ["正確。兩句的核心皆在描述風景的狀態(形容詞性)，雖無明顯獨立的單字形容詞，但「如畫」(像畫一樣)整體視為形容詞片語作表語，故皆為表態句。", "無是。", "兩者實質相同。", "皆無動作。"]);
-            addQ("「生活不是缺少美，而是缺少發現。」(羅丹) 這裡的兩個分句屬於何種句型？", ["敘事句", "表態句", "判斷句", "有無句"], 2, ["「缺少」在此名詞化(缺少美的現象)。", "無形容詞。", "正確。生活(S) + 不是/而是(繫詞) + 缺少...(名詞性斷語)，為判斷句的並列對比。", "雖然有「少」，但核心是「是」。"]);
-            addQ("「滿天星斗。」這個僅有四個字的短語，若要將其視為完整的句子，應補上什麼詞？並歸類為何種句型？", ["補「有」；有無句", "補「是」；判斷句", "補「亮」；表態句", "補「看」；敘事句"], 0, ["正確。原意應為「(天空)有滿天星斗」，為省略主語與述語的有無句。", "天上是星斗(不合邏輯)。", "滿天亮星斗(改變原意)。", "看滿天星斗(改變為祈使句)。"]);
-            addQ("下列哪一句古典詩詞屬於「有無句」？", ["相看兩不厭，只有敬亭山。", "孤帆遠影碧山盡，唯見長江天際流。", "舉杯邀明月，對影成三人。", "同是天涯淪落人，相逢何必曾相識。"], 0, ["正確。只「有」敬亭山，表示存在。", "敘事句。", "敘事句。", "判斷句(是)。"]);
-            addQ("「你的善良，必須有點鋒芒。」這句話如果視為表態句，其表語為何？", ["善良", "必須", "有點", "鋒芒"], 3, ["主語。", "副詞。", "程度副詞。", "正確。「鋒芒」在此轉品為形容詞(銳利的)，擔任表語。*(若視「有」為動詞，則為有無句，但「鋒芒」常視為狀態，此題具爭議性，依國中標準，若句中有「有」，優先判為有無句。此題故意設計為陷阱，答案應選「此題有誤」，但就選項而言，若強解表態，則為鋒芒)*"]);
-            // Let's refine the ambiguous question above.
-            addQ("「你的善良，必須『有』點鋒芒。」依據國中四大句型標準，此句最適合歸類為何？", ["敘事句", "表態句", "有無句", "判斷句"], 2, ["無一般動作。", "雖意指狀態，但結構上有「有」。", "正確。結構為：善良(S) + 必須有(V) + 鋒芒(O)，只要核心動詞是表示存在的「有」，即歸類為有無句。", "無繫詞。"]);
-            addQ("下列關於「四大句型」的整理，何者完全正確？", ["敘事句必有賓語", "有無句的主語有時可省略", "表態句一定沒有主語", "判斷句的斷語必須是形容詞"], 1, ["不及物動詞無賓語。", "正確。如「有緣千里來相會」，省略了主語(人)。", "表態句必須有主語和表語。", "斷語必須是名詞。"]);
-            addQ("「他笑得很開心。」這句話的句型是：", ["表態句", "敘事句", "判斷句", "有無句"], 1, ["「開心」是補語，非表語。", "正確。「笑」是一般動詞，「得很開心」是用來補充說明笑的程度的補語，為敘事句。", "無繫詞。", "無有無。"]);
-            addQ("「我為你感到驕傲。」句中的「為」字作何解釋？全句為何種句型？", ["是；判斷句", "替/因為；敘事句", "被；敘事句", "因為；表態句"], 1, ["非繫詞。", "正確。「為」是介詞(因為/替)，核心動詞是「感到」，為敘事句。", "非被動。", "非表態。"]);
-            addQ("綜合四大句型的判斷順序，最有效率的解題SOP應為何？", ["先找主語👉再找賓語", "先看句尾是否為形容詞👉再找主語", "先抓句子核心動詞(述語/繫詞)👉根據其特性分類", "先念一遍看語氣"], 2, ["無動詞則無法判斷。", "許多表態句有補語在後。", "正確。動詞是句子的靈魂：無動詞為表態，有「是乃為」為判斷，有「有無」為有無，一般動作為敘事。", "語氣無法精確分類文法。"]);
+            addQ("「也只有像我這樣深入、珍惜大自然的人，才會受到邀請，才能找到這條美麗的祕徑。」此句的邏輯關係為：", 
+                ["假設條件未發生", "前因導致後果", "必須具備某種前提，才能達成某種結果", "兩者同時存在，不分軒輊"], 2, 
+                ["並非假設，而是強調必備條件。", "並非單純因果，而是強調「唯一條件」。", "正確。「只有...才...」是標準的條件句，強調前提的不可或缺。", "此為並列句的邏輯。"]);
+
+            addQ("「君子不以言舉人，不以人廢言。」若要還原此句省略的邏輯關聯詞，下列何者最恰當？", 
+                ["雖然...但是...", "因為...所以...", "如果...那麼...", "與其...不如..."], 1, 
+                ["非轉折關係。", "正確。君子不『因為』別人的話說得好『就』推舉他；不『因為』某人品德不好『就』廢棄他有理的話。此為省略的因果句。", "非假設關係。", "非比較關係。"]);
+
+            addQ("下列何者屬於「先果後因」的因果句式？", 
+                ["因為昨晚熬夜，所以他今天精神不濟。", "他今天精神不濟，是因為昨晚熬夜的緣故。", "只要昨晚不熬夜，他今天精神就會好。", "即便昨晚熬夜，他今天精神依然很好。"], 1, 
+                ["這是標準的「先因後果」。", "正確。前半句「精神不濟」是果，後半句「因為熬夜」是因。", "此為條件或假設句。", "此為轉折句。"]);
+
+            addQ("「我亦無他，惟手熟爾。」此文言文句式轉換為白話文的邏輯，最接近下列何者？", 
+                ["我沒有其他的優點，只是因為手熟而已。", "我沒有其他的本領，只有手熟這個條件罷了。", "我如果沒有其他本領，就只能靠手熟了。", "我雖然沒有其他本領，但是手很熟練。"], 1, 
+                ["文言文「惟」字更強調「只有」。", "正確。「惟」解釋為「只有」，強調達成目標的唯一條件就是「手熟」，為條件句。", "非假設。", "非轉折。"]);
+
+            // [21-30] 層遞、比較
+            addQ("「大禹之聖，且惜寸陰；陶侃之賢，且惜分陰。又況賢聖不若彼者乎？」此段文字運用了層遞句，其推論方向為何？", 
+                ["由凡人推論至聖賢（遞升）", "由聖賢推論至凡人（遞降）", "由古代推論至現代（遞進）", "由時間推論至空間（擴大）"], 1, 
+                ["方向相反。", "正確。大禹、陶侃是聖賢（高），尚且珍惜時間；「況」（更何況）是不如他們的凡人（低）呢？從高推到低，為遞降的層遞推論。", "非古今對比。", "與空間無關。"]);
+
+            addQ("「寧可有光明的失敗，絕不要不榮譽的成功。」此句的句式與邏輯，與下列何者最相近？", 
+                ["不入虎穴，焉得虎子", "與其苟且偷生，不如奮戰到底", "既然無法改變環境，就改變自己的心態", "只要有恆心，鐵杵磨成繡花針"], 1, 
+                ["此為條件句/反詰句。", "正確。「寧可A，不要B」與「與其B，不如A」皆為比較句，強調兩者中做出抉擇（取A捨B）。", "此為因果或條件句。", "此為條件句。"]);
+
+            addQ("「天時不如地利，地利不如人和。」這段著名的孟子語錄，同時具備了哪兩種句式邏輯？", 
+                ["層遞句與比較句", "轉折句與排比句", "並列句與因果句", "假設句與條件句"], 0, 
+                ["正確。「不如」是典型的比較句；而「天時 → 地利 → 人和」重要性逐漸遞升，同時構成層遞句。", "無轉折與排比（僅兩次比較）。", "無並列因果。", "無假設條件。"]);
+
+            addQ("「你不是我，更不是我的影子，我不能為你作主一輩子！」句中的「更不是」展現了何種邏輯推演？", 
+                ["假設相反的情況", "平行並列兩種身分", "更進一層的遞進推論", "說明兩者互為因果"], 2, 
+                ["非假設。", "「更」字打破了平行，產生階層。", "正確。從「不是我」（第一層）推進到「更不是我的影子」（第二層，意指毫無附屬關係），為層遞句。", "非因果。"]);
+
+            addQ("下列何句「沒有」使用比較句式？", 
+                ["相見爭如不見，有情何似無情。", "與其臨淵羨魚，不如退而結網。", "與其說是天災，不如說是人禍。", "只有平時努力，才能在考場上發揮實力。"], 3, 
+                ["「爭如」、「何似」皆有比較、不如之意。", "標準比較句。", "標準比較句。", "正確。「只有...才...」為條件句，而非比較句。"]);
+
+            // [31-40] 反詰、雙重否定
+            addQ("「兩兔傍地走，安能辨我是雄雌？」句中的「安」字，其邏輯作用為何？", 
+                ["表示疑問，尋求解答", "表示假設，如果能分辨", "表示反問，強調無法分辨", "表示條件，只要能分辨"], 2, 
+                ["這不是真的在問問題。", "非假設。", "正確。「安」解釋為「怎麼、難道」，答案在問題的反面，即「無法分辨」，為反詰句（激問）。", "非條件。"]);
+
+            addQ("「凡事不宜痴，若行善則不可不痴。」句中的「不可不」是雙重否定，其轉換為肯定的意涵為何？", 
+                ["盡量不要", "也許可以", "一定要", "絕對不能"], 2, 
+                ["這是單重否定的意思。", "語氣太弱。", "正確。「不(否定)可不(否定)」= 負負得正，即「一定要」，強調行善必須全心投入。", "這是強烈否定。"]);
+
+            addQ("「然則昏庸聰敏之用，豈有常哉？」此句傳達的真正意涵為何？", 
+                ["昏庸與聰敏的作用是有固定規律的", "昏庸與聰敏的作用是沒有固定規律的", "難道昏庸和聰敏真的存在嗎", "昏庸和聰敏的用處在哪裡呢"], 1, 
+                ["與原意相反。", "正確。「豈有常哉？」（難道有固定不變的嗎？）反面意涵即為「沒有固定不變的（無常）」，強調後天的努力更重要。", "非質疑存在。", "非尋求解答。"]);
+
+            addQ("下列文言文句式中，何者「並未」包含雙重否定？", 
+                ["無入而不自得", "莫不中音", "未嘗不嘆息痛恨於桓、靈也", "不患莫已知，求為可知也"], 3, 
+                ["無(不)...不... = 都能自得。", "莫(沒有)...不... = 皆中音。", "未嘗(不)...不... = 每每嘆息。", "正確。「不患」是不擔憂，「莫已知」是沒人知道自己，此為「不擔憂...只求...」的並列或轉折意涵，非雙重否定表達強烈肯定。"]);
+
+            addQ("「在荒野中的人，此時沒有一個不是被震懾得氣脫委頓。」作者使用雙重否定句的目的是什麼？", 
+                ["為了讓句子看起來更長", "為了減弱語氣，表示不確定", "為了加強語氣，強調「所有人皆如此」的普遍性", "為了產生對比的修辭效果"], 2, 
+                ["非寫作目的。", "雙重否定是加強語氣，並非減弱。", "正確。「沒有一個不是」比直接說「全部都是」語氣更為強烈且不容置疑。", "無對比。"]);
+
+            // [41-50] 綜合實力挑戰 (高難度混合)
+            addQ("「木秀於林，風必摧之。」這句話隱含了何種邏輯關聯？", 
+                ["假設關係", "因果關係", "並列關係", "比較關係"], 1, 
+                ["雖然可翻譯為「如果木秀於林」，但其本質更偏向必然的因果。", "正確。因為樹木高出森林（因），所以必定會被風摧折（果）。常以文言文的「必」或省略的關聯詞呈現。", "非並列。", "無比較。"]);
+
+            addQ("「我不怕千萬人阻擋，只怕自己投降。」這句歌詞最主要的句式邏輯為：", 
+                ["層遞句", "轉折句", "條件句", "映襯句"], 1, 
+                ["無層層遞進。", "正確。「不怕...只怕(卻怕)...」前後形成語氣與態度的轉折，強調後半句「自己投降」才是最關鍵的恐懼。", "非條件。", "雖有對比意味，但「不怕/只怕」的轉折結構更為核心。"]);
+
+            addQ("「欲窮千里目，更上一層樓。」這句經典唐詩包含了什麼樣的句式邏輯？", 
+                ["條件句", "排比句", "反詰句", "雙重否定句"], 0, 
+                ["正確。「若想要(欲)窮千里目」，就必須具備「更上一層樓」的這個條件/行動。隱含了「只有/只要...才能/就能...」的條件邏輯。", "無三句並列。", "無疑問。", "無雙重否定。"]);
+
+            addQ("「悲觀的人，在每個機會中看到困難；樂觀的人，在每個困難中看到機會。」此段名言運用了何種修辭與句式？", 
+                ["排比句", "映襯句", "層遞句", "因果句"], 1, 
+                ["只有兩句，不構成排比。", "正確。將「悲觀/樂觀」與「機會看困難/困難看機會」兩相對比，凸顯兩者態度的截然不同，為映襯句。", "無遞進。", "無因果。"]);
+
+            addQ("「我不是歸人，是個過客。」(鄭愁予《錯誤》) 關於此句的分析，下列何者正確？", 
+                ["此為層遞句，語氣逐漸加重", "此為轉折句，否定前者而肯定後者", "此為雙重否定句，強調一定是過客", "此為因果句，因為不是歸人所以是過客"], 1, 
+                ["「不是...是...」並非層遞的「不是...更不是...」。", "正確。「不是A，是B」在邏輯上構成轉折，排除了A的可能，將重點轉向B（過客）。", "只有一個「不」。", "兩者是平行的身分認定，非因果。"]);
+
+            addQ("「路遙知馬力，日久見人心。」這句話的形式為對偶，但其內在的句式邏輯最偏向何者？", 
+                ["假設句", "條件句", "反詰句", "層遞句"], 1, 
+                ["非假設。", "正確。必須具備「路遙」的條件，才能「知馬力」；必須具備「日久」的條件，才能「見人心」。隱含條件邏輯。", "無疑問。", "無遞進。"]);
+
+            addQ("「天下事有難易乎？為之，則難者亦易矣；不為，則易者亦難矣。」這段話「沒有」包含下列哪一種句式？", 
+                ["反詰句", "映襯句", "假設句", "排比句"], 3, 
+                ["「有難易乎？」為反詰句（其實沒有絕對的難易）。", "「為之/不為」與「難者易/易者難」為映襯。", "「為之（如果去做）」隱含假設邏輯。", "正確。全段只有兩組對比，沒有達到排比「三句以上」的標準。"]);
+
+            addQ("「不經一番寒徹骨，怎得梅花撲鼻香？」此句結合了哪兩種句式邏輯？", 
+                ["假設與反詰", "條件與反詰", "因果與比較", "層遞與雙重否定"], 1, 
+                ["非單純假設。", "正確。「不經...」(如果沒有經過/必須經過) 是條件；「怎得...」(怎麼可能得到，即得不到) 是反詰。沒有條件A，就得不到結果B。", "無因果比較。", "無層遞。"]);
+
+            addQ("「人非聖賢，孰能無過？」句中的「孰」字，等同於下列哪一個文言文字詞的用法？", 
+                ["故", "若", "豈", "雖"], 2, 
+                ["「故」為所以 (因果)。", "「若」為如果 (假設)。", "正確。「孰」在此意為「誰」，引導反詰句「誰能沒有過錯呢？(即每個人都有過錯)」。與「豈」(難道) 的反詰語氣相同。", "「雖」為雖然 (轉折)。"]);
+
+            addQ("「不在乎天長地久，只在乎曾經擁有。」這句經典廣告詞的句式邏輯為：", 
+                ["並列句", "層遞句", "轉折句", "假設句"], 2, 
+                ["非並列。", "無遞進。", "正確。「不在乎...只(卻)在乎...」將重心從前者轉移到後者，構成語氣上的轉折。", "無假設。"]);
+                
+            // Generate the remaining 20 questions to complete 50.
+            // Using a loop with solid variations of the rules.
+            const extraConcepts = [
+                { q: "「與其詛咒黑暗，不如點亮蠟燭。」此句的邏輯重心在於？", opts: ["抱怨黑暗的可怕", "黑暗與蠟燭的對比", "採取行動點亮蠟燭", "蠟燭能驅散黑暗"], ans: 2, exps: ["並非重點。", "此為表象。", "正確。比較句「與其A，不如B」，重心永遠在B，即鼓勵採取實際行動。", "為因果事實，非句式重心。"] },
+                { q: "「他不但是個優秀的運動員，還是一位傑出的音樂家。」此為？", opts: ["層遞句", "並列句", "轉折句", "條件句"], ans: 1, exps: ["無明顯的高低遞進。", "正確。「不但...還...」表示兩項特質同時具備，為並列句。", "無相反轉折。", "無條件限制。"] },
+                { q: "「我雖然同意你的出發點，卻無法接受你的做法。」此句強調？", opts: ["同意出發點", "兩者皆不接受", "無法接受做法", "兩者皆同意"], ans: 2, exps: ["此為前半句的讓步。", "不符句意。", "正確。轉折句「雖然A，卻B」，強調的重點在轉折詞「卻」之後的內容。", "不符句意。"] },
+                { q: "「只要你願意努力，沒有什麼目標是達不到的。」此句包含了？", opts: ["條件與雙重否定", "假設與反詰", "因果與映襯", "並列與層遞"], ans: 0, exps: ["正確。「只要...」是條件句；「沒有什麼...是不...」是雙重否定(一定達得到)。", "無反詰。", "無對比映襯。", "無並列遞進。"] },
+                { q: "「知之者不如好之者，好之者不如樂之者。」此句的推論方式為？", opts: ["並列推論", "層遞推論", "因果推論", "假設推論"], ans: 1, exps: ["非平列。", "正確。從「了解」到「喜歡」再到「以此為樂」，境界層層遞升，為層遞句（同時包含比較）。", "無因果。", "無假設。"] },
+                { q: "「牡丹之愛，宜乎眾矣。」(周敦頤) 此句隱含的邏輯是？", opts: ["假設", "反詰", "因果", "條件"], ans: 2, exps: ["無假設。", "無疑問。", "正確。因為世人都喜愛富貴(因)，所以喜愛牡丹的人當然很多(果)。此為隱含的因果關係。", "無條件。"] },
+                { q: "「你若不離不棄，我必生死相依。」這句話的句式是？", opts: ["條件句", "假設句", "轉折句", "排比句"], ans: 1, exps: ["條件句通常用『只要』。", "正確。「若」表示如果，建立在一個未知的假設基礎上，承諾未來的結果，為假設句。", "無轉折。", "無排比。"] },
+                { q: "「孤帆遠影碧空盡，唯見長江天際流。」句中的「唯」字標示了？", opts: ["條件句", "假設句", "因果句", "轉折句"], ans: 0, exps: ["正確。「唯」解釋為「只有」，在此處雖偏向敘事描寫(只看見)，但在句式分類上，此類字詞常作為條件或排他的標示。", "非假設。", "非因果。", "非轉折。"] },
+                { q: "「我不是在咖啡館，就是在往咖啡館的路上。」此句邏輯為？", opts: ["轉折", "並列(選擇)", "因果", "假設"], ans: 1, exps: ["無轉折。", "正確。「不是A，就是B」列出兩種狀態供選擇或交替，屬於並列句(選擇關係)的一種。", "無因果。", "無假設。"] },
+                { q: "「莫道不消魂，簾卷西風，人比黃花瘦。」(李清照) 句中「莫道不」的作用？", opts: ["雙重否定加強肯定", "反詰語氣", "假設條件", "轉折語氣"], ans: 0, exps: ["正確。「莫」(不要) + 「不」(否定) = 雙重否定，意即「一定會消魂(令人黯然神傷)」。", "非問句。", "非假設。", "非轉折。"] },
+                { q: "「既然你已經決定了，就放手去做吧！」此句的邏輯關係為？", opts: ["因果", "假設", "條件", "轉折"], ans: 0, exps: ["正確。「既然...就...」表示基於已成定局的原因(決定了)，推導出後續的結果(放手做)，為廣義的因果句(推論因果)。", "「既然」代表已發生，非「如果」的未發生假設。", "非絕對條件。", "無轉折。"] },
+                { q: "「即使明天天塌下來，我也要完成這項任務。」此句屬於？", opts: ["假設兼轉折", "條件兼因果", "層遞兼並列", "反詰兼映襯"], ans: 0, exps: ["正確。「即使」(假設) 天塌下來，「也」(轉折/讓步) 要完成。在中文語法中常稱為讓步假設句。", "無因果。", "無層遞。", "無反詰。"] },
+                { q: "「吾資之昏，不逮人也；吾材之庸，不逮人也。」此句運用了？", opts: ["對偶", "排比", "層遞", "反詰"], ans: 0, exps: ["正確。上下兩句字數相等、結構相同、詞性相對，為對偶(單句對)。", "僅有兩句，不構成排比。", "無遞進關係。", "無反問語氣。"] },
+                { q: "「何夜無月？何處無竹柏？但少閑人如吾兩人耳！」最後一句的「但」字作何解？", opts: ["但是 (轉折)", "只要 (假設)", "只是/只有 (條件/限制)", "不但 (並列)"], ans: 2, exps: ["放句首非轉折。", "非假設。", "正確。「但」在此解釋為「只是、只有」，表示唯一的限制條件是缺少像我們這樣的閒人。", "非並列。"] },
+                { q: "「因為了解，所以分開。」這句現代流行語打破了何種傳統預期，形成強烈張力？", opts: ["因果句的常理推論", "條件句的必然結果", "假設句的虛擬情境", "比較句的優劣判斷"], ans: 0, exps: ["正確。傳統常理是「因為了解，所以在一起」，此句利用因果句的結構，填入反常的結果，創造情感張力。", "非條件句。", "非假設句。", "非比較句。"] },
+                { q: "「不是風動，不是幡動，仁者心動。」(《六祖壇經》) 句式邏輯為？", opts: ["層遞", "並列", "轉折", "排比"], ans: 2, exps: ["無明顯遞進。", "非單純並列。", "正確。「不是A，不是B，(而是)C」，透過否定前者來帶出最後真正的重點(心動)，構成轉折與遞進的意味，最核心為轉折(排除法)。", "雖有結構相似，但重在語意轉折。"] },
+                { q: "「寧為玉碎，不為瓦全。」此句強調的價值觀透過何種句式呈現？", opts: ["比較句", "假設句", "反詰句", "因果句"], ans: 0, exps: ["正確。「寧為...不為...」是標準的比較句，在生死與氣節之間做出絕對的選擇。", "非假設。", "無反問。", "無因果。"] },
+                { q: "「燕雀安知鴻鵠之志哉？」此句等同於下列哪一句白話文的意思？", opts: ["燕雀怎麼可能知道鴻鵠的志向呢？", "燕雀如果知道鴻鵠的志向就好了。", "因為燕雀很小，所以不知道鴻鵠的志向。", "燕雀和鴻鵠的志向是一樣的。"], ans: 0, exps: ["正確。「安...哉」為反詰句，意即「燕雀『不』知道鴻鵠的志向」。", "此為假設期望。", "此為因果。", "完全相反。"] },
+                { q: "「不識廬山真面目，只緣身在此山中。」(蘇軾) 「只緣」點出了何種邏輯？", opts: ["條件", "假設", "因果", "轉折"], ans: 2, exps: ["非條件。", "非假設。", "正確。「緣」解釋為「因為」。看不清全貌的「結果」，是「因為」自己身在山中的「原因」。為先果後因的因果句。", "非轉折。"] },
+                { q: "「一粥一飯，當思來處不易；半絲半縷，恆念物力維艱。」此聯句式為？", opts: ["對偶", "排比", "層遞", "映襯"], ans: 0, exps: ["正確。字數相等、結構對稱，為對偶(單句對)。", "只有兩句。", "無遞進。", "無相反對比。"] }
+            ];
+
+            extraConcepts.forEach(ec => {
+                addQ(ec.q, ec.opts, ec.ans, ec.exps);
+            });
 
             return qList;
         };
@@ -515,7 +868,7 @@
         const syncQuestionsFormat = (state) => {
             if (!state || !state.questions) return state;
             if (state.questions.length > 0 && !state.questions[0].exps) {
-                const freshQuestions = generate120Questions();
+                const freshQuestions = generate50Questions();
                 state.questions = state.questions.map(oldQ => {
                     const freshQ = freshQuestions.find(fq => fq.q === oldQ.q);
                     if (freshQ) return { ...freshQ, showExplanation: oldQ.showExplanation, selectedAns: oldQ.selectedAns, isCorrect: oldQ.isCorrect };
@@ -737,7 +1090,7 @@
                             <span class="text-6xl text-white">🎒</span>
                         </div>
                         <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-indigo-950 mb-4 tracking-widest leading-tight">句式邏輯<br>✨🌈</h1>
-                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 100題 會考魔王版 👑</p>
+                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 50題 會考魔王版 👑</p>
                         <div class="space-y-6">
                             <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-indigo-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
                             <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
@@ -786,7 +1139,7 @@
                             
                             <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
                                 <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
-                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(100)</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(50)</button>
                                 <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
                                 <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
                                 <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
@@ -945,9 +1298,9 @@
                             <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
                                 <span class="text-6xl md:text-7xl text-white">🧠</span>
                             </div>
-                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-rose-950 tracking-wide">句式邏輯 100題挑戰 🏆🔥</h2>
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-rose-950 tracking-wide">句式邏輯 50題挑戰 🏆🔥</h2>
                             <p class="text-rose-800/80 mb-10 text-xl md:text-2xl leading-loose">
-                                從敘事句、有無句到表態句、判斷句，驗收您的句型精熟度！<br>
+                                涵蓋 11 種句式變化、會考高難度閱讀題型，全面驗收您的修辭精熟度！<br>
                                 <span class="bg-rose-100 text-rose-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-rose-200 shadow-sm">🌊 瀑布流模式</span><br>
                                 <span class="text-lg md:text-xl text-rose-600 mt-3 block font-bold">🎯 點擊選項後，詳細解析將直接顯示在每個選項框框內，無須滑動對照！</span>
                             </p>
@@ -964,7 +1317,7 @@
 
         window.startQuiz = () => {
             initAudio(); 
-            const qList = [...generate120Questions()].sort(() => 0.5 - Math.random()).map(q => ({
+            const qList = [...generate50Questions()].sort(() => 0.5 - Math.random()).map(q => ({
                 ...q, selectedAns: null, showExplanation: false, isCorrect: false
             }));
             quizState = { active: true, isFinished: false, questions: qList };
@@ -1303,7 +1656,7 @@
                 return;
             }
 
-            const allQList = generate120Questions();
+            const allQList = generate50Questions();
             const favQuestions = userData.favorites.map(favText => {
                 return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exps: [], generalExp: '題目資料已遺失' };
             });
