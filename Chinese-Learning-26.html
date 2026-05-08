@@ -59,16 +59,16 @@
         <div class="glass-panel rounded-3xl shadow-xl overflow-hidden mb-12">
             <div class="overflow-x-auto custom-scrollbar p-4">
                 <!-- Grid 容器：1個分店名 + 12個月 + 1個合計 = 14欄 -->
-                <div class="min-w-[1200px]" style="display: grid; grid-template-columns: 120px repeat(12, minmax(80px, 1fr)) 120px; gap: 4px;">
+                <div class="min-w-[1250px]" style="display: grid; grid-template-columns: 120px repeat(12, minmax(85px, 1fr)) 120px; gap: 4px;">
                     
                     <!-- 標頭列 -->
-                    <div class="bg-pink-300 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner">🏪 分店</div>
+                    <div class="bg-pink-300 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner whitespace-nowrap">🏪 分店</div>
                     <script>
                         for(let i=1; i<=12; i++) {
-                            document.write(`<div class="bg-pink-200 text-pink-800 font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner">🌸 ${i}月</div>`);
+                            document.write(`<div class="bg-pink-200 text-pink-800 font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner whitespace-nowrap">🌸 ${i}月</div>`);
                         }
                     </script>
-                    <div class="bg-purple-300 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner">💰 合計</div>
+                    <div class="bg-purple-300 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner whitespace-nowrap">💰 合計</div>
 
                     <!-- 資料列將由 JS 動態產生 -->
                     <div id="grid-body" class="col-span-full" style="display: grid; grid-template-columns: subgrid; gap: 4px;">
@@ -76,11 +76,11 @@
                     </div>
 
                     <!-- 底部總計列 -->
-                    <div class="bg-pink-400 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg mt-2 shadow-md">📊 總計</div>
+                    <div class="bg-pink-400 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg mt-2 shadow-md whitespace-nowrap">📊 總計</div>
                     <div id="monthly-totals" class="col-span-12" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 8px;">
                         <!-- JS 注入各月總計 -->
                     </div>
-                    <div id="grand-total" class="bg-purple-500 text-white font-bold p-3 rounded-xl flex items-center justify-center text-xl mt-2 shadow-md">0</div>
+                    <div id="grand-total" class="bg-purple-500 text-white font-bold p-3 rounded-xl flex items-center justify-center text-xl mt-2 shadow-md whitespace-nowrap">0</div>
                 </div>
             </div>
         </div>
@@ -192,7 +192,7 @@
                 let branchYearTotal = 0;
 
                 // 分店名稱欄位
-                gridBody.innerHTML += `<div class="bg-white font-bold p-3 rounded-xl flex items-center justify-center text-pink-700 shadow-sm border border-pink-100">${branch}</div>`;
+                gridBody.innerHTML += `<div class="bg-white font-bold p-3 rounded-xl flex items-center justify-center text-pink-700 shadow-sm border border-pink-100 whitespace-nowrap">${branch}</div>`;
 
                 // 1~12月欄位
                 for (let m = 1; m <= 12; m++) {
@@ -203,7 +203,7 @@
                     // 點擊事件：開啟 Modal
                     const cellHtml = `
                         <div onclick="openModal('${branch}', ${m})" 
-                             class="bg-white p-3 rounded-xl flex items-center justify-end text-gray-600 shadow-sm border border-transparent hover:border-pink-300 hover:shadow-md cursor-pointer transition-all hover:-translate-y-1 group relative">
+                             class="bg-white p-3 rounded-xl flex items-center justify-end text-gray-600 shadow-sm border border-transparent hover:border-pink-300 hover:shadow-md cursor-pointer transition-all hover:-translate-y-1 group relative whitespace-nowrap">
                             ${monthVal > 0 ? formatMoney(monthVal) : '<span class="text-gray-300">-</span>'}
                             <div class="absolute inset-0 bg-pink-100/50 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity pointer-events-none"></div>
                         </div>
@@ -212,13 +212,13 @@
                 }
 
                 // 分店年度合計
-                gridBody.innerHTML += `<div class="bg-purple-50 font-bold p-3 rounded-xl flex items-center justify-end text-purple-700 shadow-sm border border-purple-100">${formatMoney(branchYearTotal)}</div>`;
+                gridBody.innerHTML += `<div class="bg-purple-50 font-bold p-3 rounded-xl flex items-center justify-end text-purple-700 shadow-sm border border-purple-100 whitespace-nowrap">${formatMoney(branchYearTotal)}</div>`;
                 grandTotal += branchYearTotal;
             });
 
             // 繪製底部各月總計
             monthlyTotals.forEach(total => {
-                monthlyTotalsContainer.innerHTML += `<div class="bg-pink-100 font-bold p-3 rounded-xl flex items-center justify-end text-pink-800 shadow-sm border border-pink-200">${formatMoney(total)}</div>`;
+                monthlyTotalsContainer.innerHTML += `<div class="bg-pink-100 font-bold p-3 rounded-xl flex items-center justify-end text-pink-800 shadow-sm border border-pink-200 whitespace-nowrap">${formatMoney(total)}</div>`;
             });
 
             // 總計
