@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✨ 2026年 各分店營收總表 💇‍♀️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #fff0f6;
+            background-image: radial-gradient(#ffe4e6 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        /* 隱藏數字輸入框的上下箭頭 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 2px solid #fbcfe8;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 12px;
+            width: 12px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #fce7f3;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #f472b6;
+            border-radius: 10px;
+            border: 3px solid #fce7f3;
+        }
+    </style>
+</head>
+<body class="text-gray-700 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-[1600px] mx-auto">
+        <!-- 標題區塊 -->
+        <div class="text-center mb-8 bg-white/80 rounded-3xl p-6 shadow-sm border-2 border-pink-100 inline-block w-full">
+            <h1 class="text-3xl md:text-4xl font-bold text-pink-500 drop-shadow-sm">
+                💖 2026年 各分店營收總表 💖
+            </h1>
+            <p class="text-pink-400 mt-2 font-semibold">點擊各月份格子來填寫週結帳紀錄 ✍️</p>
+        </div>
+
+        <!-- 主要年度營收總表 (使用 CSS Grid 取代 Table) -->
+        <div class="glass-panel rounded-3xl shadow-xl overflow-hidden mb-12">
+            <div class="overflow-x-auto custom-scrollbar p-4">
+                <!-- Grid 容器：1個分店名 + 12個月 + 1個合計 = 14欄 -->
+                <div class="min-w-[1200px]" style="display: grid; grid-template-columns: 120px repeat(12, minmax(80px, 1fr)) 120px; gap: 4px;">
+                    
+                    <!-- 標頭列 -->
+                    <div class="bg-pink-300 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner">🏪 分店</div>
+                    <script>
+                        for(let i=1; i<=12; i++) {
+                            document.write(`<div class="bg-pink-200 text-pink-800 font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner">🌸 ${i}月</div>`);
+                        }
+                    </script>
+                    <div class="bg-purple-300 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg shadow-inner">💰 合計</div>
+
+                    <!-- 資料列將由 JS 動態產生 -->
+                    <div id="grid-body" class="col-span-full" style="display: grid; grid-template-columns: subgrid; gap: 4px;">
+                        <!-- JS 注入內容 -->
+                    </div>
+
+                    <!-- 底部總計列 -->
+                    <div class="bg-pink-400 text-white font-bold p-3 rounded-xl flex items-center justify-center text-lg mt-2 shadow-md">📊 總計</div>
+                    <div id="monthly-totals" class="col-span-12" style="display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; margin-top: 8px;">
+                        <!-- JS 注入各月總計 -->
+                    </div>
+                    <div id="grand-total" class="bg-purple-500 text-white font-bold p-3 rounded-xl flex items-center justify-center text-xl mt-2 shadow-md">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 彈出式視窗 (週營收紀錄表) -->
+    <div id="modal" class="fixed inset-0 bg-pink-900/40 backdrop-blur-sm hidden items-center justify-center z-50 p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-pink-200 transform transition-all scale-95" id="modal-content">
+            
+            <!-- 視窗標頭 -->
+            <div class="bg-gradient-to-r from-pink-300 via-purple-300 to-indigo-300 p-5 flex justify-between items-center">
+                <h2 class="text-2xl font-bold text-white drop-shadow-md flex items-center gap-2">
+                    <span id="modal-title-emoji">🏬</span>
+                    <span id="modal-title">陽明店 - 5月 營收紀錄表</span>
+                </h2>
+                <button onclick="closeModal()" class="text-white hover:text-pink-100 bg-white/20 hover:bg-white/40 rounded-full w-10 h-10 flex items-center justify-center transition-colors text-xl">
+                    ❌
+                </button>
+            </div>
+
+            <!-- 視窗內容 (週結帳表單) -->
+            <div class="p-6 bg-pink-50/50">
+                <div class="overflow-x-auto custom-scrollbar pb-4">
+                    <!-- 表單 Grid 標頭 -->
+                    <div class="min-w-[900px]">
+                        <div class="grid grid-cols-[60px_140px_1fr_1fr_1fr_1fr_120px_120px_120px] gap-2 mb-3 bg-pink-100 p-3 rounded-2xl font-bold text-pink-800 text-center items-center shadow-sm">
+                            <div>序號</div>
+                            <div>📅 日期</div>
+                            <div>💵 紙鈔</div>
+                            <div>🪙 零錢</div>
+                            <div>💳 信用卡</div>
+                            <div>📱 Line Pay</div>
+                            <div class="text-purple-700">🧾 實際營收小計</div>
+                            <div class="text-blue-700">📝 結帳單金額</div>
+                            <div>⚖️ 正負差額</div>
+                        </div>
+
+                        <!-- 6行輸入列 -->
+                        <div id="modal-rows" class="space-y-2">
+                            <!-- JS 注入輸入列 -->
+                        </div>
+
+                        <!-- 總計列 -->
+                        <div class="grid grid-cols-[60px_140px_1fr_1fr_1fr_1fr_120px_120px_120px] gap-2 mt-4 bg-pink-200/80 p-3 rounded-2xl font-bold text-lg items-center text-center shadow-md border-2 border-pink-300">
+                            <div class="col-span-6 text-right pr-4 text-pink-900">✨ 營收合計 ✨</div>
+                            <div id="modal-total-actual" class="text-purple-800 bg-white/60 rounded-lg p-1">0</div>
+                            <div class="text-right pr-4 text-pink-900">差額合計</div>
+                            <div id="modal-total-diff" class="bg-white/60 rounded-lg p-1">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 按鈕區 -->
+                <div class="mt-8 flex justify-end gap-4">
+                    <button onclick="closeModal()" class="px-6 py-3 rounded-xl font-bold text-pink-500 bg-pink-100 hover:bg-pink-200 transition-colors">
+                        稍後再填 🏃
+                    </button>
+                    <button onclick="saveModalData()" class="px-8 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 shadow-lg transform hover:scale-105 transition-all">
+                        💾 儲存並更新總表
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === 初始資料設定 ===
+        const branches = [
+            '陽明店', '大昌店', '建興店', '後昌店', '左營店', '明誠店', '華榮店', 
+            '斗六1店', '光遠店', '大社店', '虎尾店', '內惟店', '一心店', '五甲店', 
+            '斗六2店', '瑞隆店', '德惠店', '自由店', '福山店', '大寮店', '復興店', 
+            '鼎中店', '十全店', '草屯店', '華夏店', '武廟店', '小港店'
+        ];
+
+        // 讀取 LocalStorage 資料或初始化
+        let appData = JSON.parse(localStorage.getItem('salonRevenueData')) || {};
+
+        let currentBranch = '';
+        let currentMonth = 0;
+
+        // === 格式化數字為貨幣字串 (千分位) ===
+        function formatMoney(num) {
+            return Number(num).toLocaleString('zh-TW');
+        }
+
+        // === 取得特定分店特定月份的總營收 (用於主表顯示) ===
+        function getMonthTotalForBranch(branch, month) {
+            if (!appData[branch] || !appData[branch][month]) return 0;
+            let total = 0;
+            appData[branch][month].forEach(row => {
+                const sub = (Number(row.notes) || 0) + (Number(row.coins) || 0) + 
+                            (Number(row.cc) || 0) + (Number(row.line) || 0);
+                total += sub;
+            });
+            return total;
+        }
+
+        // === 繪製主頁面的年度總表 ===
+        function renderMainGrid() {
+            const gridBody = document.getElementById('grid-body');
+            const monthlyTotalsContainer = document.getElementById('monthly-totals');
+            gridBody.innerHTML = '';
+            monthlyTotalsContainer.innerHTML = '';
+
+            let grandTotal = 0;
+            let monthlyTotals = new Array(12).fill(0);
+
+            branches.forEach(branch => {
+                let branchYearTotal = 0;
+
+                // 分店名稱欄位
+                gridBody.innerHTML += `<div class="bg-white font-bold p-3 rounded-xl flex items-center justify-center text-pink-700 shadow-sm border border-pink-100">${branch}</div>`;
+
+                // 1~12月欄位
+                for (let m = 1; m <= 12; m++) {
+                    const monthVal = getMonthTotalForBranch(branch, m);
+                    branchYearTotal += monthVal;
+                    monthlyTotals[m-1] += monthVal;
+
+                    // 點擊事件：開啟 Modal
+                    const cellHtml = `
+                        <div onclick="openModal('${branch}', ${m})" 
+                             class="bg-white p-3 rounded-xl flex items-center justify-end text-gray-600 shadow-sm border border-transparent hover:border-pink-300 hover:shadow-md cursor-pointer transition-all hover:-translate-y-1 group relative">
+                            ${monthVal > 0 ? formatMoney(monthVal) : '<span class="text-gray-300">-</span>'}
+                            <div class="absolute inset-0 bg-pink-100/50 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity pointer-events-none"></div>
+                        </div>
+                    `;
+                    gridBody.innerHTML += cellHtml;
+                }
+
+                // 分店年度合計
+                gridBody.innerHTML += `<div class="bg-purple-50 font-bold p-3 rounded-xl flex items-center justify-end text-purple-700 shadow-sm border border-purple-100">${formatMoney(branchYearTotal)}</div>`;
+                grandTotal += branchYearTotal;
+            });
+
+            // 繪製底部各月總計
+            monthlyTotals.forEach(total => {
+                monthlyTotalsContainer.innerHTML += `<div class="bg-pink-100 font-bold p-3 rounded-xl flex items-center justify-end text-pink-800 shadow-sm border border-pink-200">${formatMoney(total)}</div>`;
+            });
+
+            // 總計
+            document.getElementById('grand-total').innerText = formatMoney(grandTotal);
+        }
+
+        // === 開啟週結帳紀錄表 Modal ===
+        function openModal(branch, month) {
+            currentBranch = branch;
+            currentMonth = month;
+            
+            document.getElementById('modal-title').innerText = `${branch} - ${month}月 營收紀錄表`;
+            
+            const modalRows = document.getElementById('modal-rows');
+            modalRows.innerHTML = '';
+
+            // 取得現有資料或預設空白資料 (6行)
+            let monthData = (appData[branch] && appData[branch][month]) ? appData[branch][month] : [];
+            
+            for (let i = 0; i < 6; i++) {
+                const row = monthData[i] || { date: '', notes: '', coins: '', cc: '', line: '', receipt: '' };
+                
+                modalRows.innerHTML += `
+                    <div class="grid grid-cols-[60px_140px_1fr_1fr_1fr_1fr_120px_120px_120px] gap-2 items-center row-entry group hover:bg-pink-50 p-1 rounded-xl transition-colors">
+                        <div class="text-center font-bold text-pink-400 bg-white rounded-lg py-2 shadow-sm border border-pink-100">${i + 1}</div>
+                        <div>
+                            <input type="date" class="row-date w-full p-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-sm text-gray-600 shadow-inner" value="${row.date}">
+                        </div>
+                        ${createNumberInput('row-notes', row.notes, '紙鈔')}
+                        ${createNumberInput('row-coins', row.coins, '零錢')}
+                        ${createNumberInput('row-cc', row.cc, '信用卡')}
+                        ${createNumberInput('row-line', row.line, 'LinePay')}
+                        <div class="row-subtotal text-right font-bold text-purple-600 bg-purple-50 p-2 rounded-xl shadow-inner border border-purple-100">0</div>
+                        ${createNumberInput('row-receipt', row.receipt, '結帳單')}
+                        <div class="row-diff text-right font-bold p-2 rounded-xl shadow-inner border border-gray-100 bg-gray-50">0</div>
+                    </div>
+                `;
+            }
+
+            // 綁定輸入框事件以進行即時計算
+            const inputs = document.querySelectorAll('.row-entry input[type="number"]');
+            inputs.forEach(input => {
+                input.addEventListener('input', calculateModalTotals);
+            });
+
+            // 顯示 Modal
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // 小小延遲以觸發 CSS 動畫
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95');
+                modalContent.classList.add('scale-100');
+            }, 10);
+
+            // 初始計算一次
+            calculateModalTotals();
+        }
+
+        // === 建立數字輸入框的輔助函式 ===
+        function createNumberInput(className, value, placeholder) {
+            return `
+                <div>
+                    <input type="number" placeholder="${placeholder}" class="${className} w-full p-2 rounded-xl border border-pink-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-200 outline-none text-right shadow-inner text-gray-700 transition-all placeholder:text-gray-300" value="${value || ''}">
+                </div>
+            `;
+        }
+
+        // === 關閉 Modal ===
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modal-content');
+            
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200); // 等待縮小動畫結束
+        }
+
+        // === Modal 內的即時計算邏輯 ===
+        function calculateModalTotals() {
+            let totalActual = 0;
+            let totalDiff = 0;
+
+            const rows = document.querySelectorAll('.row-entry');
+            rows.forEach(row => {
+                const notes = Number(row.querySelector('.row-notes').value) || 0;
+                const coins = Number(row.querySelector('.row-coins').value) || 0;
+                const cc = Number(row.querySelector('.row-cc').value) || 0;
+                const line = Number(row.querySelector('.row-line').value) || 0;
+                const receipt = Number(row.querySelector('.row-receipt').value) || 0;
+
+                // 實際營收小計 = 紙鈔 + 零錢 + 信用卡 + LinePay
+                const subtotal = notes + coins + cc + line;
+                row.querySelector('.row-subtotal').innerText = formatMoney(subtotal);
+
+                // 正負差額 = 實際營收小計 - 結帳單金額
+                // (只有當結帳單有填入數字，或有實收時才計算差額，避免整行空白顯示0)
+                let diff = 0;
+                let diffElement = row.querySelector('.row-diff');
+                
+                if (subtotal !== 0 || row.querySelector('.row-receipt').value !== '') {
+                    diff = subtotal - receipt;
+                    diffElement.innerText = formatMoney(diff);
+                    
+                    // 短少顯示紅字，溢收顯示綠字或普通顏色
+                    if (diff < 0) {
+                        diffElement.className = 'row-diff text-right font-bold p-2 rounded-xl shadow-inner border border-red-200 bg-red-50 text-red-500';
+                    } else if (diff > 0) {
+                        diffElement.className = 'row-diff text-right font-bold p-2 rounded-xl shadow-inner border border-green-200 bg-green-50 text-green-600';
+                    } else {
+                         diffElement.className = 'row-diff text-right font-bold p-2 rounded-xl shadow-inner border border-gray-100 bg-gray-50 text-gray-700';
+                    }
+                } else {
+                    diffElement.innerText = '';
+                    diffElement.className = 'row-diff text-right font-bold p-2 rounded-xl shadow-inner border border-gray-100 bg-gray-50';
+                }
+
+                totalActual += subtotal;
+                totalDiff += diff;
+            });
+
+            // 更新底部合計
+            document.getElementById('modal-total-actual').innerText = formatMoney(totalActual);
+            
+            const totalDiffEl = document.getElementById('modal-total-diff');
+            totalDiffEl.innerText = formatMoney(totalDiff);
+            if (totalDiff < 0) {
+                totalDiffEl.className = 'bg-white/90 rounded-lg p-1 text-red-600 border border-red-300';
+            } else if (totalDiff > 0) {
+                totalDiffEl.className = 'bg-white/90 rounded-lg p-1 text-green-600 border border-green-300';
+            } else {
+                totalDiffEl.className = 'bg-white/60 rounded-lg p-1 text-gray-700';
+            }
+        }
+
+        // === 儲存 Modal 資料並更新主表 ===
+        function saveModalData() {
+            if (!appData[currentBranch]) {
+                appData[currentBranch] = {};
+            }
+            
+            const monthData = [];
+            const rows = document.querySelectorAll('.row-entry');
+            
+            rows.forEach(row => {
+                monthData.push({
+                    date: row.querySelector('.row-date').value,
+                    notes: row.querySelector('.row-notes').value,
+                    coins: row.querySelector('.row-coins').value,
+                    cc: row.querySelector('.row-cc').value,
+                    line: row.querySelector('.row-line').value,
+                    receipt: row.querySelector('.row-receipt').value,
+                });
+            });
+
+            appData[currentBranch][currentMonth] = monthData;
+            
+            // 儲存至 LocalStorage
+            localStorage.setItem('salonRevenueData', JSON.stringify(appData));
+            
+            closeModal();
+            renderMainGrid(); // 重新繪製主表以更新總數
+            
+            // 顯示小小的成功提示 (可選，這裡用簡單的特效代替)
+            const branchCell = Array.from(document.querySelectorAll('#grid-body > div')).find(el => el.textContent === currentBranch);
+            if(branchCell) {
+                 // 添加一個短暫的背景閃爍效果表示儲存成功
+            }
+        }
+
+        // 頁面載入時初始化
+        window.onload = () => {
+            renderMainGrid();
+        };
+
+        // 點擊 Modal 背景關閉視窗
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+    </script>
+</body>
+</html>
