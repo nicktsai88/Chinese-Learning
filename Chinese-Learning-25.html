@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>敬詞、謙詞 - 互動學習系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; background-color: #fffbeb; color: #431407; font-size: 1.125rem; line-height: 1.8; -webkit-tap-highlight-color: transparent; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-loading { background-color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; box-shadow: 0 0 8px #fbbf24; }
+        .status-success { background-color: #34d399; box-shadow: 0 0 8px #34d399; }
+        .status-error { background-color: #f87171; box-shadow: 0 0 8px #f87171; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .glass-nav { background: rgba(194, 65, 12, 0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .glass-card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .knowledge-table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; font-size: 1rem; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .knowledge-table th, .knowledge-table td { border: 1px solid #fed7aa; padding: 0.75rem; }
+        .knowledge-table th { background-color: #ffedd5; color: #9a3412; font-weight: bold; text-align: center; }
+        .knowledge-table tr:nth-child(even) { background-color: #fffbeb; }
+        .knowledge-table tr:hover { background-color: #ffedd5; transition: background-color 0.2s; }
+        .tag-badge { display: inline-block; padding: 0.5rem 1.25rem; border-radius: 9999px; font-weight: bold; font-size: 1.25rem; line-height: 1.75rem; margin-right: 0.75rem; margin-bottom: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        @media (min-width: 768px) { .tag-badge { font-size: 1.5rem; line-height: 2rem; padding: 0.75rem 1.5rem; margin-right: 1rem; margin-bottom: 1rem; } }
+        .text-highlight { position: relative; display: inline-block; z-index: 1; }
+        .text-highlight::after { content: ''; position: absolute; left: 0; bottom: 0.2em; width: 100%; height: 0.4em; background-color: rgba(251, 191, 36, 0.5); z-index: -1; border-radius: 2px; }
+    </style>
+</head>
+<body class="h-screen w-full flex flex-col overflow-hidden bg-amber-50">
+
+    <div id="app" class="w-full h-full flex flex-col overflow-hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        //  Firebase Configuration & Constants
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const COLLECTION_NAME = 'Chinese-Learning-25'; // Updated Collection Name
+        const DOC_GLOBAL = 'Global_Users';      
+        
+        let app, auth, db;
+        let isFirebaseInitialized = false;
+        let currentUser = null;
+        let username = '';
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+        let connectionStatus = 'loading';
+        let recentUsers = [];
+        let unsubscribeUser = null;
+        let unsubscribeGlobal = null;
+        
+        // ==========================================
+        //  Audio System (Lazy Init for iPad compatibility)
+        // ==========================================
+        let audioCtx = null;
+        const initAudio = () => {
+            if (!audioCtx) {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                } catch(e) { console.warn("AudioContext not supported"); }
+            }
+        };
+        const playTone = (freq, type, duration) => {
+            initAudio();
+            if(!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        };
+        const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
+        const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
+
+        // ==========================================
+        //  Firebase Initialization
+        // ==========================================
+        try {
+            const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+            if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
+                app = initializeApp(actualConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isFirebaseInitialized = true;
+                connectionStatus = 'success';
+            } else { connectionStatus = 'error'; }
+        } catch (error) { connectionStatus = 'error'; }
+
+        const initAuth = async () => {
+            if (!isFirebaseInitialized) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) { connectionStatus = 'error'; }
+        };
+
+        // ==========================================
+        //  Course Content (Learn Data)
+        // ==========================================
+        const learnData = [
+            {
+                id: 'sec1', title: '一、敬詞（稱他人） 👑', theme: 'orange',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-orange-50 to-amber-50 p-6 md:p-10 rounded-3xl border-l-8 border-orange-500 shadow-lg">
+                        <div class="text-center font-black text-4xl md:text-5xl text-orange-950 mb-8 border-b-2 border-orange-200 pb-4 flex justify-center items-center gap-4">
+                            <span class="text-5xl">👑</span> 敬詞（稱他人） <span class="text-5xl">✨</span>
+                        </div>
+                        
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 mb-8">
+                            <h3 class="font-bold text-3xl md:text-4xl text-orange-800 mb-4 flex items-center"><span class="bg-orange-200 p-2 rounded-lg mr-3 shadow-sm">🎯</span> 敬詞定義</h3>
+                            <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium mb-6">
+                                對<span class="text-rose-600 font-bold">長輩、上級、朋友</span>時，用以表示尊敬和禮貌的詞語。
+                            </p>
+                            
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-orange-200 bg-white">
+                                <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
+                                    <thead class="bg-orange-100 text-orange-900">
+                                        <tr>
+                                            <th class="p-4 w-1/6">敬詞</th>
+                                            <th class="p-4 w-2/6">釋義</th>
+                                            <th class="p-4 w-3/6">例句</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-orange-50 text-slate-700 font-medium">
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">1. 君</td>
+                                            <td class="p-4 leading-relaxed">敬稱對方之詞，相當於「您」。</td>
+                                            <td class="p-4 leading-relaxed">今日一別，不知何時能再相見，願<span class="text-blue-600 font-bold">君</span>多珍重。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">2. 卿</td>
+                                            <td class="p-4 leading-relaxed">
+                                                (1) 君稱臣，或稱高級官員。<br>
+                                                (2) 對同輩的敬稱。同「您」。<br>
+                                                (3) 夫妻或情人間親熱的稱呼。
+                                            </td>
+                                            <td class="p-4 leading-relaxed">
+                                                (1) <span class="text-blue-600 font-bold">卿</span>為國家之棟梁。<br>
+                                                (2) <span class="text-blue-600 font-bold">卿</span>家兄弟都是鼎鼎大名的人物。<br>
+                                                (3) 持珠贈<span class="text-blue-600 font-bold">卿</span>，以表情意。
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">3. 大人</td>
+                                            <td class="p-4 leading-relaxed">對有身分地位者的敬稱。</td>
+                                            <td class="p-4 leading-relaxed">承蒙<span class="text-blue-600 font-bold">大人</span>厚愛，特來光臨小店。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">4. 閣下</td>
+                                            <td class="p-4 leading-relaxed">稱呼對方的敬詞。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">閣下</span>大駕光臨，是敝號的榮幸。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">5. 陛下</td>
+                                            <td class="p-4 leading-relaxed">對君王的敬稱。</td>
+                                            <td class="p-4 leading-relaxed">微臣一定盡犬馬之勞，報答<span class="text-blue-600 font-bold">陛下</span>厚愛。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">6. 麾下</td>
+                                            <td class="p-4 leading-relaxed">對將帥的敬稱。（麾：軍旗）</td>
+                                            <td class="p-4 leading-relaxed">李將軍<span class="text-blue-600 font-bold">麾下</span>統領千萬軍馬，所向披靡。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">7. 足下</td>
+                                            <td class="p-4 leading-relaxed">對朋友的敬稱。</td>
+                                            <td class="p-4 leading-relaxed">吾與<span class="text-blue-600 font-bold">足下</span>久別，特來敘舊。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">8. 兄臺</td>
+                                            <td class="p-4 leading-relaxed">對平輩的敬稱。</td>
+                                            <td class="p-4 leading-relaxed">敢問這位<span class="text-blue-600 font-bold">兄臺</span>貴姓？</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">9. 老爺</td>
+                                            <td class="p-4 leading-relaxed">對有錢、有地位年長者的敬稱，或僕人稱男主人。</td>
+                                            <td class="p-4 leading-relaxed">請問<span class="text-blue-600 font-bold">老爺</span>有何吩咐？</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-orange-50/50 text-orange-800">10. 相公</td>
+                                            <td class="p-4 leading-relaxed">妻子對丈夫的敬稱，或稱富貴人家的子弟及年輕讀書人。</td>
+                                            <td class="p-4 leading-relaxed">我家<span class="text-blue-600 font-bold">相公</span>為人寬厚有禮，贏得鄉里稱讚。</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec2', title: '二、謙詞（稱自己） 🙇', theme: 'teal',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-teal-50 to-emerald-50 p-6 md:p-10 rounded-3xl border-l-8 border-teal-500 shadow-lg">
+                        <div class="mb-4">
+                            <h3 class="font-bold text-3xl md:text-4xl text-teal-800 mb-4 flex items-center"><span class="bg-teal-200 p-2 rounded-lg mr-3 shadow-sm">🙇</span> 謙詞定義</h3>
+                            <div class="bg-white p-6 rounded-2xl shadow-sm border border-teal-100 mb-6">
+                                <p class="text-2xl md:text-3xl text-slate-700 leading-relaxed font-medium">
+                                    在交際場合時使用，表示<span class="text-blue-600 font-bold">謙虛</span>的詞語，用來<span class="text-rose-600 font-bold">稱呼自己或己方事物</span>。
+                                </p>
+                            </div>
+                            
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-teal-200 bg-white mt-6">
+                                <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
+                                    <thead class="bg-teal-100 text-teal-900">
+                                        <tr>
+                                            <th class="p-4 w-1/6">謙詞</th>
+                                            <th class="p-4 w-2/6">釋義</th>
+                                            <th class="p-4 w-3/6">例句</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-teal-50 text-slate-700 font-medium">
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">1. 妾</td>
+                                            <td class="p-4 leading-relaxed">古代女子自稱的謙詞。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">妾</span>日日望君早歸。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">2. 孤</td>
+                                            <td class="p-4 leading-relaxed">君王自謙之詞，意思同「寡人」。</td>
+                                            <td class="p-4 leading-relaxed">如今天下戰爭四起、生靈塗炭，是<span class="text-blue-600 font-bold">孤</span>之罪也。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">3. 竊</td>
+                                            <td class="p-4 leading-relaxed">私下，謙稱自己。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">竊</span>以為「勤儉」才是人生最佳的生活態度。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">4. 鄙人</td>
+                                            <td class="p-4 leading-relaxed">粗俗、低下之人，謙稱自己。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">鄙人</span>孤陋寡聞，未曾聽聞閣下大名。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">5. 晚生</td>
+                                            <td class="p-4 leading-relaxed">謙稱自己是後生晚輩。</td>
+                                            <td class="p-4 leading-relaxed">承蒙您指導，<span class="text-blue-600 font-bold">晚生</span>受教了。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">6. 後學</td>
+                                            <td class="p-4 leading-relaxed">對前輩自稱的謙詞，意同「末學」。</td>
+                                            <td class="p-4 leading-relaxed">您的才華，令<span class="text-blue-600 font-bold">後學</span>望塵莫及。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">7. 不才</td>
+                                            <td class="p-4 leading-relaxed">謙稱自己沒有才能。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">不才</span>才疏學淺，難以擔此大任。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">8. 敝人</td>
+                                            <td class="p-4 leading-relaxed">謙稱自己。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">敝人</span>不知忌諱，如有冒犯，請多見諒！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">9. 在下</td>
+                                            <td class="p-4 leading-relaxed">謙稱自己（處於下位）。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">在下</span>久仰您的大名。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">10. 寒舍</td>
+                                            <td class="p-4 leading-relaxed">對自己住處、家庭的謙稱。</td>
+                                            <td class="p-4 leading-relaxed">歡迎光臨<span class="text-blue-600 font-bold">寒舍</span>。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-teal-50/50 text-teal-800">11. 拙荊</td>
+                                            <td class="p-4 leading-relaxed">古人對人稱自己妻子時的謙稱，亦可稱作「賤內」、「內人」。</td>
+                                            <td class="p-4 leading-relaxed">吾家家務一向由<span class="text-blue-600 font-bold">拙荊</span>打理。</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec3', title: '三、常用禮貌詞語 (上) 🤝', theme: 'emerald',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-emerald-50 to-green-50 p-6 md:p-10 rounded-3xl border-l-8 border-emerald-500 shadow-lg">
+                        
+                        <div>
+                            <h3 class="font-bold text-3xl md:text-4xl text-emerald-800 mb-4 flex items-center"><span class="bg-emerald-200 p-2 rounded-lg mr-3 shadow-sm">🤝</span> 常用禮貌詞語 (1~8)</h3>
+
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-emerald-200 bg-white mt-6">
+                                <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
+                                    <thead class="bg-emerald-100 text-emerald-900">
+                                        <tr>
+                                            <th class="p-4 w-1/6">禮貌詞</th>
+                                            <th class="p-4 w-2/6">釋義</th>
+                                            <th class="p-4 w-3/6">例句</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-emerald-50 text-slate-700 font-medium">
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">1. 指教</td>
+                                            <td class="p-4 leading-relaxed">請人指正教導。</td>
+                                            <td class="p-4 leading-relaxed">奉上拙作一本，敬請<span class="text-blue-600 font-bold">指教</span>！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">2. 久仰</td>
+                                            <td class="p-4 leading-relaxed">初次見面時的客套話。</td>
+                                            <td class="p-4 leading-relaxed"><span class="text-blue-600 font-bold">久仰</span>先生大名，如今一見果真名不虛傳。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">3. 叨擾</td>
+                                            <td class="p-4 leading-relaxed">謝人款待的客套用語。</td>
+                                            <td class="p-4 leading-relaxed">無端<span class="text-blue-600 font-bold">叨擾</span>，還望您見諒。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">4. 失迎</td>
+                                            <td class="p-4 leading-relaxed">對於來訪的客人表示失於迎候的客氣話。</td>
+                                            <td class="p-4 leading-relaxed">未能親自為您接機，請恕我<span class="text-blue-600 font-bold">失迎</span>之罪！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">5. 失敬</td>
+                                            <td class="p-4 leading-relaxed">對人自責疏忽的客套話。</td>
+                                            <td class="p-4 leading-relaxed">有失遠迎，<span class="text-blue-600 font-bold">失敬失敬</span>！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">6. 心領</td>
+                                            <td class="p-4 leading-relaxed">婉拒別人好意的客套話。</td>
+                                            <td class="p-4 leading-relaxed">您的好意，我<span class="text-blue-600 font-bold">心領</span>了。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">7. 高見</td>
+                                            <td class="p-4 leading-relaxed">尊稱別人的意見。</td>
+                                            <td class="p-4 leading-relaxed">敢問老師有何<span class="text-blue-600 font-bold">高見</span>？</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-emerald-50/50 text-emerald-800">8. 奉陪</td>
+                                            <td class="p-4 leading-relaxed">陪伴的敬詞。</td>
+                                            <td class="p-4 leading-relaxed">您請自便，我尚有要務在身，恕不<span class="text-blue-600 font-bold">奉陪</span>。</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`
+            },
+            {
+                id: 'sec4', title: '四、常用禮貌詞語 (下) 🎁', theme: 'purple',
+                content: `
+                <div class="space-y-8 text-2xl md:text-3xl text-gray-800">
+                    <div class="bg-gradient-to-br from-purple-50 to-fuchsia-50 p-6 md:p-10 rounded-3xl border-l-8 border-purple-500 shadow-lg">
+                        <div class="mb-4">
+                            <h3 class="font-bold text-3xl md:text-4xl text-purple-800 mb-4 flex items-center"><span class="bg-purple-200 p-2 rounded-lg mr-3 shadow-sm">🎁</span> 常用禮貌詞語 (9~16)</h3>
+                            
+                            <div class="overflow-x-auto rounded-xl shadow-sm border border-purple-200 bg-white mt-6">
+                                <table class="knowledge-table w-full text-xl md:text-2xl m-0 border-none">
+                                    <thead class="bg-purple-100 text-purple-900">
+                                        <tr>
+                                            <th class="p-4 w-1/6">禮貌詞</th>
+                                            <th class="p-4 w-2/6">釋義</th>
+                                            <th class="p-4 w-3/6">例句</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-purple-50 text-slate-700 font-medium">
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">9. 賞光</td>
+                                            <td class="p-4 leading-relaxed">請人光臨的敬詞。</td>
+                                            <td class="p-4 leading-relaxed">小女歸寧定於下週六，請您務必<span class="text-blue-600 font-bold">賞光</span>。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">10. 光臨</td>
+                                            <td class="p-4 leading-relaxed">稱賓客來訪的敬詞。</td>
+                                            <td class="p-4 leading-relaxed">小店今日開幕，歡迎各位<span class="text-blue-600 font-bold">光臨</span>！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">11. 貴庚</td>
+                                            <td class="p-4 leading-relaxed">詢問他人年齡的敬詞。</td>
+                                            <td class="p-4 leading-relaxed">請問您今年<span class="text-blue-600 font-bold">貴庚</span>？</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">12. 貴幹</td>
+                                            <td class="p-4 leading-relaxed">稱人所作之事的敬詞。</td>
+                                            <td class="p-4 leading-relaxed">您特來拜訪，不知有何<span class="text-blue-600 font-bold">貴幹</span>？</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">13. 獻醜</td>
+                                            <td class="p-4 leading-relaxed">向人表露自己技能時的謙詞。</td>
+                                            <td class="p-4 leading-relaxed">倘若各位不嫌棄，那我就<span class="text-blue-600 font-bold">獻醜</span>了！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">14. 包涵</td>
+                                            <td class="p-4 leading-relaxed">請人諒解的謙詞。</td>
+                                            <td class="p-4 leading-relaxed">如有冒犯，請多<span class="text-blue-600 font-bold">包涵</span>。</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">15. 承讓</td>
+                                            <td class="p-4 leading-relaxed">將勝利歸因於承蒙對方禮讓的謙詞。</td>
+                                            <td class="p-4 leading-relaxed">多謝<span class="text-blue-600 font-bold">承讓</span>，你也很厲害！</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="text-center font-bold bg-purple-50/50 text-purple-800">16. 留步</td>
+                                            <td class="p-4 leading-relaxed">客人請主人不必遠送的謙詞。</td>
+                                            <td class="p-4 leading-relaxed">您請<span class="text-blue-600 font-bold">留步</span>，不必送了！</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>`
+            }
+        ];
+
+        const generate100Questions = () => {
+            const qList = [];
+            const addQ = (q, opts, ans, exps, generalExp = "") => qList.push({ q, opts, ans, exps, generalExp, showExplanation: false, selectedAns: null, isCorrect: false });
+            
+            // ==========================================
+            //  魔王級題庫 - 共 100 題 (敬詞、謙詞)
+            // ==========================================
+
+            // Part 1: 敬詞辨析 (1-20)
+            addQ("下列關於「敬詞」的定義，何者最為精確？", 
+                ["對晚輩、下屬說話時，用來展現威嚴的詞語", "對長輩、上級、朋友時，用以表示尊敬和禮貌的詞語", "在交際場合中，用來貶低自己身分的詞語", "專門用來稱呼皇室成員的特殊用語"], 1, 
+                ["敬詞是用於對長輩、上級或平輩朋友，非用於晚輩。", "正確。這正是講義中對「敬詞」的定義。", "這是「謙詞」的定義。", "不限於皇室，範圍更廣。"]);
+            
+            addQ("在古裝劇中，皇帝經常稱呼底下的官員為「卿」。這裡的「卿」屬於何種詞語？", 
+                ["皇帝的謙詞", "對官員的敬稱", "對晚輩的蔑稱", "平輩之間的客套話"], 1, 
+                ["皇帝自謙通常用「孤」或「寡人」。", "正確。講義指出「卿」可作為君稱臣，或稱高級官員。", "「卿」沒有蔑稱之意。", "雖然「卿」可用於平輩，但題幹情境是「皇帝稱官員」。"]);
+
+            addQ("「閣下大駕光臨，是敝號的榮幸。」句中的「閣下」是對誰的敬稱？", 
+                ["自己", "對方", "君王", "朋友"], 1, 
+                ["稱自己應用謙詞（如敝人、在下）。", "正確。講義指出「閣下」是稱呼對方的敬詞。", "對君王應稱「陛下」。", "對朋友多稱「足下」或直接稱呼，閣下通常較為正式。"]);
+
+            addQ("如果要寫信給一位久未謀面的好朋友，信件開頭最適合使用下列哪一個敬稱？", 
+                ["陛下", "麾下", "足下", "老爺"], 2, 
+                ["對君王使用。", "對將帥使用。", "正確。講義明列「足下」是對朋友的敬稱。", "對有地位年長者或僕稱主使用。"]);
+
+            addQ("「李將軍□□統領千萬軍馬，所向披靡。」空格中應填入哪一個敬詞最恰當？", 
+                ["陛下", "閣下", "麾下", "相公"], 2, 
+                ["陛下是對君王的敬稱。", "閣下用於一般正式稱呼對方。", "正確。講義說明「麾下」是對將帥的敬稱（麾：軍旗）。", "相公是妻子對丈夫的敬稱。"]);
+
+            addQ("古代妻子對丈夫說：「我家□□為人寬厚有禮，贏得鄉里稱讚。」空格中應填入：", 
+                ["老爺", "相公", "兄臺", "大人"], 1, 
+                ["老爺通常是僕人稱男主人，或稱年長有地位者。", "正確。講義指出「相公」是妻子對丈夫的敬稱。", "兄臺是對平輩的敬稱。", "大人是對有身分地位者的敬稱。"]);
+
+            addQ("「敢問這位□□貴姓？」當你在路上想客氣地詢問一位年紀相仿的陌生男性，最適合填入：", 
+                ["兄臺", "卿", "陛下", "足下"], 0, 
+                ["正確。「兄臺」是對平輩的敬稱，非常適合此情境。", "卿雖然可指同輩，但在口語詢問陌生人時不常用。", "過於誇張，用於君王。", "足下多用於書信稱呼朋友。"]);
+
+            addQ("下列哪一個詞語「不屬於」敬稱對方的用語？", 
+                ["大人", "老爺", "晚生", "君"], 2, 
+                ["大人是敬稱。", "老爺是敬稱。", "正確。「晚生」是謙稱自己是後生晚輩，屬於謙詞。", "君是敬稱，相當於「您」。"]);
+
+            addQ("「持珠贈卿，以表情意。」這句話中的「卿」最可能是什麼身分？", 
+                ["高級官員", "君王", "情人或妻子", "普通朋友"], 2, 
+                ["雖然卿可指官員，但「贈珠表情意」不合官場禮儀。", "君王是陛下。", "正確。講義指出「卿」可作為夫妻或情人間親熱的稱呼。", "普通朋友通常不贈珠表情意，且有其他更適合的稱呼。"]);
+
+            addQ("僕人在向家裡有錢有勢的男主人報告事情時，最常使用哪一個敬詞？", 
+                ["兄臺", "閣下", "老爺", "相公"], 2, 
+                ["平輩敬稱。", "正式場合對外人敬稱。", "正確。講義中提到「老爺」可作為僕人稱男主人。", "妻子稱丈夫。"]);
+
+            addQ("下列敬詞與其適用對象的配對，何者「錯誤」？", 
+                ["陛下：君王", "麾下：將帥", "足下：晚輩", "相公：丈夫"], 2, 
+                ["配對正確。", "配對正確。", "錯誤。講義中明列「足下」是對「朋友」的敬稱，而非晚輩。", "配對正確。"]);
+
+            addQ("「微臣一定盡犬馬之勞，報答陛下厚愛。」句中包含了幾個敬詞與幾個謙詞？", 
+                ["一個敬詞，沒有謙詞", "一個敬詞，一個謙詞", "兩個敬詞，沒有謙詞", "沒有敬詞，兩個謙詞"], 1, 
+                ["忽略了微臣。", "正確。「陛下」是對君王的敬詞；「微臣」是官員對自己的謙詞（雖講義未列微臣，但依常理及題意判斷，陛下必為敬詞）。", "只有陛下是敬詞。", "有敬詞陛下。"]);
+
+            addQ("「今日一別，不知何時能再相見，願君多珍重。」句中的「君」可以替換為下列哪一個詞語而意思最接近？", 
+                ["您", "我", "他", "他們"], 0, 
+                ["正確。講義釋義：「君」是敬稱對方之詞，相當於「您」。", "意思相反。", "意思不符。", "意思不符。"]);
+
+            addQ("某次宴會上，主持人說：「承蒙□□厚愛，特來光臨小店。」若要表示對出席的高官達貴的尊敬，填入何者最恰當？", 
+                ["晚生", "大人", "拙荊", "寒舍"], 1, 
+                ["謙稱自己。", "正確。講義指出「大人」是對有身分地位者的敬稱。", "謙稱自己妻子。", "謙稱自己住處。"]);
+
+            addQ("關於「卿」的用法，下列敘述何者「不在」講義的規範內？", 
+                ["君王稱呼臣子", "對同輩的敬稱", "對神明的尊稱", "情人間親熱的稱呼"], 2, 
+                ["講義有列入。", "講義有列入。", "正確。講義中「卿」的三種用法並不包含對神明的尊稱。", "講義有列入。"]);
+
+            addQ("如果一位現代人想模仿古人寫信給平輩好兄弟，信封上的收件人稱呼最適宜加上：", 
+                ["足下", "麾下", "陛下", "相公"], 0, 
+                ["正確。「足下」是對朋友的敬稱。", "稱將軍。", "稱君王。", "稱丈夫。"]);
+
+            addQ("「吾與足下久別，特來敘舊。」這句話最適合作為下列哪一種情境的開場白？", 
+                ["將軍視察軍營時對士兵說", "妻子對剛下班的丈夫說", "老朋友多年後再次相聚時說", "僕人對老爺報告事情時說"], 2, 
+                ["不適合，應對平輩或朋友。", "不適合。", "正確。「足下」是對朋友的敬稱，且「久別敘舊」符合朋友重逢的情境。", "不適合。"]);
+
+            addQ("下列何者「不是」用來敬稱對方的詞語？", 
+                ["閣下", "兄臺", "君", "竊"], 3, 
+                ["敬稱對方。", "敬稱對方(平輩)。", "敬稱對方。", "正確。「竊」是私下、謙稱自己的詞語，屬於謙詞。"]);
+
+            addQ("在武俠小說中，常聽到「敢問這位兄臺貴姓？」這樣的臺詞。使用「兄臺」一詞，顯示說話者將對方視為：", 
+                ["高高在上的君王", "地位低下的僕人", "值得尊敬的平輩", "關係親密的愛人"], 2, 
+                ["非君王。", "非僕人。", "正確。講義說明「兄臺」是對平輩的敬稱。", "非愛人。"]);
+
+            addQ("「相公」除了是妻子對丈夫的敬稱外，還可以用來稱呼誰？", 
+                ["富貴人家的子弟或年輕讀書人", "年高德劭的老爺", "統領千萬大軍的將帥", "國家的高級官員"], 0, 
+                ["正確。講義中特別註明「相公」亦可稱富貴人家的子弟及年輕讀書人。", "那是老爺。", "那是麾下。", "那多用卿或大人。"]);
+
+            // Part 2: 謙詞辨析 (21-40)
+            addQ("下列關於「謙詞」的敘述，何者正確？", 
+                ["用來抬高對方身分的詞語", "在交際場合中，用來稱呼自己或己方事物以表示謙虛的詞語", "專門用來稱呼古代女子的詞語", "只能在書信中使用的文言文"], 1, 
+                ["抬高對方是敬詞的功能。", "正確。這符合講義中對謙詞的定義。", "謙詞涵蓋很廣，不限女子。", "口語交際中也常使用。"]);
+
+            addQ("「如今天下戰爭四起、生靈塗炭，是孤之罪也。」這句話最可能是誰的臺詞？", 
+                ["被貶謫的官員", "戰敗的將軍", "古代的君王", "平民百姓"], 2, 
+                ["官員通常不自稱孤。", "將軍不自稱孤。", "正確。講義指出「孤」是君王自謙之詞，意思同「寡人」。", "平民不可用此稱呼。"]);
+
+            addQ("某位學者在發表文章時寫道：「□以為『勤儉』才是人生最佳的生活態度。」若他想表達謙虛，應填入：", 
+                ["竊", "閣下", "大人", "足下"], 0, 
+                ["正確。講義指出「竊」有私下、謙稱自己的意思，常作「竊以為」。", "敬稱對方。", "敬稱對方。", "敬稱對方。"]);
+
+            addQ("「承蒙您指導，□□受教了。」這是一個晚輩對長輩說的話，空格中應填入：", 
+                ["晚生", "老爺", "陛下", "拙荊"], 0, 
+                ["正確。「晚生」是謙稱自己是後生晚輩的詞語，符合情境。", "敬稱長者/主人。", "敬稱君王。", "謙稱妻子。"]);
+
+            addQ("「您的才華，令□□望塵莫及。」面對前輩的卓越表現，自稱何者最能展現謙遜？", 
+                ["後學", "兄臺", "相公", "君"], 0, 
+                ["正確。講義說明「後學」是對前輩自稱的謙詞，意同「末學」。", "敬稱平輩。", "敬稱丈夫。", "敬稱對方。"]);
+
+            addQ("如果有人對你說：「歡迎光臨寒舍。」這表示他邀請你去哪裡？", 
+                ["他開的店鋪", "一間很冷的小屋", "他的住處或家庭", "一間破廟"], 2, 
+                ["店鋪通常稱小店、敝號。", "「寒」是謙詞，非指溫度低。", "正確。講義定義「寒舍」是對自己住處、家庭的謙稱。", "非字面意義的破廟。"]);
+
+            addQ("古代男性向朋友介紹自己的妻子時，為了表示謙虛，可以說：「這是我的□□。」", 
+                ["相公", "拙荊", "晚生", "後學"], 1, 
+                ["妻子對丈夫的敬稱。", "正確。講義指出「拙荊」是古人對人稱自己妻子時的謙稱。", "謙稱自己為晚輩。", "謙稱自己為末學。"]);
+
+            addQ("下列哪一組詞語「全部」都是謙詞？", 
+                ["鄙人、不才、敝人", "在下、閣下、足下", "寒舍、老爺、相公", "妾、孤、卿"], 0, 
+                ["正確。這三個詞皆為稱呼自己的謙詞。", "閣下、足下為敬詞。", "老爺、相公為敬詞。", "卿為敬詞。"]);
+
+            addQ("「□□不知忌諱，如有冒犯，請多見諒！」這句話是為了表達歉意，空格中應填入哪一個謙詞自稱？", 
+                ["敝人", "陛下", "大人", "麾下"], 0, 
+                ["正確。「敝人」是謙稱自己，常用於道歉或客氣的表達中。", "敬稱君王。", "敬稱尊長。", "敬稱將軍。"]);
+
+            addQ("「妾日日望君早歸。」句中的「妾」是誰的自稱？", 
+                ["古代君王", "古代男子", "古代女子", "現代女性"], 2, 
+                ["君王稱孤或寡人。", "男子不稱妾。", "正確。講義指出「妾」是古代女子自稱的謙詞。", "現代已不再使用。"]);
+
+            addQ("下列關於「鄙人」的釋義，何者正確？", 
+                ["高貴、有品味的人", "粗俗、低下之人，謙稱自己", "對鄉下人的蔑稱", "對朋友的敬稱"], 1, 
+                ["完全相反。", "正確。講義定義「鄙人」為粗俗、低下之人，用以謙稱自己。", "雖有粗俗之意，但在此為自謙，非罵人。", "非敬稱。"]);
+
+            addQ("「□□才疏學淺，難以擔此大任。」這是一句常見的推辭用語，空格處應填入：", 
+                ["不才", "閣下", "足下", "兄臺"], 0, 
+                ["正確。「不才」指沒有才能，是常見的自謙之詞。", "敬稱對方。", "敬稱對方。", "敬稱平輩。"]);
+
+            addQ("武俠劇中，大俠相遇時常說：「□□久仰您的大名。」此處最適當的自謙詞是：", 
+                ["在下", "陛下", "老爺", "相公"], 0, 
+                ["正確。「在下」指處於下位，是自謙之詞，常與「久仰」搭配。", "敬稱君王。", "敬稱主人。", "敬稱丈夫。"]);
+
+            addQ("講義中提到，與「拙荊」意思相近，同樣用來謙稱自己妻子的詞語還有：", 
+                ["敝人、在下", "賤內、內人", "晚生、後學", "妾、孤"], 1, 
+                ["這是謙稱自己。", "正確。講義明列「拙荊」亦可稱作「賤內」、「內人」。", "這是謙稱晚輩。", "這是女子與君王的自謙。"]);
+
+            addQ("「孤」和「寡人」這兩個謙詞，其背後的涵義是表示：", 
+                ["自己朋友很少", "自己沒有妻子", "君王謙稱自己德行淺薄（寡德之人）", "自己很孤單想找人聊天"], 2, 
+                ["非字面意思。", "非字面意思。", "正確。古代君王為示謙卑，常以「寡德之人」（孤、寡）自稱。", "非字面意思。"]);
+
+            addQ("如果你是一位年輕學者，在學術研討會上向資深教授請教問題，你該如何自稱最適當？", 
+                ["老爺", "晚生", "陛下", "大人"], 1, 
+                ["極度不適當的敬詞。", "正確。「晚生」或「後學」非常適合年輕人對資深前輩自稱。", "極度不適當的敬詞。", "是敬稱對方，非自稱。"]);
+
+            addQ("下列何者「不是」用來謙稱自己的詞語？", 
+                ["竊", "鄙人", "不才", "麾下"], 3, 
+                ["謙稱自己（私下）。", "謙稱自己（粗俗）。", "謙稱自己（無才）。", "正確。「麾下」是對將帥的敬稱，不是謙詞。"]);
+
+            addQ("「吾家家務一向由拙荊打理。」若要將「拙荊」替換為同義詞，下列何者「不恰當」？", 
+                ["賤內", "內人", "牽手", "令正"], 3, 
+                ["可替換（同為謙稱）。", "可替換（同為謙稱）。", "可替換（臺語常用，指妻子）。", "正確。「令正」是「敬稱」對方的正妻，不可用來稱呼自己的妻子。"]);
+
+            addQ("小明寫信給老師：「□□資質駑鈍，還望老師多加指點。」空格中填入哪一個詞最符合學生對老師的自謙？", 
+                ["閣下", "足下", "後學", "老爺"], 2, 
+                ["敬稱對方。", "敬稱朋友。", "正確。「後學」意同末學，是面對前輩或老師時極佳的自謙詞。", "敬稱主人。"]);
+
+            addQ("下列敬詞與謙詞的分類，哪一組完全正確？", 
+                ["敬詞：君、妾 / 謙詞：孤、卿", "敬詞：閣下、陛下 / 謙詞：在下、晚生", "敬詞：寒舍、拙荊 / 謙詞：大人、足下", "敬詞：敝人、鄙人 / 謙詞：兄臺、相公"], 1, 
+                ["妾是謙詞，卿是敬詞。", "正確。閣下/陛下尊稱他人；在下/晚生貶抑自己。", "寒舍/拙荊是謙詞；大人/足下是敬詞（完全顛倒）。", "敝人/鄙人是謙詞；兄臺/相公是敬詞（完全顛倒）。"]);
+
+            // Part 3: 常用禮貌詞語 - 相見與接待 (41-60)
+            addQ("初次與某位知名人士見面時，最適合用哪一句客套話作為開場？", 
+                ["久仰先生大名，如今一見果真名不虛傳。", "無端叨擾，還望您見諒。", "有失遠迎，失敬失敬！", "您的好意，我心領了。"], 0, 
+                ["正確。「久仰」正是用於初次見面時，表示仰慕已久的客套話。", "叨擾是感謝款待用。", "失迎是沒去迎接客人用。", "心領是婉拒用。"]);
+
+            addQ("你去朋友家作客，吃了一頓豐盛的晚餐準備離開時，你應該對主人說什麼來表達謝意？", 
+                ["未能親自為您接機，請恕我失迎之罪！", "無端叨擾，還望您見諒。", "久仰先生大名。", "小店今日開幕，歡迎各位光臨！"], 1, 
+                ["這是主人未接客的抱歉語。", "正確。「叨擾」是打擾之意，常用作感謝他人款待的客套話。", "初次見面用語。", "店家歡迎客人用語。"]);
+
+            addQ("如果有貴客突然造訪你的公司，而你因為開會沒有親自到門口迎接，你見到客人時第一句話最適合說：", 
+                ["奉上拙作一本，敬請指教！", "敢問老師有何高見？", "未能親自為您接機，請恕我失迎之罪！", "倘若各位不嫌棄，那我就獻醜了！"], 2, 
+                ["這是請人看文章。", "這是問人意見。", "正確。「失迎」正是用來表示對來訪客人失於迎候的歉意。", "這是準備表演前。"]);
+
+            addQ("承上題，除了「失迎」之外，講義中還提到哪一個詞語也常用來自責疏忽了對客人的禮數？", 
+                ["失敬", "心領", "賞光", "留步"], 0, 
+                ["正確。「失敬」常與失迎連用（有失遠迎，失敬失敬），表示自責疏忽了禮貌。", "心領是婉拒。", "賞光是請人來。", "留步是請人別送。"]);
+
+            addQ("朋友特地買了昂貴的禮物送你，但你覺得太貴重不能收，你可以委婉地說：「您的好意，我□□了。」", 
+                ["指教", "久仰", "心領", "奉陪"], 2, 
+                ["請人指導。", "初次見面。", "正確。「心領」表示心裡已經領受了情意，但實物婉拒，是很有禮貌的拒絕用語。", "陪伴。"]);
+
+            addQ("當你舉辦婚禮或宴會，在發送請帖時，最適合用哪一個詞語來邀請對方出席？", 
+                ["請您務必「賞光」。", "歡迎各位「叨擾」。", "請恕我「失迎」之罪。", "那我就「獻醜」了。"], 0, 
+                ["正確。「賞光」是請人光臨的敬詞，給足對方面子。", "叨擾是作客的人說的。", "失迎是沒迎接的道歉。", "獻醜是自己表演前說的。"]);
+
+            addQ("百貨公司週年慶，門口的廣播最常出現哪一句話？", 
+                ["久仰各位大名！", "歡迎各位光臨！", "請大家多多包涵！", "多謝承讓！"], 1, 
+                ["不合情境。", "正確。「光臨」是稱賓客來訪的敬詞，常用於商店歡迎顧客。", "沒犯錯不需要包涵。", "沒比賽不需承讓。"]);
+
+            addQ("作客完畢準備離開，主人熱情地要送你走到巷口。你為了體恤主人辛勞，可以客氣地說：", 
+                ["您請留步，不必送了！", "恕不奉陪！", "有失遠迎！", "敬請指教！"], 0, 
+                ["正確。「留步」是客人請主人不必遠送的貼心謙詞。", "奉陪通常是主人沒空陪客人時說的。", "有失遠迎是主人沒去接客人時說的。", "指教是請人指導。"]);
+
+            addQ("「失迎」與「留步」這兩個詞語，分別適用於人際交往的哪兩個階段？", 
+                ["皆適用於客人剛抵達時", "皆適用於客人準備離開時", "失迎用於客人抵達時；留步用於客人離開時", "失迎用於客人離開時；留步用於客人抵達時"], 2, 
+                ["留步用於離開。", "失迎用於抵達。", "正確。失迎是沒迎接(抵達)；留步是請別送(離開)。", "完全顛倒。"]);
+
+            addQ("下列哪一個禮貌詞語的組合，最常出現在初次見面交換名片的場合？", 
+                ["「叨擾」、「包涵」", "「久仰」、「失敬」", "「獻醜」、「承讓」", "「賞光」、「光臨」"], 1, 
+                ["作客/道歉用語。", "正確。初見面常說「久仰大名」，若自己一時沒認出對方，則會補上一句「失敬」。", "表演/比賽用語。", "邀請/歡迎用語。"]);
+
+            addQ("「無端叨擾，還望您見諒。」這句話中的「叨擾」，其核心意義是指：", 
+                ["責怪對方招待不周", "感謝對方花費時間、金錢款待自己", "請求對方原諒自己說錯話", "邀請對方下次來自己家玩"], 1, 
+                ["完全相反。", "正確。叨擾(打擾)是接受款待後，客氣地表示給對方添麻煩了。", "原諒說錯話通常用包涵。", "非邀請用語。"]);
+
+            addQ("「未能親自為您接機」的情境中，使用「失迎之罪」表達了說話者怎樣的態度？", 
+                ["推卸責任", "自傲與輕視", "自責與重視對方的禮節", "憤怒與不滿"], 2, 
+                ["非推卸。", "非自傲。", "正確。將沒接機誇大為一種「罪」，是極度客氣、重視對方的表現。", "非憤怒。"]);
+
+            addQ("「心領」一詞在人際溝通中的妙用在於：", 
+                ["可以毫不留情地拒絕別人", "能接受禮物同時又不會顯得貪心", "能婉轉地拒絕實質的物品或幫助，同時肯定對方的心意", "能強迫對方收下自己的禮物"], 2, 
+                ["不留情就不是客套話了。", "心領通常代表「不收實物」。", "正確。「心」領代表收下了心意，是保全雙方面子的完美拒絕法。", "非強迫。"]);
+
+            addQ("當你想邀請一位大人物來參加你的畫展，下列哪一種說法最得體？", 
+                ["請您務必來「叨擾」一下。", "希望您能「賞光」蒞臨指導。", "如果您不來就是「失敬」。", "期待您的「光臨」，我一定「留步」。"], 1, 
+                ["用錯詞，叨擾是作客者說的。", "正確。用「賞光」邀請，並請對方指導，非常得體。", "用錯詞且無禮。", "留步用錯情境。"]);
+
+            addQ("「小店今日開幕，歡迎各位光臨！」這句話中，「光臨」一詞凸顯了顧客的什麼地位？", 
+                ["如同君王般的地位", "如同晚輩般的地位", "尊貴客人的地位", "競爭對手的地位"], 2, 
+                ["太誇張。", "不符合商業禮儀。", "正確。「光臨」蘊含著客人到來能讓此地蓬蓽生輝之意，是尊稱賓客。", "非競爭對手。"]);
+
+            addQ("如果一位客人離開時說：「不用送了，請留步。」主人最合適的回答「不包含」下列何者？", 
+                ["招待不周，請多包涵。", "哪裡哪裡，慢走啊！", "好的，那我就失迎了。", "有空再來叨擾啊！(若為主人視角，應為：歡迎再來)"], 2, 
+                ["合理客套。", "合理客套。", "正確。「失迎」是用在客人剛來時沒迎接，用在客人離開時完全錯誤。", "主人應說「歡迎再來」，客人才是說「下次再來叨擾」。此選項(D)設計有點複雜，但C絕對是錯的。"]);
+
+            addQ("「賞光」與「光臨」雖然都有來到某地的意思，但用法上有何微妙差異？", 
+                ["賞光多用於自己去別人家；光臨多用於別人來自己家", "賞光多為事前主動的「邀請」；光臨多為對已到來或泛指賓客的「歡迎」", "賞光只能用於長輩；光臨只能用於平輩", "兩者完全沒有差異，可隨意替換"], 1, 
+                ["皆是別人來。", "正確。講義例句「請您務必賞光」是邀請；「歡迎各位光臨」是迎賓。", "無此嚴格輩分限制。", "語氣情境略有不同。"]);
+
+            addQ("下列哪一句客套話的組合最不合邏輯？", 
+                ["初次見面，久仰久仰！", "未能遠迎，真是失敬！", "這頓飯太豐盛了，真是叨擾了！", "你送的禮物太貴重，我只好失迎了。"], 3, 
+                ["合理。", "合理。", "合理。", "正確。收到貴重禮物若要拒絕應說「心領」，「失迎」是沒去迎接客人，完全搭不上邊。"]);
+
+            addQ("在臺灣的日常生活中，除了「叨擾」之外，我們也常聽到長輩用哪一句臺語表達類似「感謝款待/打擾了」的意思？(延伸思考題)", 
+                ["拍謝 (不好意思)", "勞力 (費心了)", "打攪 (打擾)", "以上皆有可能"], 3, 
+                ["(本題為無『以上皆是』原則下的特例修改) -> 應改為單一選項。"],
+            // Let's replace the above question to adhere strictly to the rule.
+            "在收到別人寄來的一箱水果時，如果你想打電話道謝並表示不好意思讓對方破費，下列哪一句話最得體？", 
+                ["收到水果了，真是失敬失敬！", "水果很甜，下次請繼續賞光。", "收到這麼多水果，真是讓您破費，太叨擾了。", "這箱水果我就心領了，請幫我吃掉。"], 2, 
+                ["失敬用錯地方。", "賞光用錯地方。", "正確。此處的「叨擾」延伸為感謝對方的花費與心意（打擾到對方的錢包/心力）。", "心領代表退回，與前半句「收到」且道謝的情境不合。"]);
+
+            addQ("「久仰」這個詞，從字面上來解釋，代表什麼意思？", 
+                ["很久沒有抬頭看天空了", "仰慕您的名氣已經很久了", "我們已經認識很久了", "希望你能長久仰望我"], 1, 
+                ["非字面直譯。", "正確。「久」為長久，「仰」為仰慕。初次見面時說久仰，是誇讚對方名氣大。", "久仰是用於「初次見面」。", "完全相反的自大語氣。"]);
+
+            // Part 4: 禮貌用語 - 交流與應對 (61-80)
+            addQ("當你完成了一篇作文，想請國文老師幫忙修改，你遞交文章時最適合說：", 
+                ["奉上拙作一篇，敬請指教！", "這是我的大作，請您過目。", "老師您好，請問今年貴庚？", "這篇文章寫得很好，請多包涵。"], 0, 
+                ["正確。「拙作」是謙稱自己的作品，「指教」是請人指正教導，非常得體。", "「大作」是用來稱呼別人的作品，不能自稱。", "問年紀，非常沒禮貌且突兀。", "寫得很好就不需要包涵了，邏輯矛盾。"]);
+
+            addQ("在會議中，輪到你發言前，你想先尊稱並詢問主管的意見，你應該說：", 
+                ["經理，請問您有何貴幹？", "經理，敢問您有何高見？", "經理，請您多多獻醜。", "經理，您的意見我心領了。"], 1, 
+                ["貴幹是問人來做什麼事。", "正確。「高見」是尊稱別人的意見，請主管先發表看法很得體。", "獻醜是自己表演前的謙詞，叫主管獻醜是大不敬。", "心領是拒絕別人的好意。"]);
+
+            addQ("如果有推銷員突然按你家門鈴，你打開門後第一句話最可能會問：", 
+                ["久仰大名！", "歡迎光臨寒舍！", "請問有何貴幹？", "請問今年貴庚？"], 2, 
+                ["不認識對方。", "推銷員通常不被視為受歡迎的賓客。", "正確。「貴幹」是詢問對方來做什麼事的敬詞，適合應對不請自來的人。", "問年紀太奇怪。"]);
+
+            addQ("「請問您今年貴庚？」這句話通常「不適合」用來問下列哪一種對象？", 
+                ["初次見面的長輩", "相親對象的父母", "受訪的企業家", "幼稚園的小孩"], 3, 
+                ["可以。", "可以。", "可以。", "正確。「貴庚」是較為正式、莊重的問年齡敬詞，對小孩通常直接問「幾歲了」，用貴庚顯得過度且不自然。"]);
+
+            addQ("在聚會中，你因為有急事必須先離開，你應該對還在場的朋友們說：", 
+                ["你們請自便，我尚有要務在身，恕不奉陪。", "你們留步，不用送我了，請多包涵。", "我先走了，請大家多多指教。", "抱歉，我失迎了。"], 0, 
+                ["正確。「奉陪」是陪伴的敬詞，「恕不奉陪」客氣地表達無法繼續陪伴的歉意。", "留步是對送行者說的，包涵用在這裡略顯生硬。", "指教是用在請求指導。", "失迎是客人剛來時說的。"]);
+
+            addQ("「如有冒犯，請多包涵。」這句話中的「包涵」是什麼意思？", 
+                ["把東西包起來", "包含很多內容", "請人諒解、寬容", "保證一定做到"], 2, 
+                ["非字面意思。", "那是「包含」。", "正確。講義定義「包涵」是請人諒解的謙詞，常用於道歉或事先打預防針。", "非保證。"]);
+
+            addQ("下列哪一組對話的禮貌用語使用完全正確？", 
+                ["甲：這是我寫的書。 乙：謝謝你的『拙作』，我會好好拜讀。", "甲：這份企劃案你覺得如何？ 乙：我的『高見』是...。", "甲：不好意思遲到了。 乙：沒關係，請多『包涵』。", "甲：請問您找王經理有何『貴幹』？ 乙：我是來談合作的。"], 3, 
+                ["拙作只能自稱，乙稱甲的書應為『大作』。", "高見只能尊稱別人的意見，乙應稱自己的意見為『淺見』。", "遲到者(甲)才需要請人包涵，乙應該說沒關係。", "正確。「貴幹」客氣地詢問對方來意，使用正確。"]);
+
+            addQ("在「奉上拙作一本，敬請指教！」這句話中，包含了一組對比強烈的詞語，分別是：", 
+                ["奉上 vs 一本", "拙作(謙) vs 指教(敬)", "拙作(敬) vs 指教(謙)", "奉上(敬) vs 敬請(謙)"], 1, 
+                ["非敬謙對比。", "正確。「拙作」是貶低自己作品的謙詞，「指教」是抬高對方能力、請求指導的敬詞。", "完全顛倒。", "奉上與敬請皆帶有敬意，無對比。"]);
+
+            addQ("如果你不同意別人的看法，但又想保持禮貌，你可以先說：「您的□□確實有道理，不過我認為...」", 
+                ["包涵", "高見", "貴幹", "失敬"], 1, 
+                ["請人原諒。", "正確。先用「高見」尊稱對方的意見，再提出自己的看法，是很好的溝通技巧。", "問人來意。", "自責疏忽。"]);
+
+            addQ("「恕不奉陪」一詞中，「恕」字的作用是什麼？", 
+                ["生氣地命令對方", "請求對方寬恕、原諒自己無法陪伴", "表示自己很寬宏大量", "警告對方不要生氣"], 1, 
+                ["非生氣。", "正確。「恕」有原諒之意，「恕不奉陪」即為請原諒我不能陪伴。", "非指自己。", "非警告。"]);
+
+            addQ("關於詢問對方資訊的敬詞，下列配對何者正確？", 
+                ["問年齡：貴幹", "問來意：貴庚", "問姓名：貴姓（或尊姓大名）", "問住址：寒舍"], 2, 
+                ["問來意才是貴幹。", "問年齡才是貴庚。", "正確。雖然講義未直接列出貴姓，但從「敢問這位兄臺貴姓」例句可知。", "寒舍是自稱住處，問人住處應為「府上」。"]);
+
+            addQ("「包涵」這個詞最常出現在下列哪一種情境的開場白或結語中？", 
+                ["致詞時自謙準備不足", "頒獎典禮上稱讚得獎者", "商店開幕歡迎顧客", "詢問陌生人的年紀"], 0, 
+                ["正確。演講者常說「準備倉促，若有疏漏請多包涵」，作為謙虛的開場或結語。", "不需包涵。", "不需包涵。", "不用包涵。"]);
+
+            addQ("下列哪一個詞語的組合，最能展現一個人在職場上的謙虛與好學？", 
+                ["「高見」、「指教」", "「貴庚」、「失迎」", "「留步」、「心領」", "「賞光」、「叨擾」"], 0, 
+                ["正確。常稱讚前輩有「高見」，並時常請前輩「指教」，最能展現謙虛好學。", "與好學無關。", "與好學無關。", "偏向社交應酬。"]);
+
+            addQ("若有人對你說：「這點小事，何足掛齒，您的讚美我實在不敢當，還請多多□□。」空格中填入何者最不合理？", 
+                ["包涵", "指教", "貴幹", "見諒 (同包涵意)"], 2, 
+                ["合理。", "合理(請多指導)。", "正確。貴幹是問來意，填在這裡完全語無倫次。", "合理。"]);
+
+            addQ("下列「」中的詞語，何者使用「錯誤」？", 
+                ["謝謝您提供的「高見」，讓我茅塞頓開。", "我這就為您帶路，請「奉陪」我來。", "未能及早回信，請多「包涵」。", "這篇論文是我的「拙作」，請不吝「指教」。"], 1, 
+                ["正確。", "錯誤。奉陪是「陪伴的敬詞」，這裡應該說「請『隨』我來」或「我來為您帶路」，叫別人「奉陪」自己是不禮貌的。", "正確。", "正確。"]);
+
+            addQ("「久仰」與「指教」在武林大會的對話中常連用：「在下□□大俠威名，今日特來請教，還望大俠不吝□□。」", 
+                ["失迎／包涵", "久仰／指教", "叨擾／賞光", "心領／留步"], 1, 
+                ["不合情境。", "正確。久仰威名(仰慕已久)，不吝指教(請多指導)，是標準武俠客套話。", "不合情境。", "不合情境。"]);
+
+            addQ("在「請問您今年貴庚」這句話中，「貴」字代表什麼語氣？", 
+                ["昂貴、花費很高", "珍貴、稀有", "尊稱對方的敬辭（如：貴國、貴校）", "諷刺對方老態龍鍾"], 2, 
+                ["非金錢價值。", "非數量稀有。", "正確。在禮貌用語中，「貴」常作為敬詞的前綴，尊稱對方的事物。", "非諷刺。"]);
+
+            addQ("「您請自便，我尚有要務在身，恕不奉陪。」這句話的潛台詞是：", 
+                ["我不想理你，你趕快走", "這裡交給你負責，我要去玩了", "我很忙必須離開，請你自己隨意，真不好意思", "我要留下來陪你，你隨便坐"], 2, 
+                ["太過粗魯，客套話的目的是保持禮貌。", "非去玩。", "正確。委婉表達必須離開的歉意，並請對方不用拘束。", "與「不奉陪」意思相反。"]);
+
+            addQ("「指教」一詞，包含了「指正」與「教導」兩層意思。當我們請人指教時，通常抱持著什麼樣的心態？", 
+                ["自以為是，等著看對方笑話", "虛心求教，承認自己可能還有不足之處", "敷衍了事，只是隨便說說", "強迫對方一定要給出意見"], 1, 
+                ["與指教心態矛盾。", "正確。請人指教就是一種謙虛的表現，願意接受批評與指導。", "不應預設為敷衍。", "非強迫。"]);
+
+            addQ("下列哪一個情境最適合使用「貴幹」？", 
+                ["打電話回家給媽媽時", "在路上遇到迷路的外國人時", "接起陌生號碼的推銷電話時", "去醫院探望生病的朋友時"], 2, 
+                ["對家人不用如此客套生硬。", "對迷路者通常問「需要幫忙嗎」。", "正確。面對不知來意的陌生人，用「請問有何貴幹」既保持距離又不失禮貌。", "對朋友太生硬。"]);
+
+            // Part 5: 禮貌用語 - 技能與競技 (81-90)
+            addQ("在公司尾牙上，主持人邀請你上臺唱一首歌，你上臺前可以謙虛地說：", 
+                ["那我就承讓了！", "倘若各位不嫌棄，那我就獻醜了！", "請大家多多指教我的高見。", "各位請留步！"], 1, 
+                ["承讓是比賽獲勝用。", "正確。講義指出「獻醜」是向人表露自己技能時的謙詞，非常適合表演前說。", "高見是稱別人意見。", "留步是送客用。"]);
+
+            addQ("「獻醜」這個詞的字面意思與實際用法的關聯是：", 
+                ["自認表演真的很醜，故意讓大家笑", "謙稱自己的技能粗陋，拿出來展示就像是在出洋相，藉此降低大家的期待並表達謙虛", "批評別人的表演很醜", "要求別人獻出醜陋的東西"], 1, 
+                ["非故意出洋相。", "正確。這是一種極度謙卑的說法，即使自己實力很強，也會說自己是「獻醜」。", "是用來稱自己，不能稱別人。", "非要求別人。"]);
+
+            addQ("在一場激烈的象棋比賽結束後，獲勝的一方為了展現風度，最適合對落敗的一方說：", 
+                ["你真是獻醜了！", "承讓承讓，你也很厲害！", "恕不奉陪！", "請多包涵！"], 1, 
+                ["不可以說別人獻醜，這是大忌。", "正確。講義定義「承讓」是將勝利歸因於承蒙對方禮讓的謙詞，展現極佳的運動家精神。", "不合情境。", "通常不需要請對方包涵(除非犯規)。"]);
+
+            addQ("「多謝承讓」這句話中，「讓」字體現了中國傳統文化中的哪一種美德？", 
+                ["爭權奪利", "謙虛退讓，不獨占功勞", "阿諛奉承", "虛偽造作"], 1, 
+                ["相反。", "正確。贏了比賽卻說是對方「讓」出來的，正是謙虛不居功的最高表現。", "非奉承。", "雖然是客套，但文化上視為美德而非單純虛偽。"]);
+
+            addQ("下列關於「獻醜」與「承讓」的比較，何者正確？", 
+                ["兩者都是在比賽獲勝後使用", "兩者都是在表演前使用", "獻醜用於展示技能前；承讓用於競技獲勝後", "獻醜是敬詞；承讓是謙詞"], 2, 
+                ["獻醜不是。", "承讓不是。", "正確。獻醜是秀技能前的自謙；承讓是贏了之後歸功對方的自謙。", "兩者都是謙詞。"]);
+
+            addQ("如果一位大廚在端出他的拿手好菜前說了「獻醜」，而在美食大賽奪冠後說了「承讓」。這顯示他是一位怎樣的人？", 
+                ["極度沒自信的人", "驕傲自大的人", "深諳傳統禮節、懂得謙虛待人的人", "不誠實的人"], 2, 
+                ["客套話不等於沒自信。", "完全相反。", "正確。在適當的時機使用適當的謙詞，是教養與禮節的展現。", "非不誠實。"]);
+
+            addQ("下列哪一個選項的對話，完全弄錯了「獻醜」與「承讓」的用法？", 
+                ["甲(表演完)：獻醜了！ 乙：哪裡，太精彩了！", "甲(下棋贏了)：承讓！ 乙：你棋藝精湛，我甘拜下風。", "甲(上臺前)：我來承讓一首曲子。 乙(聽完)：你唱得真是獻醜啊！", "甲(拿畫作給人看)：這幅畫獻醜了。 乙：畫得真好！"], 2, 
+                ["正確用法。", "正確用法。", "錯誤。上臺前應說「獻醜」，且絕對不能批評別人「獻醜」（獻醜只能自稱）。這是雙重錯誤。", "正確用法。"]);
+
+            addQ("「承讓」一詞，若拆解字面意義，「承」代表承受、蒙受，「讓」代表禮讓。合起來的意思最接近下列何者？", 
+                ["我承認你讓我", "我承受不了你的禮讓", "蒙受您的禮讓（我才能獲勝）", "請你承諾會讓我"], 2, 
+                ["語氣不對。", "意思不對。", "正確。這是一種將功勞推給對方客氣說法。", "非請求。"]);
+
+            addQ("在KTV裡，輪到你唱歌時，你想客氣一下，你『不應該』說哪一句話？", 
+                ["那我就獻醜了。", "我的歌聲不好聽，請大家多包涵。", "接下來換我獻上高見了。", "如果有走音，請大家見諒。"], 2, 
+                ["適當的謙詞。", "適當的謙詞。", "錯誤。「高見」是稱別人的意見，唱歌也不是發表意見，此句完全用錯。", "適當的謙詞。"]);
+
+            addQ("體育競賽中，無論輸贏都要保持風度。贏家說「承讓」，輸家通常可以回敬哪一句話來稱讚對方？", 
+                ["你真是獻醜了！", "哪裡，是您技高一籌！(或：是我才疏學淺)", "你這是在叨擾我！", "恕不奉陪！"], 1, 
+                ["大忌。", "正確。贏家謙虛，輸家大方稱讚對方技術好，是常見的得體應答。", "用錯詞。", "沒風度。"]);
+
+            // Part 6: 綜合情境與易混淆辨析 (91-100)
+            addQ("王老闆新居落成，李經理前去祝賀。下列對話何者最得體？", 
+                ["李：恭喜王老闆，今日特來光臨您的寒舍！ 王：哪裡哪裡，請進。", "李：恭喜王老闆搬新家！ 王：感謝閣下賞光，歡迎光臨寒舍！", "李：王老闆，您的拙荊真漂亮！ 王：謝謝您的包涵。", "李：王老闆，請問您的寒舍值多少錢？ 王：無端叨擾。"], 1, 
+                ["「光臨」是主人對客人說的，不能說自己光臨。「寒舍」只能稱自己家，不能稱別人家(應稱府上/貴府)。", "正確。王老闆用「閣下」尊稱李，用「賞光」感謝其到來，用「寒舍」謙稱自家，完全正確。", "「拙荊」只能稱自己妻子(應稱尊夫人)。", "對話極不禮貌且詞語亂用。"]);
+
+            addQ("下列書信提稱語的配對，何者最容易鬧笑話？", 
+                ["寫給老師：後學某某敬上", "寫給好朋友：足下大鑒", "寫給長輩：晚生某某敬叩", "寫給部屬：陛下鈞鑒"], 3, 
+                ["正確，自謙後學。", "正確，尊稱朋友足下。", "正確，自謙晚生。", "錯誤。陛下是專對君王的敬稱，寫給部屬用陛下是大逆不道(或極度反諷)。"]);
+
+            addQ("在古代，如果一個平民百姓不小心對皇帝自稱為「鄙人」，可能會發生什麼事？", 
+                ["皇帝會覺得他很謙虛而賞賜他", "可能會被治罪，因為對皇帝必須自稱「微臣」或「草民」等特定謙詞", "皇帝會馬上封他為將軍", "皇帝會請他吃頓飯表示「叨擾」"], 1, 
+                ["古代階級森嚴，用詞有嚴格規定。", "正確。「鄙人」雖是謙詞，但多用於平輩或一般交際。面對君王有專屬的自稱（如臣、草民等），亂用可能被視為失儀或不敬。", "不可能。", "叨擾用法錯誤。"]);
+
+            addQ("下列這段短文中，共有幾個「謙詞」？<br>「(甲)在下才疏學淺，這篇(乙)拙作若有疏漏，還請(丙)閣下多多(丁)包涵，(戊)晚生感激不盡。」", 
+                ["2個", "3個", "4個", "5個"], 3, 
+                ["少算。", "少算。", "正確。(甲)在下、(乙)拙作、(丁)包涵、(戊)晚生，共4個。(丙)閣下是敬詞。", "多算。"]);
+
+            addQ("小強在寫給客戶的信中寫道：「隨信附上公司的產品型錄，請您參考。如有任何疑問，歡迎隨時來信『指教』。」這裡的『指教』能否替換為『高見』？", 
+                ["可以，兩者意思完全一樣", "不可以，因為高見是名詞（指好的意見），指教是動詞（指給予指導）", "可以，因為都是敬詞", "不可以，因為高見是謙詞"], 1, 
+                ["詞性與用法不同。", "正確。「來信指教」是請對方做出指導的動作；若要用高見，應改為「希望能聽聽您的『高見』」。兩者不能直接在原句替換。", "雖都是敬詞但語法不通。", "高見是敬詞。"]);
+
+            addQ("下列哪一組詞語，一個是「稱呼對方的敬詞」，另一個是「稱呼自己的謙詞」，且配對邏輯最為對應？", 
+                ["閣下 ／ 陛下", "老爺 ／ 相公", "貴庚 ／ 貴幹", "足下 ／ 敝人"], 3, 
+                ["皆為敬詞。", "皆為敬詞。", "皆為敬詞。", "正確。「足下」是尊稱對方(朋友)，「敝人」是謙稱自己，是一組標準的敬謙對比。"]);
+
+            addQ("「失敬」與「失迎」雖然都帶有歉意，但如果客人都已經坐下來喝茶聊天到一半了，你才突然發現他是某位大名人，這時你應該說：", 
+                ["啊！原來您就是李大師，真是失迎了！", "啊！原來您就是李大師，真是失敬失敬！", "啊！原來您就是李大師，請多包涵！", "啊！原來您就是李大師，恕不奉陪！"], 1, 
+                ["失迎用在剛到沒去門口接。", "正確。聊天到一半才認出身分，是「眼拙、沒有認出尊貴身分」的疏忽，用「失敬」最準確。", "包涵通常用於自己做錯事或準備不足，認不出人說失敬更專業。", "不禮貌。"]);
+
+            addQ("在閱讀古文文獻時，看到「孤與卿」的對話，我們可以推斷這兩人的身分關係最可能是：", 
+                ["丈夫與妻子", "朋友與朋友", "君王與臣子", "老師與學生"], 2, 
+                ["丈夫不稱孤。", "朋友不稱孤。", "正確。「孤」是君王自稱，「卿」是君王對臣子的敬稱。", "老師不稱孤。"]);
+
+            addQ("「謙詞」與「敬詞」的運用，最能體現中華文化中的哪一種核心價值？", 
+                ["尊卑分明、男尊女卑", "禮尚往來、以和為貴、貶己尊人", "虛偽客套、言不由衷", "強詞奪理、得理不饒人"], 1, 
+                ["雖然古代有此現象，但非敬謙詞的核心美德。", "正確。敬詞與謙詞的核心精神在於「貶抑自己，尊崇他人」，透過禮貌的言語來維持人際關係的和諧。", "這是一種負面的誤解。", "完全相反。"]);
+
+            addQ("會考總複習挑戰：請找出下列情境中，用語最完美無瑕的選項：", 
+                ["甲對長輩說：感謝您的賞光，晚生這就獻醜了，若有疏漏請多包涵。", "乙對平輩說：兄臺的寒舍真是金碧輝煌，令後學望塵莫及。", "丙對下屬說：卿家有何高見？若無，就請留步吧。", "丁對客人說：久仰閣下大名，今日光臨敝號，真讓小店失敬了！"], 0, 
+                ["正確。稱長輩用「賞光」(請對方來)，自稱「晚生」，表演用「獻醜」，道歉用「包涵」，搭配完美。", "稱別人家不能用「寒舍」(應為貴府/府上)；對平輩通常不自稱「後學」。", "「留步」是客人叫主人別送，上司對下屬不用留步。", "客人來到店裡，如果沒有怠慢，不需要說「失敬」(失敬是沒認出人或有失禮數時用，一般迎賓說蓬蓽生輝即可)。"]);
+
+
+            return qList;
+        };
+
+        let currentTab = 'login';
+        let learnSubTab = 'sec1';
+        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+        let isLearnMenuOpen = false;
+
+        const el = id => document.getElementById(id);
+
+        const syncQuestionsFormat = (state) => {
+            if (!state || !state.questions) return state;
+            if (state.questions.length > 0 && !state.questions[0].exps) {
+                const freshQuestions = generate100Questions();
+                state.questions = state.questions.map(oldQ => {
+                    const freshQ = freshQuestions.find(fq => fq.q === oldQ.q);
+                    if (freshQ) return { ...freshQ, showExplanation: oldQ.showExplanation, selectedAns: oldQ.selectedAns, isCorrect: oldQ.isCorrect };
+                    return oldQ;
+                });
+            }
+            return state;
+        };
+
+        window.toggleLearnMenu = (show) => {
+            isLearnMenuOpen = typeof show === 'boolean' ? show : !isLearnMenuOpen;
+            const drawer = el('learn-drawer');
+            const overlay = el('learn-overlay');
+            if(drawer && overlay) {
+                if(isLearnMenuOpen) {
+                    drawer.classList.remove('-translate-x-full');
+                    overlay.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('-translate-x-full');
+                    overlay.classList.add('hidden');
+                }
+            }
+        };
+
+        const listenToGlobalUsers = () => {
+            if (!isFirebaseInitialized || !currentUser) return;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            unsubscribeGlobal = onSnapshot(globalRef, (snap) => {
+                if(snap.exists()) recentUsers = snap.data().users || [];
+                else recentUsers = [];
+                if(currentTab === 'login') renderLogin();
+            });
+        };
+
+        const listenToUserDocument = (name) => {
+            if (!isFirebaseInitialized || !currentUser) {
+                loadLocalData(name);
+                return;
+            }
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, name);
+            if(unsubscribeUser) unsubscribeUser();
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, data);
+                    saveLocalData(name);
+                    
+                    if (userData.quizState) {
+                        userData.quizState = syncQuestionsFormat(userData.quizState); 
+                        const cloudStateStr = JSON.stringify(userData.quizState);
+                        const localStateStr = JSON.stringify(quizState);
+                        if (cloudStateStr !== localStateStr) {
+                            quizState = userData.quizState;
+                            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, cloudStateStr); } catch(e) {}
+                            if(currentTab === 'quiz') {
+                                let scrollPos = 0;
+                                const scrollContainer = document.getElementById('quiz-scroll-container');
+                                if (scrollContainer) scrollPos = scrollContainer.scrollTop;
+                                renderQuizView(document.getElementById('main-content'));
+                                setTimeout(() => {
+                                    const newScrollContainer = document.getElementById('quiz-scroll-container');
+                                    if (newScrollContainer && scrollPos > 0) newScrollContainer.scrollTop = scrollPos;
+                                }, 10);
+                                const navStats = document.getElementById('nav-quiz-stats');
+                                if (navStats) {
+                                    if (quizState.active) {
+                                        navStats.classList.remove('hidden');
+                                        navStats.classList.add('flex');
+                                        updateQuizStats();
+                                    } else {
+                                        navStats.classList.add('hidden');
+                                        navStats.classList.remove('flex');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()], quizState: null };
+                    setDoc(userRef, userData, { merge: true });
+                }
+                if(currentTab === 'favorites') renderFavorites();
+                else if(currentTab === 'mistakes') renderMistakes();
+                else if(currentTab === 'history') renderHistory();
+            }, (error) => console.error("Listen user error", error));
+        };
+
+        const saveUserDataToCloud = async () => {
+            saveLocalData(username);
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+            try { await setDoc(userRef, userData, { merge: true }); } catch(e) { console.error("Firebase save error:", e); }
+        };
+
+        const loadLocalData = (name) => {
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
+                if (localData) userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, JSON.parse(localData));
+            } catch(e) {}
+        };
+
+        const saveLocalData = (name) => {
+            try { if (name) localStorage.setItem(`${COLLECTION_NAME}_${name}_data`, JSON.stringify(userData)); } catch(e) {}
+        };
+
+        const saveQuizState = () => {
+            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            userData.quizState = quizState;
+            saveUserDataToCloud();
+        };
+
+        const loadLocalQuizState = () => {
+            if (userData.quizState) { quizState = syncQuestionsFormat(userData.quizState); return; }
+            try {
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = syncQuestionsFormat(q);
+                }
+            } catch(e) {}
+        };
+
+        const initApp = async () => {
+            renderApp();
+            const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_user`);
+            if (isFirebaseInitialized) {
+                await initAuth(); 
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        listenToGlobalUsers();
+                        if (lastUser) {
+                            username = lastUser;
+                            setTimeout(() => listenToUserDocument(username), 200);
+                            loadLocalQuizState();
+                            renderMain();
+                        } else renderLogin();
+                    } else renderLogin();
+                });
+            } else {
+                if (lastUser) {
+                    username = lastUser;
+                    loadLocalData(username);
+                    loadLocalQuizState();
+                    renderMain();
+                } else renderLogin();
+            }
+        };
+
+        window.handleLogin = async (name) => {
+            if(!name.trim()) {
+                const inputEl = document.getElementById('usernameInput');
+                inputEl.classList.add('border-red-500', 'bg-red-50');
+                inputEl.placeholder = "名稱不能為空！";
+                setTimeout(() => {
+                    inputEl.classList.remove('border-red-500', 'bg-red-50');
+                    inputEl.placeholder = "✍️ 請輸入您的姓名/座號";
+                }, 2000);
+                return;
+            }
+            username = name;
+            localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
+            if (isFirebaseInitialized && currentUser) {
+                const now = new Date().toISOString();
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                try {
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
+                        if (userData.quizState) {
+                            quizState = syncQuestionsFormat(userData.quizState);
+                            try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
+                        }
+                    } else loadLocalData(username);
+                    if (!userData.loginHistory) userData.loginHistory = [];
+                    userData.loginHistory.push(now);
+                    if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50);
+                    await setDoc(userRef, userData, { merge: true });
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username);
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10);
+                    await setDoc(globalRef, { users }, { merge: true });
+                } catch(e) { console.error("Login data sync error:", e); }
+                listenToUserDocument(username);
+            } else {
+                loadLocalData(username);
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(new Date().toISOString());
+                saveLocalData(username);
+            }
+            renderMain();
+            initAudio(); // Initialize audio on first user interaction
+        };
+
+        const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col bg-amber-50"></div>`; };
+
+        window.renderLogin = () => {
+            currentTab = 'login';
+            el('view-container').innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-6 z-0">
+                    <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 -z-20"></div>
+                    <div class="absolute -top-20 -left-20 w-96 h-96 bg-gradient-to-r from-indigo-300 to-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10"></div>
+                    <div class="absolute top-40 -right-20 w-80 h-80 bg-gradient-to-r from-purple-300 to-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 1s;"></div>
+                    <div class="absolute -bottom-32 left-1/3 w-80 h-80 bg-gradient-to-r from-rose-300 to-indigo-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse -z-10" style="animation-delay: 2s;"></div>
+                    <div class="absolute top-6 right-6 z-20">
+                        <div class="flex flex-col items-end gap-3 w-full md:w-auto">
+                            <div class="glass-card px-4 py-2 rounded-full shadow-sm text-sm font-bold text-indigo-800 flex items-center border border-white/50">
+                                <span class="status-dot ${connectionStatus === 'loading' ? 'status-loading' : connectionStatus === 'success' ? 'status-success' : 'status-error'}"></span>
+                                ${connectionStatus === 'loading' ? '雲端讀取中... ⏳' : connectionStatus === 'success' ? '雲端已同步 ☁️✨' : '雲端連線失敗 ❌'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl z-10 w-[42rem] max-w-[95vw] text-center border border-white/60">
+                        <div class="w-24 h-24 bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-6">
+                            <span class="text-6xl text-white">🎒</span>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-indigo-950 mb-4 tracking-widest leading-tight">敬詞、謙詞<br>✨🌈</h1>
+                        <p class="text-indigo-600 mb-10 text-xl md:text-2xl font-bold bg-indigo-100 inline-block px-5 py-2 rounded-full border border-indigo-200 shadow-sm">🎯 100題 會考魔王版 👑</p>
+                        <div class="space-y-6">
+                            <input type="text" id="usernameInput" placeholder="✍️ 請輸入您的姓名/座號" class="w-full px-6 py-5 text-xl rounded-2xl border-2 border-indigo-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 text-center transition-all bg-white/80 backdrop-blur-sm shadow-inner">
+                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-bold py-5 px-6 text-2xl rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1">
+                                進入學習系統 🚀🌈🎉
+                            </button>
+                        </div>
+                        <div class="mt-10 border-t border-indigo-200/50 pt-6">
+                            <p class="text-base text-indigo-700/60 mb-4 font-bold tracking-wide">☁️ 雲端最近登入 👥</p>
+                            <div class="flex flex-wrap justify-center gap-3">
+                                ${recentUsers.length > 0 ? recentUsers.slice().reverse().slice(0, 8).map(u => `<button onclick="handleLogin('${u.name}')" class="text-base font-bold bg-white/80 border-2 border-indigo-200 text-indigo-800 hover:bg-indigo-100 hover:text-indigo-900 hover:border-indigo-400 px-5 py-2.5 rounded-xl shadow-sm transition-all">${u.name}</button>`).join('') : `<span class="text-base text-indigo-700/60 bg-white/50 px-5 py-2.5 rounded-xl">尚無紀錄或尚未連線</span>`}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderMain = () => {
+            el('view-container').innerHTML = `
+                <nav class="glass-nav text-white shadow-lg z-20 shrink-0" style="background: rgba(225, 29, 72, 0.9);">
+                    <div class="w-full px-2 sm:px-4 md:px-6 lg:px-8 mx-auto">
+                        <div class="flex justify-between items-center h-20 w-full overflow-x-auto scrollbar-hide gap-2 md:gap-4">
+                            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                                <span class="font-extrabold text-xl md:text-2xl lg:text-xl xl:text-3xl tracking-widest hidden lg:flex items-center shrink-0 text-white drop-shadow-md">
+                                    <span class="bg-white/20 p-2 rounded-xl mr-2 xl:mr-3 shadow-sm">📖</span>敬詞、謙詞 ✨
+                                </span>
+                                <div class="flex items-center bg-white/20 px-2 py-1.5 md:px-3 rounded-full border border-white/10 shadow-inner text-sm md:text-base font-medium shrink-0">
+                                    <span class="status-dot ${connectionStatus === 'loading' ? 'bg-amber-400' : connectionStatus === 'success' ? 'bg-emerald-400' : 'bg-red-400'}"></span>
+                                    <span class="hidden sm:inline text-white">${connectionStatus === 'loading' ? '讀取中' : connectionStatus === 'success' ? '已同步' : '連線失敗'}</span>
+                                </div>
+                                <div id="nav-quiz-stats" class="hidden items-center ml-1 sm:ml-2 animate-fade-in shrink-0 gap-2 md:gap-3">
+                                    <div class="flex items-center bg-white px-3 py-1.5 md:px-4 md:py-1.5 rounded-xl shadow-md text-sm md:text-lg font-bold shrink-0 text-indigo-950">
+                                        <span class="text-emerald-600 flex items-center"><span class="mr-1 md:mr-2">✅</span><span id="nav-stat-correct">0</span></span>
+                                        <div class="w-px bg-slate-300 h-4 md:h-5 mx-2 md:mx-3"></div>
+                                        <span class="text-rose-600 flex items-center"><span class="mr-1 md:mr-2">❌</span><span id="nav-stat-incorrect">0</span></span>
+                                    </div>
+                                    <div class="hidden xl:flex flex-col w-24 lg:w-32 shrink-0">
+                                        <div class="w-full bg-rose-950/40 rounded-full h-3.5 overflow-hidden shadow-inner border border-white/20">
+                                            <div id="nav-stat-progress-bar" class="bg-gradient-to-r from-amber-300 to-amber-500 h-full rounded-full transition-all duration-500 relative overflow-hidden" style="width: 0%">
+                                                <div class="absolute inset-0 bg-white/30 w-full h-full" style="background-image: linear-gradient(45deg,rgba(255,255,255,.2) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.2) 50%,rgba(255,255,255,.2) 75%,transparent 75%,transparent); background-size: 1rem 1rem;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 shrink-0 pl-1 md:pl-2">
+                                <button onclick="switchTab('learn')" id="nav-learn" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🎯</span>測驗(100)</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">💖</span>最愛</button>
+                                <button onclick="switchTab('history')" id="nav-history" class="whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10"><span class="mr-1.5 hidden sm:inline">📜</span>紀錄</button>
+                                
+                                <div class="ml-1 sm:ml-2 lg:ml-4 flex items-center pl-2 sm:pl-3 lg:pl-5 border-l border-white/30 shrink-0 whitespace-nowrap gap-1 md:gap-2">
+                                    <div class="text-sm md:text-base lg:text-lg xl:text-xl font-bold bg-white/20 px-2 py-1.5 md:px-3 lg:px-4 lg:py-2 rounded-xl text-white shadow-inner flex items-center">
+                                        <span class="mr-1 lg:mr-2">👤</span>${username}
+                                    </div>
+                                    <button onclick="deleteUserData()" class="text-white/70 hover:text-white hover:bg-white/20 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="刪除帳號紀錄">🗑️</button>
+                                    <button onclick="logout()" class="text-white/70 hover:text-white hover:bg-white/20 p-1.5 lg:p-2 rounded-lg transition-colors text-base lg:text-xl" title="登出">🚪</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+                <div id="main-content" class="flex-1 overflow-hidden flex flex-col w-full z-10 relative">
+                    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+CjxyZWN0IHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgZmlsbD0ibm9uZSIvPgo8Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIxIiBmaWxsPSIjZjVjNWMyIi8+Cjwvc3ZnPg==')] opacity-50 z-0"></div>
+                </div>
+            `;
+            switchTab('learn');
+        };
+
+        window.deleteUserData = async () => {
+            if(!confirm(`確定要從雲端刪除選手 ${username} 的所有資料？此操作無法復原！`)) return;
+            if(!confirm(`⚠️ 再次警告：這將永久刪除 ${username} 的所有進度、錯題與紀錄！\n\n您真的確定要執行刪除嗎？`)) return;
+            try {
+                if (isFirebaseInitialized && currentUser) {
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const snap = await getDoc(globalRef);
+                    if(snap.exists()) {
+                        let users = snap.data().users || [];
+                        users = users.filter(u => u.name !== username);
+                        await setDoc(globalRef, { users }, { merge: true });
+                    }
+                    const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                    await setDoc(userRef, { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, { merge: true });
+                }
+                localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+                userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+                if(unsubscribeUser) unsubscribeUser();
+                username = '';
+                renderLogin();
+            } catch(e) { alert("刪除失敗，請稍後再試"); }
+        };
+
+        window.logout = () => {
+            username = '';
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+            quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+            if(unsubscribeUser) unsubscribeUser();
+            renderLogin();
+        };
+
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
+                const btn = el(`nav-${t}`);
+                if(btn) {
+                    if(t === tab) btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-white bg-white/20 text-white shadow-lg';
+                    else btn.className = 'whitespace-nowrap px-2 py-2 md:px-3 lg:px-4 lg:py-2.5 rounded-xl text-sm md:text-base lg:text-lg xl:text-xl font-bold transition-all duration-200 border-2 border-transparent text-white/70 hover:text-white hover:bg-white/10';
+                }
+            });
+            const navStats = el('nav-quiz-stats');
+            if (navStats) {
+                if (tab === 'quiz' && quizState.active) {
+                    navStats.classList.remove('hidden'); navStats.classList.add('flex'); updateQuizStats();
+                } else { navStats.classList.add('hidden'); navStats.classList.remove('flex'); }
+            }
+            const content = el('main-content');
+            if(tab === 'learn') renderLearnView(content);
+            if(tab === 'quiz') renderQuizView(content);
+            if(tab === 'mistakes') renderMistakes(content);
+            if(tab === 'favorites') renderFavorites(content);
+            if(tab === 'history') renderHistory(content);
+        };
+
+        const renderLearnView = (container) => {
+            const currentData = learnData.find(d => d.id === learnSubTab);
+            const themeColors = {
+                'orange': 'text-orange-900 bg-orange-50 border-orange-200',
+                'teal': 'text-teal-900 bg-teal-50 border-teal-200',
+                'emerald': 'text-emerald-900 bg-emerald-50 border-emerald-200',
+                'purple': 'text-purple-900 bg-purple-50 border-purple-200',
+                'pink': 'text-pink-900 bg-pink-50 border-pink-200',
+                'amber': 'text-amber-900 bg-amber-50 border-amber-200',
+                'rose': 'text-rose-900 bg-rose-50 border-rose-200',
+                'blue': 'text-blue-900 bg-blue-50 border-blue-200'
+            };
+            const activeTheme = currentData && currentData.theme ? themeColors[currentData.theme] : 'text-indigo-900 bg-indigo-50 border-indigo-200';
+
+            container.innerHTML = `
+                <div class="w-full ${activeTheme} border-b p-4 flex items-center shadow-sm z-10 shrink-0 overflow-hidden transition-colors duration-300">
+                    <button onclick="toggleLearnMenu(true)" class="text-indigo-800 hover:text-rose-600 focus:outline-none flex items-center px-4 py-2 bg-white/80 rounded-xl border border-white shadow-sm mr-4 transition-all hover:shadow">
+                        <i class="fas fa-bars text-xl md:mr-3"></i>
+                        <span class="font-bold text-lg hidden md:inline tracking-wide">單元選單</span>
+                    </button>
+                    <span class="font-extrabold text-xl md:text-2xl lg:text-3xl truncate drop-shadow-sm" id="current-learn-title">${currentData ? currentData.title : ''}</span>
+                </div>
+                <div id="learn-overlay" onclick="toggleLearnMenu(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-30 hidden transition-opacity duration-300"></div>
+                <div id="learn-drawer" class="fixed inset-y-0 left-0 w-[24rem] max-w-[85vw] bg-white border-r border-indigo-100 z-40 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto shadow-2xl flex flex-col">
+                    <div class="p-6 bg-rose-50 flex justify-between items-center border-b border-rose-100 shrink-0">
+                        <span class="font-extrabold text-2xl text-rose-900">📑 學習目錄 🗺️</span>
+                        <button onclick="toggleLearnMenu(false)" class="text-rose-400 hover:text-rose-600 transition-colors bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-rose-100"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                    <ul class="py-4 flex-1 px-3 space-y-1">
+                        ${learnData.map(d => {
+                            const isSelected = learnSubTab === d.id;
+                            const themeConfig = {
+                                'orange': isSelected ? 'bg-orange-50 text-orange-900 border-orange-500' : 'hover:bg-orange-50/50',
+                                'teal': isSelected ? 'bg-teal-50 text-teal-900 border-teal-500' : 'hover:bg-teal-50/50',
+                                'emerald': isSelected ? 'bg-emerald-50 text-emerald-900 border-emerald-500' : 'hover:bg-emerald-50/50',
+                                'purple': isSelected ? 'bg-purple-50 text-purple-900 border-purple-500' : 'hover:bg-purple-50/50',
+                                'pink': isSelected ? 'bg-pink-50 text-pink-900 border-pink-500' : 'hover:bg-pink-50/50',
+                                'amber': isSelected ? 'bg-amber-50 text-amber-900 border-amber-500' : 'hover:bg-amber-50/50',
+                                'rose': isSelected ? 'bg-rose-50 text-rose-900 border-rose-500' : 'hover:bg-rose-50/50',
+                                'blue': isSelected ? 'bg-blue-50 text-blue-900 border-blue-500' : 'hover:bg-blue-50/50'
+                            };
+                            const defaultClass = isSelected ? 'bg-indigo-50 text-indigo-900 border-indigo-500 shadow-sm' : 'text-slate-600 border-transparent hover:bg-indigo-50';
+                            const activeClass = d.theme ? themeConfig[d.theme] : defaultClass;
+                            return `
+                            <li>
+                                <button onclick="selectLearnTab('${d.id}')" id="ltab-${d.id}" class="w-full text-left px-5 py-4 text-lg md:text-xl font-bold rounded-xl transition-all border-l-4 ${isSelected ? activeClass + ' shadow-sm' : 'text-slate-600 border-transparent hover:bg-indigo-50 hover:pl-6 hover:text-indigo-800'}">
+                                    ${d.title}
+                                </button>
+                            </li>
+                        `}).join('')}
+                    </ul>
+                </div>
+                <div class="flex-1 p-4 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden w-full relative z-10" id="learn-content-area"></div>
+            `;
+            renderLearnContent();
+        };
+
+        window.selectLearnTab = (id) => {
+            learnSubTab = id;
+            renderLearnView(el('main-content')); 
+            toggleLearnMenu(false);
+        };
+
+        window.renderLearnContent = () => {
+            const area = el('learn-content-area');
+            if(!area) return;
+            const data = learnData.find(d => d.id === learnSubTab);
+            area.innerHTML = `<div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto animate-fade-in pb-12">${data.content}</div>`;
+        };
+
+        const renderQuizView = (container) => {
+            if(!quizState.active) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto relative z-10">
+                        <div class="glass-card p-8 md:p-12 rounded-3xl shadow-2xl text-center max-w-4xl lg:max-w-5xl w-full border border-white/60 relative overflow-hidden">
+                            <div class="absolute top-0 right-0 w-40 h-40 bg-rose-100 rounded-bl-full -z-10 opacity-50"></div>
+                            <div class="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full mx-auto mb-8 flex items-center justify-center shadow-lg">
+                                <span class="text-6xl md:text-7xl text-white">🧠</span>
+                            </div>
+                            <h2 class="text-3xl md:text-5xl font-extrabold mb-6 text-rose-950 tracking-wide">敬詞、謙詞 100題挑戰 🏆🔥</h2>
+                            <p class="text-rose-800/80 mb-10 text-xl md:text-2xl leading-loose">
+                                徹底搞懂各種社交場合的敬謙詞，提升語文素養與應對進退的能力！<br>
+                                <span class="bg-rose-100 text-rose-800 font-bold px-5 py-2 rounded-full inline-block mt-6 border border-rose-200 shadow-sm">🌊 瀑布流模式</span><br>
+                                <span class="text-lg md:text-xl text-rose-600 mt-3 block font-bold">🎯 點擊選項後，詳細解析將直接顯示在每個選項框框內，無須滑動對照！</span>
+                            </p>
+                            <button onclick="startQuiz()" class="w-full sm:w-auto bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold py-5 px-16 text-2xl md:text-3xl rounded-2xl shadow-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl">
+                                開始挑戰 🚀🔥
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                renderQuizWaterfall(container);
+            }
+        };
+
+        window.startQuiz = () => {
+            initAudio(); // Explicitly init audio on button click
+            const qList = [...generate100Questions()].sort(() => 0.5 - Math.random()).map(q => ({
+                ...q, selectedAns: null, showExplanation: false, isCorrect: false
+            }));
+            quizState = { active: true, isFinished: false, questions: qList };
+            saveQuizState();
+            renderQuizView(el('main-content'));
+            const navStats = el('nav-quiz-stats');
+            if (navStats) { navStats.classList.remove('hidden'); navStats.classList.add('flex'); }
+            updateQuizStats();
+        };
+
+        window.updateQuizStats = () => {
+            if (!quizState.active) return;
+            let correct = 0; let incorrect = 0; let answered = 0;
+            const total = quizState.questions.length;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answered++;
+                    if (q.isCorrect) correct++; else incorrect++;
+                }
+            });
+            const progressPercent = (answered / total) * 100;
+            const elCorrect = document.getElementById('nav-stat-correct');
+            const elIncorrect = document.getElementById('nav-stat-incorrect');
+            const elBar = document.getElementById('nav-stat-progress-bar');
+            if (elCorrect) elCorrect.innerText = correct;
+            if (elIncorrect) elIncorrect.innerText = incorrect;
+            if (elBar) elBar.style.width = progressPercent + '%';
+        };
+
+        window.restartQuizWithConfirm = () => {
+            if(confirm('確定要重新開始挑戰嗎？這將會清除目前的畫面，並產生全新的測驗題目！')) startQuiz();
+        };
+
+        const renderQuizWaterfall = (container) => {
+            const total = quizState.questions.length;
+            const isFinished = quizState.isFinished;
+            
+            let headerHtml = isFinished 
+                ? ` <div class="glass-card flex flex-col md:flex-row justify-between items-center rounded-2xl p-5 md:p-6 shadow-lg border border-rose-300 mb-10 sticky top-0 z-50 backdrop-blur-xl bg-gradient-to-r from-pink-50 to-rose-50">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="text-5xl mr-4 drop-shadow-md">🏆✨</span>
+                            <div>
+                                <h2 class="text-2xl md:text-3xl font-extrabold text-rose-900">測驗結算完成 🎉</h2>
+                                <p class="text-rose-700 font-bold text-lg mt-1">總分：<span class="text-3xl md:text-4xl text-rose-600 font-black">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="switchTab('mistakes')" class="text-base md:text-lg text-rose-600 hover:text-white hover:bg-rose-500 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border-2 border-rose-200 hover:border-rose-500 bg-white"><span class="mr-2">🩹</span>錯題本</button>
+                            <button onclick="restartQuizWithConfirm()" class="text-base md:text-lg text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 px-4 py-2 rounded-xl font-bold transition-colors flex items-center shadow-md hover:shadow-lg"><span class="mr-2">🔄</span>重新挑戰</button>
+                        </div>
+                    </div>`
+                : ` <div class="flex justify-end mb-4">
+                        <button onclick="clearQuizHistory()" class="text-sm md:text-base text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl font-bold transition-colors flex items-center border border-rose-200 bg-white shadow-sm"><span class="mr-2">🚪</span>放棄作答</button>
+                    </div>`;
+
+            let html = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 scrollbar-hide relative z-10" id="quiz-scroll-container">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto relative">
+                        ${headerHtml}
+                        <div id="questions-list" class="space-y-10 w-full">
+            `;
+            quizState.questions.forEach((_, qIdx) => { html += `<div id="q-block-${qIdx}" class="bg-white rounded-3xl shadow-lg overflow-hidden border border-rose-100 transition-all w-full">${generateSingleQuestionHtml(qIdx)}</div>`; });
+            html += `</div>`;
+            
+            if (!isFinished) {
+                html += `
+                        <button onclick="finishQuizWaterfall()" class="w-full mt-16 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-rose-700">
+                            🏁 完成測驗並結算成績 📊🎉
+                        </button>`;
+            } else {
+                 html += `
+                        <button onclick="restartQuizWithConfirm()" class="w-full mt-16 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-extrabold py-6 md:py-8 text-2xl md:text-4xl rounded-3xl shadow-2xl transition-all transform hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] flex items-center justify-center break-words border-b-8 border-pink-700">
+                            🔄 重新開始挑戰 🚀💪
+                        </button>`;                
+            }
+            html += `</div></div>`;
+            container.innerHTML = html;
+        };
+
+        const generateSingleQuestionHtml = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            let optionsHtml = '';
+            
+            q.opts.forEach((opt, i) => {
+                let btnClass = "w-full text-left p-3 md:p-5 text-xl md:text-2xl rounded-2xl border-2 transition-all duration-200 flex flex-col items-start group relative overflow-hidden ";
+                let iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mr-3 md:mr-5 font-extrabold text-xl md:text-2xl transition-colors shrink-0 shadow-inner group-hover:bg-rose-100 group-hover:text-rose-700">${String.fromCharCode(65+i)}</span>`;
+                
+                let optExpHtml = '';
+                
+                if (!q.showExplanation) {
+                    btnClass += "border-rose-100 hover:border-rose-400 hover:bg-rose-50/50 bg-white cursor-pointer hover:shadow-md";
+                } else {
+                    let expText = (q.exps && q.exps[i]) ? q.exps[i] : '無詳細解析';
+                    
+                    if (i === q.ans) {
+                        btnClass += "border-emerald-400 bg-emerald-50/30 text-emerald-900 shadow-md z-10 ring-2 ring-emerald-400/20";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center mr-3 md:mr-5 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">✅</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-emerald-200 bg-emerald-100/60 text-emerald-900 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-emerald-700">🎯 解析：</span>${expText}</div>`;
+                    } else if (i === q.selectedAns) {
+                        btnClass += "border-rose-400 bg-rose-50/40 text-rose-900";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-rose-500 text-white flex items-center justify-center mr-3 md:mr-5 font-bold text-2xl md:text-3xl shrink-0 shadow-sm">❌</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-rose-200 bg-rose-100/60 text-rose-900 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-rose-700">💡 解析：</span>${expText}</div>`;
+                    } else {
+                        btnClass += "border-slate-200 bg-slate-50/60 opacity-90 cursor-not-allowed";
+                        iconHtml = `<span class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center mr-3 md:mr-5 font-extrabold text-xl md:text-2xl shrink-0">${String.fromCharCode(65+i)}</span>`;
+                        optExpHtml = `<div class="mt-3 p-3 md:p-4 rounded-xl text-base md:text-lg border border-slate-200 bg-white text-slate-700 animate-fade-in w-full leading-relaxed font-medium"><span class="font-bold mr-2 text-slate-500">💡 解析：</span>${expText}</div>`;
+                    }
+                }
+
+                optionsHtml += `
+                    <button ${q.showExplanation ? 'disabled' : `onclick="answerWaterfallQuestion(${qIdx}, ${i})"`} class="${btnClass}">
+                        <div class="flex items-center w-full">
+                            ${iconHtml}
+                            <span class="flex-1 leading-relaxed break-words z-10 text-left ${q.showExplanation && i === q.ans ? 'text-emerald-900 font-bold' : 'text-slate-800 font-medium'} group-hover:text-rose-950">${opt}</span>
+                        </div>
+                        ${optExpHtml}
+                    </button>
+                `;
+            });
+
+            let generalExpHtml = '';
+            if (q.showExplanation && q.generalExp) {
+                generalExpHtml = `
+                    <div class="mt-5 p-4 md:p-5 bg-rose-50/80 border border-rose-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-rose-400"></div>
+                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-rose-900">${q.generalExp}</p>
+                    </div>
+                `;
+            }
+
+            const isFav = userData.favorites && userData.favorites.includes(q.q);
+            const favIconHtml = isFav 
+                ? '<i class="fa-solid fa-heart text-rose-500"></i>' 
+                : '<i class="fa-regular fa-heart text-rose-500"></i>';
+
+            let statusTag = '';
+            let bgGradient = '';
+            if (q.showExplanation) {
+                if (q.selectedAns === q.ans) {
+                    statusTag = '<span class="text-emerald-600 font-bold text-lg md:text-xl flex items-center bg-emerald-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">✅</span>答對 🎉</span>';
+                    bgGradient = 'bg-gradient-to-r from-emerald-50 to-white';
+                } else if (q.selectedAns === -1) {
+                    statusTag = '<span class="text-amber-600 font-bold text-lg md:text-xl flex items-center bg-amber-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">⚠️</span>未作答</span>';
+                    bgGradient = 'bg-gradient-to-r from-amber-50 to-white';
+                } else {
+                    statusTag = '<span class="text-rose-600 font-bold text-lg md:text-xl flex items-center bg-rose-100 px-3 py-1 rounded-full shadow-sm"><span class="mr-2">❌</span>答錯 💦</span>';
+                    bgGradient = 'bg-gradient-to-r from-rose-50 to-white';
+                }
+            } else {
+                statusTag = '<span class="text-rose-400 font-bold text-base md:text-lg flex items-center bg-rose-100/50 px-3 py-1 rounded-full border border-rose-200"><span class="mr-2">✍️</span>作答區</span>';
+                bgGradient = 'bg-rose-50/30';
+            }
+
+            return `
+                <div class="px-5 md:px-8 py-4 border-b border-rose-100 flex justify-between items-center transition-colors ${bgGradient}">
+                    <div class="flex items-center">
+                        <span class="font-extrabold text-rose-500 text-lg md:text-xl bg-white px-3 py-1 rounded-xl border border-rose-100 shadow-sm">🤔 Q ${qIdx + 1}</span>
+                        <button onclick="toggleQuizFavorite(${qIdx})" class="ml-4 text-[1.5rem] md:text-3xl hover:scale-110 transition-transform focus:outline-none drop-shadow-sm" title="加入/取消最愛">
+                            ${favIconHtml}
+                        </button>
+                    </div>
+                    ${statusTag}
+                </div>
+                <div class="p-5 md:p-8 w-full overflow-hidden">
+                    <h3 class="text-2xl md:text-3xl font-extrabold text-slate-800 mb-6 leading-loose break-words text-left">${q.q}</h3>
+                    <div class="space-y-3 w-full">
+                        ${optionsHtml}
+                    </div>
+                    ${generalExpHtml}
+                </div>
+            `;
+        };
+
+        window.toggleQuizFavorite = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            const qText = q.q;
+            if (!userData.favorites) userData.favorites = [];
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) userData.favorites.splice(idx, 1);
+            else userData.favorites.push(qText);
+            saveUserDataToCloud();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
+        };
+
+        window.answerWaterfallQuestion = (qIdx, optIdx) => {
+            const q = quizState.questions[qIdx];
+            if(q.showExplanation) return; 
+
+            const isCorrect = optIdx === q.ans;
+            q.selectedAns = optIdx;
+            q.showExplanation = true;
+            q.isCorrect = isCorrect;
+            
+            if (isCorrect) {
+                playCorrectSound();
+                confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 }, zIndex: 10000, colors: ['#e11d48', '#f43f5e', '#fb7185', '#fda4af', '#fecdd3'] });
+            } else {
+                playWrongSound();
+                const mistakeId = q.q; 
+                if(!userData.mistakes) userData.mistakes = [];
+                const exists = userData.mistakes.find(m => m.id === mistakeId);
+                if(!exists) {
+                    userData.mistakes.push({
+                        id: mistakeId, q: q.q, opts: q.opts, ans: q.ans, exps: q.exps, generalExp: q.generalExp, time: new Date().toISOString()
+                    });
+                    saveUserDataToCloud();
+                }
+            }
+            saveQuizState();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
+            updateQuizStats();
+        };
+
+        window.finishQuizWaterfall = async () => {
+            let correctCount = 0; let answeredCount = 0;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answeredCount++;
+                    if (q.isCorrect) correctCount++;
+                }
+            });
+            if (answeredCount < quizState.questions.length) {
+                if(!confirm(`您還有 ${quizState.questions.length - answeredCount} 題尚未作答，確定要直接交卷結算嗎？未作答的題目將以錯誤計算。`)) return;
+            }
+            quizState.questions.forEach(q => {
+                if (!q.showExplanation) {
+                    q.showExplanation = true; q.isCorrect = false; q.selectedAns = -1;
+                }
+            });
+            quizState.isFinished = true; quizState.correctCount = correctCount; quizState.answeredCount = answeredCount;
+            const total = quizState.questions.length;
+            const scorePercent = Math.round((correctCount / total) * 100);
+            quizState.scorePercent = scorePercent;
+            saveQuizState();
+            
+            if (!userData.quizHistory) userData.quizHistory = [];
+            userData.quizHistory.push({ date: new Date().toLocaleString(), score: scorePercent, total: total, correct: correctCount });
+            if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
+            saveUserDataToCloud();
+
+            renderQuizView(document.getElementById('main-content'));
+            confetti({ particleCount: 300, spread: 100, origin: { y: 0.3 }, zIndex: 10000, colors: ['#e11d48', '#f43f5e', '#fb7185', '#fda4af', '#fecdd3'] });
+            
+            setTimeout(() => {
+                const scrollContainer = document.getElementById('quiz-scroll-container');
+                if (scrollContainer) scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 100);
+        };
+
+        window.clearQuizHistory = () => {
+            if(confirm('警告：確定要清除目前的作答紀錄嗎？\n(此動作將會遺失目前所有測驗進度)')) {
+                if(confirm('【第二次確認】真的要清除作答紀錄並放棄目前測驗嗎？\n按下「確定」將會清空並返回測驗首頁。')) {
+                    quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                    saveQuizState();
+                    const navStats = document.getElementById('nav-quiz-stats');
+                    if (navStats) { navStats.classList.add('hidden'); navStats.classList.remove('flex'); }
+                    renderQuizView(document.getElementById('main-content'));
+                }
+            }
+        };
+
+        window.renderMistakes = (container) => {
+            if(!container) container = document.getElementById('main-content');
+            if(!userData.mistakes || userData.mistakes.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-rose-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-emerald-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-emerald-200 text-7xl">🥳</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-rose-950 mb-4">太棒了！✨</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-rose-800/60">目前沒有任何錯題紀錄 🎉</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">🩹</span>錯題本 📚</h2>
+                                <p class="text-rose-900/50 mt-3 ml-20 font-bold text-lg md:text-xl">收錄您在測驗中答錯的題目，溫故知新 🔄💡</p>
+                            </div>
+                            <button onclick="clearMistakes()" class="text-base md:text-xl text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 px-5 py-3 rounded-xl border-2 border-rose-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${userData.mistakes.map((m, i) => `
+                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-rose-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-rose-600"></div>
+                                    <h3 class="font-extrabold text-rose-950 mb-6 text-2xl md:text-3xl break-words leading-loose flex items-start text-left">
+                                        <span class="text-rose-500 mr-3 text-2xl font-black bg-rose-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
+                                    </h3>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-xl md:text-2xl w-full font-medium text-left">
+                                        ${m.opts.map((opt, idx) => `
+                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all flex flex-col ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <div class="flex items-start">
+                                                    <span class="inline-block w-8 md:w-10 font-bold ${idx === m.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> 
+                                                    <span class="flex-1">${opt}</span>
+                                                    ${idx === m.ans ? '<span class="ml-2 text-emerald-500 text-2xl">✅</span>' : ''}
+                                                </div>
+                                                ${(m.exps && m.exps[idx]) ? `<div class="mt-3 p-3 rounded-xl text-base md:text-lg border ${idx === m.ans ? 'border-emerald-200 bg-emerald-100/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'} leading-relaxed font-medium"><span class="font-bold mr-2 ${idx === m.ans ? 'text-emerald-700' : 'text-slate-500'}">${idx === m.ans ? '🎯 解析：' : '💡 解析：'}</span>${m.exps[idx]}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ${m.generalExp ? `
+                                    <div class="mt-5 p-4 md:p-5 bg-rose-50/80 border border-rose-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-rose-400"></div>
+                                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-rose-900">${m.generalExp}</p>
+                                    </div>` : ''}
+                                </div>
+                            `).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.clearMistakes = () => {
+            if(confirm('警告：確定要清空所有錯題紀錄嗎？\n(此動作無法復原)')) {
+                if(confirm('【第二次確認】真的要徹底清空錯題本嗎？\n按下「確定」將會刪除所有錯題資料。')) {
+                    userData.mistakes = []; saveUserDataToCloud(); renderMistakes();
+                }
+            }
+        };
+
+        window.renderFavorites = (container) => {
+            if(!container) container = document.getElementById('main-content');
+            if(!userData.favorites || userData.favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-rose-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-rose-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-rose-100 text-7xl">💔</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-rose-950 mb-4">暫無收藏</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-rose-800/60 mb-10">在測驗中點擊愛心圖示即可收藏題目！ 📌✨</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            const allQList = generate100Questions();
+            const favQuestions = userData.favorites.map(favText => {
+                return allQList.find(q => q.q === favText) || { q: favText, opts: [], ans: 0, exps: [], generalExp: '題目資料已遺失' };
+            });
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex items-end border-b-4 border-rose-200 pb-5 mb-12">
+                            <h2 class="text-4xl md:text-5xl font-extrabold text-rose-800 flex items-center"><span class="bg-rose-100 text-rose-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">💖</span>我的最愛 🌟</h2>
+                            <p class="text-rose-900/50 mt-3 ml-8 font-bold text-lg md:text-xl hidden sm:block mb-1">您專屬的重點筆記收藏夾 🎒✨</p>
+                        </div>
+                        <div class="space-y-10 md:space-y-12 w-full">
+                            ${favQuestions.map((qObj, i) => {
+                                if (qObj.opts.length === 0) return '';
+                                return `
+                                <div class="bg-white p-6 md:p-10 rounded-3xl shadow-lg border border-rose-100 w-full overflow-hidden relative group">
+                                    <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-rose-600"></div>
+                                    <div class="flex justify-between items-start mb-6">
+                                        <h3 class="font-extrabold text-rose-950 text-2xl md:text-3xl break-words leading-loose flex items-start pr-6 flex-1 text-left">
+                                            <span class="text-rose-500 mr-3 text-2xl font-black bg-rose-50 px-3 py-1 rounded-xl">📌 Q</span>${qObj.q}
+                                        </h3>
+                                        <button onclick="toggleFavoritePage('${qObj.q}')" class="text-[2rem] md:text-3xl hover:scale-110 transition-transform shrink-0 mt-1 focus:outline-none drop-shadow-sm" title="移除最愛">
+                                            <i class="fa-solid fa-heart text-rose-500"></i>
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 text-xl md:text-2xl w-full font-medium text-left">
+                                        ${qObj.opts.map((opt, idx) => `
+                                            <div class="p-4 md:p-5 rounded-2xl break-words transition-all flex flex-col ${idx === qObj.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-slate-50 text-slate-600 border border-slate-200'}">
+                                                <div class="flex items-start">
+                                                    <span class="inline-block w-8 md:w-10 font-bold ${idx === qObj.ans ? 'text-emerald-600' : 'text-slate-400'}">${String.fromCharCode(65+idx)}.</span> 
+                                                    <span class="flex-1">${opt}</span>
+                                                    ${idx === qObj.ans ? '<span class="ml-2 text-emerald-500 text-2xl">✅</span>' : ''}
+                                                </div>
+                                                ${(qObj.exps && qObj.exps[idx]) ? `<div class="mt-3 p-3 rounded-xl text-base md:text-lg border ${idx === qObj.ans ? 'border-emerald-200 bg-emerald-100/50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'} leading-relaxed font-medium"><span class="font-bold mr-2 ${idx === qObj.ans ? 'text-emerald-700' : 'text-slate-500'}">${idx === qObj.ans ? '🎯 解析：' : '💡 解析：'}</span>${qObj.exps[idx]}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    ${qObj.generalExp ? `
+                                    <div class="mt-5 p-4 md:p-5 bg-rose-50/80 border border-rose-200 rounded-2xl relative overflow-hidden animate-fade-in text-left shadow-sm">
+                                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-rose-400"></div>
+                                        <p class="text-lg md:text-xl leading-loose break-words whitespace-pre-wrap pl-3 font-bold text-rose-900">${qObj.generalExp}</p>
+                                    </div>` : ''}
+                                </div>
+                                `;
+                            }).reverse().join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.toggleFavoritePage = (qText) => {
+            if (!userData.favorites) return;
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) {
+                if(confirm('確定要從最愛中移除此題嗎？')) {
+                    userData.favorites.splice(idx, 1);
+                    saveUserDataToCloud();
+                    renderFavorites();
+                }
+            }
+        };
+
+        window.renderHistory = (container) => {
+            if(!container) container = document.getElementById('main-content');
+            if((!userData.quizHistory || userData.quizHistory.length === 0) && (!userData.loginHistory || userData.loginHistory.length === 0)) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 text-rose-400 flex-col text-center relative z-10 animate-fade-in">
+                        <div class="w-40 h-40 bg-slate-50 rounded-full flex items-center justify-center mb-8 shadow-inner border-4 border-slate-200 text-7xl">📜</div>
+                        <h2 class="text-4xl md:text-5xl font-extrabold text-rose-950 mb-4">暫無紀錄</h2>
+                        <p class="text-2xl md:text-3xl font-medium text-rose-800/60 mb-10">您還沒有完成任何測驗或留下足跡喔！</p>
+                        <button onclick="switchTab('quiz')" class="bg-white border-4 border-rose-200 text-rose-600 hover:bg-rose-50 font-bold px-10 py-4 text-xl rounded-full shadow-md transition-colors">🚀 前往測驗</button>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-10 overflow-y-auto overflow-x-hidden pb-24 relative z-10">
+                    <div class="w-full max-w-[96%] xl:max-w-[98%] mx-auto">
+                        <div class="flex justify-between items-end border-b-4 border-amber-300 pb-5 mb-12">
+                            <div>
+                                <h2 class="text-4xl md:text-5xl font-extrabold text-amber-800 flex items-center"><span class="bg-amber-100 text-amber-600 w-14 h-14 flex items-center justify-center rounded-2xl mr-5 shadow-sm">📜</span>作答與登入紀錄</h2>
+                                <p class="text-amber-900/60 mt-3 ml-20 font-bold text-lg md:text-xl">追蹤您的學習軌跡，跨裝置同步更新 ☁️</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            <!-- 作答紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+                                <div class="bg-amber-50 p-6 border-b border-amber-200">
+                                    <h3 class="text-3xl font-bold text-amber-900 flex items-center"><span class="mr-3 text-3xl">🎯</span>最近作答成績</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-5 max-h-[60vh] overflow-y-auto">
+                                    ${(userData.quizHistory || []).slice().reverse().map((h, i) => `
+                                        <div class="flex justify-between items-center p-5 rounded-2xl border-2 border-slate-100 ${h.score >= 80 ? 'bg-emerald-50/50 border-emerald-100' : (h.score < 60 ? 'bg-rose-50/50 border-rose-100' : 'bg-slate-50')} transition-all hover:shadow-md">
+                                            <div>
+                                                <div class="font-bold text-slate-800 text-xl md:text-2xl">${h.date}</div>
+                                                <div class="text-lg text-slate-500 mt-2 font-medium">共 ${h.total} 題，答對 <span class="font-bold text-slate-700">${h.correct}</span> 題</div>
+                                            </div>
+                                            <div class="text-5xl font-black ${h.score >= 80 ? 'text-emerald-600' : (h.score < 60 ? 'text-rose-500' : 'text-amber-500')}">${h.score}<span class="text-2xl ml-1 font-bold">分</span></div>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">目前還沒有測驗紀錄喔</p>'}
+                                </div>
+                            </div>
+
+                            <!-- 登入紀錄 -->
+                            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden h-fit">
+                                <div class="bg-slate-50 p-6 border-b border-slate-200">
+                                    <h3 class="text-3xl font-bold text-slate-800 flex items-center"><span class="mr-3 text-3xl">👣</span>最近登入足跡</h3>
+                                </div>
+                                <div class="p-6 md:p-8 space-y-4 max-h-[40vh] overflow-y-auto">
+                                    ${(userData.loginHistory || []).slice().reverse().map((time, i) => `
+                                        <div class="flex items-center p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors">
+                                            <span class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 mr-4 text-lg font-bold shadow-inner">${i+1}</span>
+                                            <span class="font-bold text-slate-700 text-xl">${new Date(time).toLocaleString()}</span>
+                                        </div>
+                                    `).join('') || '<p class="text-xl text-slate-400 text-center py-10 font-bold">無登入紀錄</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        initApp();
+
+    </script>
+</body>
+</html>
