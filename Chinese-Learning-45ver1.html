@@ -990,19 +990,7 @@
 
             const content = el('main-content');
             if(tab === 'learn') renderLearnView(content);
-            if(tab === 'quiz') {
-                renderQuizView(content);
-                if (quizState.active) {
-                    setTimeout(() => {
-                        const nextUnansweredIdx = quizState.questions.findIndex(q => !q.showExplanation);
-                        let targetIdx = nextUnansweredIdx !== -1 ? nextUnansweredIdx : quizState.questions.length - 1;
-                        const targetEl = document.getElementById(`q-block-${targetIdx}`);
-                        if (targetEl) {
-                            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }, 100);
-                }
-            }
+            if(tab === 'quiz') renderQuizView(content);
             if(tab === 'mistakes') renderMistakes(content);
             if(tab === 'favorites') renderFavorites(content);
             if(tab === 'history') renderHistory(content);
@@ -1420,22 +1408,12 @@
                             <button onclick="clearMistakes()" class="text-base md:text-xl text-rose-500 hover:text-rose-700 bg-white hover:bg-rose-50 px-5 py-3 rounded-xl border-2 border-rose-200 shadow-sm font-bold transition-all flex items-center shrink-0 mb-2"><span class="mr-2">🗑️</span>清空</button>
                         </div>
                         <div class="space-y-10 md:space-y-12 w-full">
-                            ${userData.mistakes.map((m, i) => {
-                                const isFav = userData.favorites && userData.favorites.includes(m.q);
-                                const favIconHtml = isFav 
-                                    ? '<i class="fa-solid fa-heart text-rose-500"></i>' 
-                                    : '<i class="fa-regular fa-heart text-rose-500"></i>';
-                                return `
+                            ${userData.mistakes.map((m, i) => `
                                 <div class="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-orange-100 w-full overflow-hidden relative group">
                                     <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-rose-400 to-orange-400"></div>
-                                    <div class="flex justify-between items-start mb-10">
-                                        <h3 class="font-extrabold text-orange-950 text-2xl md:text-3xl break-words leading-loose flex items-start pr-6 flex-1">
-                                            <span class="text-rose-500 mr-4 text-3xl font-black bg-rose-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
-                                        </h3>
-                                        <button onclick="toggleMistakeFavorite('${m.q}')" class="text-[2rem] md:text-4xl hover:scale-110 transition-transform shrink-0 mt-1 focus:outline-none drop-shadow-sm" title="加入/取消最愛">
-                                            ${favIconHtml}
-                                        </button>
-                                    </div>
+                                    <h3 class="font-extrabold text-orange-950 mb-10 text-2xl md:text-3xl break-words leading-loose flex items-start">
+                                        <span class="text-rose-500 mr-4 text-3xl font-black bg-rose-50 px-3 py-1 rounded-xl">🤔 Q</span>${m.q}
+                                    </h3>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6 text-2xl md:text-[1.65rem] w-full font-medium">
                                         ${m.opts.map((opt, idx) => `
                                             <div class="p-5 md:p-6 rounded-2xl break-words transition-all ${idx === m.ans ? 'bg-emerald-50 text-emerald-900 font-bold border-2 border-emerald-400 shadow-md ring-2 ring-emerald-400/20' : 'bg-orange-50 text-slate-600 border border-orange-100'}">
@@ -1445,7 +1423,7 @@
                                         `).join('')}
                                     </div>
                                 </div>
-                            `}).reverse().join('')}
+                            `).reverse().join('')}
                         </div>
                     </div>
                 </div>
@@ -1460,18 +1438,6 @@
                     renderMistakes();
                 }
             }
-        };
-
-        window.toggleMistakeFavorite = (qText) => {
-            if (!userData.favorites) userData.favorites = [];
-            const idx = userData.favorites.indexOf(qText);
-            if (idx > -1) {
-                userData.favorites.splice(idx, 1);
-            } else {
-                userData.favorites.push(qText);
-            }
-            saveUserDataToCloud();
-            renderMistakes();
         };
 
         window.renderFavorites = (container) => {
