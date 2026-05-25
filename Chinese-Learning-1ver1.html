@@ -67,7 +67,7 @@
         };
 
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
-        const COLLECTION_NAME = 'Chinese-Learning-1'; 
+        const COLLECTION_NAME = 'Chinese-Learning-1'; // 依照指示更新為 Chinese-Learning-1
         const DOC_GLOBAL = 'Global_Users';      
         
         let app, auth, db;
@@ -133,57 +133,6 @@
                 else await signInAnonymously(auth);
             } catch (error) { connectionStatus = 'error'; }
         };
-
-        // ==========================================
-        //  UI Helpers for Pairs Generation
-        // ==========================================
-        const formatPair = (str) => {
-            let parts = str.split(/\[(.*?)\]/);
-            return parts.map((part, i) => {
-                if (i % 2 === 1) {
-                    return `<span class="text-[#f43f5e] border-b-[3px] border-[#f43f5e] font-black pb-[2px] mx-[2px] text-[1.4rem] md:text-3xl tracking-wide">${part}</span>`;
-                } else {
-                    return `<span class="text-[#1e293b] font-black text-[1.4rem] md:text-3xl tracking-wide">${part}</span>`;
-                }
-            }).join('');
-        };
-
-        const renderTableRows = (pairs) => {
-            return pairs.map((p, index) => `
-                <tr class="bg-white shadow-sm hover:shadow-md transition-shadow group">
-                    <td class="p-5 md:p-6 text-center border-y border-l border-rose-100 rounded-l-2xl group-hover:bg-rose-50/30 transition-colors w-1/2">${formatPair(p[0])}</td>
-                    <td class="p-5 md:p-6 text-center border-y border-r border-rose-100 rounded-r-2xl group-hover:bg-rose-50/30 transition-colors w-1/2">${formatPair(p[1])}</td>
-                </tr>
-            `).join('');
-        };
-
-        const pairs1 = [
-            ["[抱負]遠大", "[報復]敵人"], ["以德[報怨]", "[抱怨]別人"], ["可見一[斑]", "一[般]情形"], ["金[碧]輝煌", "贈送金[幣]"],
-            ["[莫]名其妙", "不[明]事理"], ["含情[脈脈]", "[默默]祝福"], ["哈[密]瓜", "水[蜜]桃"], ["秋毫無[犯]", "有備無[患]"],
-            ["冒險[犯]難", "[患]難之交"], ["發[憤]圖強", "[奮]發向上"], ["一[副]對聯", "一[幅]圖畫"], ["以逸[待]勞", "[代]墊費用"],
-            ["[窮]途末路", "圖[窮]匕現"], ["金榜[題]名", "先[提]名先表決"], ["公權[力]", "參選的權[利]"], ["辦事不[力]", "對我不[利]"],
-            ["很有勢[力]", "勢[利]眼"], ["暴[力]手段", "暴[戾]之氣"], ["自[力]更生", "自[立]自強"], ["手段[厲]害", "衡量[利]害"],
-            ["知書達[禮]", "通情達[理]"], ["急[公]好義", "急[功]近利"], ["[功]德無量", "[公]德心"], ["英雄氣[概]", "英雄[蓋]世"],
-            ["一[股]香味", "一[鼓]作氣"], ["一[棵]大樹", "一[顆]蘋果"], ["大[快]朵頤", "大[塊]文章"], ["請多包[涵]", "包[含]五種成分"],
-            ["[堅]守崗位", "[監]守自盜"], ["聲音清[脆]", "山色青[翠]"], ["[堅]貞志節", "[艱]深難懂"], ["[汲汲]營營", "[岌岌]可危"],
-            ["時運不[濟]", "三餐不[繼]"], ["猶豫不[決]", "不[絕]如縷"], ["[展]露身材", "[嶄]露頭角"], ["尋人啟[事]", "得到啟[示]"],
-            ["[意]氣用事", "很講[義]氣"], ["離鄉[背]井", "黑道[背]景"], ["仗義[執]言", "[直]言不諱"], ["一[炷]香", "一[柱]擎天"],
-            ["[世]態炎涼", "[事]態嚴重"], ["不幸去[世]", "不幸[逝]世"]
-        ];
-
-        const pairs2 = [
-            ["曉以大[義]", "粗心大[意]"], ["見[異]思遷", "見[義]勇為"], ["出[奇]制勝", "出[其]不意"], ["大[器]晚成", "大[氣]磅礴"],
-            ["年[輕]力壯", "有為[青]年"], ["德高望[重]", "[眾]望所歸"], ["令人不[齒]", "不[恥]下問"], ["相輔相[成]", "一脈相[承]"],
-            ["全[盛]時期", "大獲全[勝]"], ["分身乏[術]", "渾身解[數]"], ["淋了一[身]", "一[生]一世"], ["[意]想不到", "[異]想天開"],
-            ["集思廣[益]", "廣[義]的解釋"], ["[毅]力", "[意]志力"], ["[啟]用典禮", "[起]用新人"], ["胸無[城]府", "胸有[成]竹"],
-            ["無所[事]事", "無所[適]從"], ["小心[翼翼]", "神采[奕奕]"], ["望其[項]背", "民心[向]背"], ["實事求[是]", "大[勢]已去"],
-            ["大[是]大非", "國家大[事]"], ["表露無[遺]", "必敗無[疑]"], ["電視[螢]幕", "電影[銀]幕"], ["很有修[養]", "在家休[養]"],
-            ["談笑風[生]", "走漏風[聲]"], ["[竄]改歷史", "[篡]奪皇位"], ["向上級反[映]", "反[應]過度"], ["[惺惺]相惜", "[心心]相印"],
-            ["[霎]時", "[剎]那"], ["[翱]翔天空", "[遨]遊天地"], ["口[味]太重", "[胃]口大開"], ["必[須]工作", "民生必[需]品"],
-            ["為人[詬]病", "污[垢]"], ["[辯]才無礙", "明[辨]是非"], ["[訣]別", "[決]定"], ["不理不[睬]", "[踩]踏"],
-            ["青[睞]", "招[徠]"], ["高瞻遠[矚]", "叮[囑]"], ["[蛛]網", "珍[珠]"], ["[株]連九族", "口[誅]筆伐"],
-            ["[故]步自封", "[固]有道德"], ["寒[暄]", "[喧]嘩"]
-        ];
 
         // ==========================================
         //  Course Content (Learn Data)
@@ -289,19 +238,105 @@
                 </div>`
             },
             {
-                id: 'sec2', title: '貳、相似詞語分辨 (上) 🆚',
+                id: 'sec2', title: '貳、相似詞語分辨 🆚',
                 content: `
                 <div class="space-y-6 text-xl md:text-2xl text-slate-800">
                     <div class="mb-4">
                         <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
-                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 相似詞語大揭密 (第一部分) 🥊
+                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 相似詞語大揭密 🥊
                         </h3>
-                        <p class="text-slate-600 font-bold mb-6">會考必考的同音、形近詞語配對，請務必熟記它們的差異！</p>
+                        <p class="text-slate-600 font-bold mb-4">會考必考的同音、形近詞語配對，請務必熟記它們的差異！</p>
                         
-                        <div class="w-full">
-                            <table class="w-full border-separate" style="border-spacing: 0 1rem;">
+                        <div class="overflow-x-auto">
+                            <table class="knowledge-table w-full text-lg md:text-xl">
+                                <thead>
+                                    <tr><th class="w-1/2">詞語一</th><th class="w-1/2">詞語二</th></tr>
+                                </thead>
                                 <tbody>
-                                    ${renderTableRows(pairs1)}
+                                    <tr><td class="font-bold text-blue-700">抱負遠大 (ㄅㄠˋ ㄈㄨˋ)</td><td class="font-bold text-rose-600">報復敵人 (ㄅㄠˋ ㄈㄨˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">以德報怨 (ㄅㄠˋ ㄩㄢˋ)</td><td class="font-bold text-rose-600">抱怨別人 (ㄅㄠˋ ㄩㄢˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">可見一斑 (ㄧ ㄅㄢ)</td><td class="font-bold text-rose-600">一般情形 (ㄧ ㄅㄢ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">金碧輝煌 (ㄐㄧㄣ ㄅㄧˋ)</td><td class="font-bold text-rose-600">贈送金幣 (ㄐㄧㄣ ㄅㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">莫名其妙 (ㄇㄛˋ ㄇㄧㄥˊ)</td><td class="font-bold text-rose-600">不明事理 (ㄅㄨˋ ㄇㄧㄥˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">含情脈脈 (ㄇㄛˋ ㄇㄛˋ)</td><td class="font-bold text-rose-600">默默祝福 (ㄇㄛˋ ㄇㄛˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">哈密瓜 (ㄇㄧˋ)</td><td class="font-bold text-rose-600">水蜜桃 (ㄇㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">秋毫無犯 (ㄈㄢˋ)</td><td class="font-bold text-rose-600">有備無患 (ㄏㄨㄢˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">冒險犯難 (ㄈㄢˋ ㄋㄢˋ)</td><td class="font-bold text-rose-600">患難之交 (ㄏㄨㄢˋ ㄋㄢˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">發憤圖強 (ㄈㄣˋ)</td><td class="font-bold text-rose-600">奮發向上 (ㄈㄣˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">一副對聯 (ㄧ ㄈㄨˋ)</td><td class="font-bold text-rose-600">一幅圖畫 (ㄧ ㄈㄨˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">以逸待勞 (ㄉㄞˋ)</td><td class="font-bold text-rose-600">代墊費用 (ㄉㄞˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">窮途末路 (ㄑㄩㄥˊ)</td><td class="font-bold text-rose-600">圖窮匕現 (ㄑㄩㄥˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">金榜題名 (ㄊㄧˊ)</td><td class="font-bold text-rose-600">先提名先表決 (ㄊㄧˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">公權力 (ㄌㄧˋ)</td><td class="font-bold text-rose-600">參選的權利 (ㄌㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">辦事不力 (ㄌㄧˋ)</td><td class="font-bold text-rose-600">對我不利 (ㄌㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">很有勢力 (ㄌㄧˋ)</td><td class="font-bold text-rose-600">勢利眼 (ㄌㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">暴力手段 (ㄌㄧˋ)</td><td class="font-bold text-rose-600">暴戾之氣 (ㄌㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">自力更生 (ㄌㄧˋ)</td><td class="font-bold text-rose-600">自立自強 (ㄌㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">手段厲害 (ㄌㄧˋ ㄏㄞˋ)</td><td class="font-bold text-rose-600">衡量利害 (ㄌㄧˋ ㄏㄞˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">知書達禮 (ㄌㄧˇ)</td><td class="font-bold text-rose-600">通情達理 (ㄌㄧˇ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">急公好義 (ㄍㄨㄥ)</td><td class="font-bold text-rose-600">急功近利 (ㄍㄨㄥ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">功德無量 (ㄍㄨㄥ)</td><td class="font-bold text-rose-600">公德心 (ㄍㄨㄥ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">英雄氣概 (ㄍㄞˋ)</td><td class="font-bold text-rose-600">英雄蓋世 (ㄍㄞˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">一股香味 (ㄍㄨˇ)</td><td class="font-bold text-rose-600">一鼓作氣 (ㄍㄨˇ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">一棵大樹 (ㄎㄜ)</td><td class="font-bold text-rose-600">一顆蘋果 (ㄎㄜ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">大快朵頤 (ㄎㄨㄞˋ)</td><td class="font-bold text-rose-600">大塊文章 (ㄎㄨㄞˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">請多包涵 (ㄏㄢˊ)</td><td class="font-bold text-rose-600">包含五種成分 (ㄏㄢˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">堅守崗位 (ㄐㄧㄢ)</td><td class="font-bold text-rose-600">監守自盜 (ㄐㄧㄢ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">聲音清脆 (ㄘㄨㄟˋ)</td><td class="font-bold text-rose-600">山色青翠 (ㄘㄨㄟˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">堅貞志節 (ㄐㄧㄢ)</td><td class="font-bold text-rose-600">艱深難懂 (ㄐㄧㄢ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">汲汲營營 (ㄐㄧˊ ㄐㄧˊ)</td><td class="font-bold text-rose-600">岌岌可危 (ㄐㄧˊ ㄐㄧˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">時運不濟 (ㄐㄧˋ)</td><td class="font-bold text-rose-600">三餐不繼 (ㄐㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">猶豫不決 (ㄐㄩㄝˊ)</td><td class="font-bold text-rose-600">不絕如縷 (ㄐㄩㄝˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">展露身材才華 (ㄓㄢˇ ㄌㄨˋ)</td><td class="font-bold text-rose-600">嶄露頭角 (ㄓㄢˇ ㄌㄨˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">尋人啟事 (ㄕˋ)</td><td class="font-bold text-rose-600">得到啟示 (ㄕˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">意氣用事 (ㄧˋ ㄑㄧˋ)</td><td class="font-bold text-rose-600">很講義氣 (ㄧˋ ㄑㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">離鄉背井 (ㄅㄟˋ)</td><td class="font-bold text-rose-600">黑道背景 (ㄅㄟˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">仗義執言 (ㄓˊ ㄧㄢˊ)</td><td class="font-bold text-rose-600">直言不諱 (ㄓˊ ㄧㄢˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">一炷香 (ㄓㄨˋ)</td><td class="font-bold text-rose-600">一柱擎天 (ㄓㄨˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">世態炎涼 (ㄕˋ ㄊㄞˋ)</td><td class="font-bold text-rose-600">事態嚴重 (ㄕˋ ㄊㄞˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">不幸去世 (ㄕˋ)</td><td class="font-bold text-rose-600">不幸逝世 (ㄕˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">曉以大義 (ㄧˋ)</td><td class="font-bold text-rose-600">粗心大意 (ㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">見異思遷 (ㄧˋ)</td><td class="font-bold text-rose-600">見義勇為 (ㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">出奇制勝 (ㄑㄧˊ)</td><td class="font-bold text-rose-600">出其不意 (ㄑㄧˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">大器晚成 (ㄑㄧˋ)</td><td class="font-bold text-rose-600">大氣磅礴 (ㄑㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">年輕力壯 (ㄑㄧㄥ)</td><td class="font-bold text-rose-600">有為青年 (ㄑㄧㄥ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">德高望重 (ㄓㄨㄥˋ)</td><td class="font-bold text-rose-600">眾望所歸 (ㄓㄨㄥˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">令人不齒 (ㄔˇ)</td><td class="font-bold text-rose-600">不恥下問 (ㄔˇ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">相輔相成 (ㄔㄥˊ)</td><td class="font-bold text-rose-600">一脈相承 (ㄔㄥˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">全盛時期 (ㄕㄥˋ)</td><td class="font-bold text-rose-600">大獲全勝 (ㄕㄥˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">分身乏術 (ㄕㄨˋ)</td><td class="font-bold text-rose-600">渾身解數 (ㄕㄨˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">淋了一身 (ㄕㄣ)</td><td class="font-bold text-rose-600">一生一世 (ㄕㄥ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">意想不到 (ㄧˋ)</td><td class="font-bold text-rose-600">異想天開 (ㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">集思廣益 (ㄧˋ)</td><td class="font-bold text-rose-600">廣義的解釋 (ㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">毅力 (ㄧˋ)</td><td class="font-bold text-rose-600">意志力 (ㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">啟用典禮 (ㄑㄧˇ)</td><td class="font-bold text-rose-600">起用新人 (ㄑㄧˇ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">胸無城府 (ㄔㄥˊ)</td><td class="font-bold text-rose-600">胸有成竹 (ㄔㄥˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">無所事事 (ㄕˋ)</td><td class="font-bold text-rose-600">無所適從 (ㄕˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">小心翼翼 (ㄧˋ ㄧˋ)</td><td class="font-bold text-rose-600">神采奕奕 (ㄧˋ ㄧˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">望其項背 (ㄒㄧㄤˋ)</td><td class="font-bold text-rose-600">民心向背 (ㄒㄧㄤˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">實事求是 (ㄕˋ)</td><td class="font-bold text-rose-600">大勢已去 (ㄕˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">大是大非 (ㄕˋ)</td><td class="font-bold text-rose-600">國家大事 (ㄕˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">表露無遺 (ㄧˊ)</td><td class="font-bold text-rose-600">必敗無疑 (ㄧˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">電視螢幕 (ㄧㄥˊ)</td><td class="font-bold text-rose-600">電影銀幕 (ㄧㄣˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">很有修養 (ㄒㄧㄡ)</td><td class="font-bold text-rose-600">在家休養 (ㄒㄧㄡ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">談笑風生 (ㄕㄥ)</td><td class="font-bold text-rose-600">走漏風聲 (ㄕㄥ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">竄改歷史 (ㄘㄨㄢˋ)</td><td class="font-bold text-rose-600">篡奪皇位 (ㄘㄨㄢˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">向上級反映 (ㄧㄥˋ)</td><td class="font-bold text-rose-600">反應過度 (ㄧㄥˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">惺惺相惜 (ㄒㄧㄥ)</td><td class="font-bold text-rose-600">心心相印 (ㄒㄧㄣ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">霎時 (ㄕㄚˋ)</td><td class="font-bold text-rose-600">剎那 (ㄔㄚˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">翱翔天空 (ㄠˊ)</td><td class="font-bold text-rose-600">遨遊天地 (ㄠˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">口味太重 (ㄨㄟˋ)</td><td class="font-bold text-rose-600">胃口大開 (ㄨㄟˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">必須工作 (ㄒㄩ)</td><td class="font-bold text-rose-600">民生必需品 (ㄒㄩ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">為人詬病 (ㄍㄡˋ)</td><td class="font-bold text-rose-600">污垢 (ㄍㄡˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">辯才無礙 (ㄅㄧㄢˋ)</td><td class="font-bold text-rose-600">明辨是非 (ㄅㄧㄢˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">訣別 (ㄐㄩㄝˊ)</td><td class="font-bold text-rose-600">決定 (ㄐㄩㄝˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">不理不睬 (ㄘㄞˇ)</td><td class="font-bold text-rose-600">踩踏 (ㄘㄞˇ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">青睞 (ㄌㄞˋ)</td><td class="font-bold text-rose-600">招徠 (ㄌㄞˊ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">高瞻遠矚 (ㄓㄨˇ)</td><td class="font-bold text-rose-600">叮囑 (ㄓㄨˇ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">蛛網 (ㄓㄨ)</td><td class="font-bold text-rose-600">珍珠 (ㄓㄨ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">株連九族 (ㄓㄨ)</td><td class="font-bold text-rose-600">口誅筆伐 (ㄓㄨ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">故步自封 (ㄍㄨˋ)</td><td class="font-bold text-rose-600">固有道德 (ㄍㄨˋ)</td></tr>
+                                    <tr><td class="font-bold text-blue-700">寒暄 (ㄒㄩㄢ)</td><td class="font-bold text-rose-600">喧嘩 (ㄒㄩㄢ)</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -309,26 +344,7 @@
                 </div>`
             },
             {
-                id: 'sec3', title: '參、相似詞語分辨 (下) 🆚',
-                content: `
-                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
-                    <div class="mb-4">
-                        <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
-                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 相似詞語大揭密 (第二部分) 🥊
-                        </h3>
-                        
-                        <div class="w-full">
-                            <table class="w-full border-separate" style="border-spacing: 0 1rem;">
-                                <tbody>
-                                    ${renderTableRows(pairs2)}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>`
-            },
-            {
-                id: 'sec4', title: '肆、生難字詞解釋 📖',
+                id: 'sec4', title: '參、生難字詞解釋 📖',
                 content: `
                 <div class="space-y-6 text-xl md:text-2xl text-slate-800">
                     <div class="mb-4">
@@ -640,7 +656,7 @@
                     return `${wordDefs[opt] || '字形或字義不合語境。'}`;
                 });
                 return {
-                    q: q[0].replace(/\[/g, '').replace(/\]/g, ''), // 取消中括號顯示
+                    q: q[0],
                     opts: opts,
                     ans: ansIdx,
                     exps: exps,
@@ -1060,9 +1076,9 @@
                     </div>`
                 : ` <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-8 flex justify-between items-center z-10 relative">
                         <div class="flex items-center gap-4">
-                            <div id="quiz-progress-text" class="text-sm font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">進度 ${answered}/${total}</div>
+                            <div class="text-sm font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">進度 ${answered}/${total}</div>
                             <div class="w-32 md:w-48 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                <div id="quiz-progress-bar-fill" class="bg-blue-400 h-full rounded-full transition-all duration-300" style="width: ${progress}%"></div>
+                                <div class="bg-blue-400 h-full rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                             </div>
                         </div>
                         <button onclick="clearQuizHistory()" class="text-sm text-slate-400 hover:text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-full font-bold transition-colors border border-transparent hover:border-rose-100">放棄作答</button>
@@ -1084,24 +1100,6 @@
             }
             html += `</div></div></div>`;
             container.innerHTML = html;
-
-            // Auto-scroll to last answered question on initial load
-            if (!isFinished) {
-                setTimeout(() => {
-                    let lastAnsweredIdx = -1;
-                    for (let i = 0; i < quizState.questions.length; i++) {
-                        if (quizState.questions[i].showExplanation && quizState.questions[i].selectedAns !== -1) {
-                            lastAnsweredIdx = i;
-                        }
-                    }
-                    if (lastAnsweredIdx !== -1) {
-                        const targetBlock = document.getElementById(`q-block-${lastAnsweredIdx}`);
-                        if (targetBlock) {
-                            targetBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                }, 100);
-            }
         };
 
         const generateSingleQuestionHtml = (qIdx) => {
@@ -1193,18 +1191,9 @@
             const block = document.getElementById(`q-block-${qIdx}`);
             if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
             
-            // Update progress header directly to prevent resetting scroll position
-            let answeredCount = 0;
-            quizState.questions.forEach(q => {
-                if (q.showExplanation && q.selectedAns !== -1) answeredCount++;
-            });
-            const total = quizState.questions.length;
-            const progress = total === 0 ? 0 : Math.round((answeredCount / total) * 100);
-            
-            const progText = document.getElementById('quiz-progress-text');
-            if (progText) progText.innerText = `進度 ${answeredCount}/${total}`;
-            const progBar = document.getElementById('quiz-progress-bar-fill');
-            if (progBar) progBar.style.width = `${progress}%`;
+            // Re-render header to update progress bar without re-rendering entire list
+            const container = el('main-content');
+            if(container) renderQuizWaterfall(container);
         };
 
         window.finishQuizWaterfall = async () => {
