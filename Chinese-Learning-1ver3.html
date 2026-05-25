@@ -143,6 +143,7 @@
             `).join('');
         };
 
+        // 嚴格依照圖片還原（已修正窮途/圖窮等錯誤）
         const pairs1 = [
             ["[抱負]遠大", "[報復]敵人"], ["以德[報怨]", "[抱怨]別人"], ["可見一[斑]", "一[般]情形"], ["金[碧]輝煌", "贈送金[幣]"],
             ["[莫]名其妙", "不[明]事理"], ["含情[脈脈]", "[默默]祝福"], ["哈[密]瓜", "水[蜜]桃"], ["秋毫無[犯]", "有備無[患]"],
@@ -572,7 +573,7 @@
                     return `${wordDefs[opt] || '字形或字義不合語境。'}`;
                 });
                 return {
-                    q: q[0].replace(/\[/g, '').replace(/\]/g, ''),
+                    q: q[0].replace(/\[/g, '').replace(/\]/g, ''), // 取消中括號顯示
                     opts: opts,
                     ans: ansIdx,
                     exps: exps,
@@ -951,7 +952,7 @@
 
         window.startQuiz = () => {
             initAudio(); 
-            // 移除隨機打亂，確保從 1 出到 168 不亂序
+            // 移除隨機打亂(.sort)，確保從 1 [抱負]遠大 出到最後一個 [胃]口大開
             const qList = [...generate168Questions()].map(q => ({
                 ...q, selectedAns: null, showExplanation: false, isCorrect: false
             }));
@@ -977,50 +978,35 @@
             });
             const progress = total === 0 ? 0 : Math.round((answered / total) * 100);
 
-            // 優化需求 1 & 2: 置頂、顯示統計數字與 Emoji
             let headerHtml = isFinished 
-                ? ` <div class="sticky top-0 z-40 pb-4 pt-1 md:pt-4">
-                        <div class="bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all">
-                            <div class="flex items-center mb-4 md:mb-0">
-                                <span class="text-4xl mr-4">🏆</span>
-                                <div>
-                                    <h2 class="text-2xl font-extrabold text-slate-800">測驗結算完成</h2>
-                                    <p class="text-slate-500 font-bold text-base mt-1">總分：<span class="text-2xl text-blue-500">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
-                                </div>
+                ? ` <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row justify-between items-center z-10 relative">
+                        <div class="flex items-center mb-4 md:mb-0">
+                            <span class="text-4xl mr-4">🏆</span>
+                            <div>
+                                <h2 class="text-2xl font-extrabold text-slate-800">測驗結算完成</h2>
+                                <p class="text-slate-500 font-bold text-base mt-1">總分：<span class="text-2xl text-blue-500">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
                             </div>
-                            <div class="flex gap-3">
-                                <button onclick="switchTab('mistakes')" class="text-sm md:text-base text-rose-500 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-full font-bold transition-colors border border-rose-200 shadow-sm">看錯題 🩹</button>
-                                <button onclick="restartQuizWithConfirm()" class="text-sm md:text-base text-white bg-blue-400 hover:bg-blue-500 px-4 py-2 rounded-full font-bold transition-colors shadow-sm">重新挑戰 🔄</button>
-                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="switchTab('mistakes')" class="text-sm md:text-base text-rose-500 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-full font-bold transition-colors border border-rose-200">看錯題 🩹</button>
+                            <button onclick="restartQuizWithConfirm()" class="text-sm md:text-base text-white bg-blue-400 hover:bg-blue-500 px-4 py-2 rounded-full font-bold transition-colors shadow-sm">重新挑戰 🔄</button>
                         </div>
                     </div>`
-                : ` <div class="sticky top-0 z-40 pb-3 pt-1 md:pt-2">
-                        <div class="bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all">
-                            <div class="flex flex-col w-full md:w-auto gap-3 mb-3 md:mb-0">
-                                <div class="flex flex-wrap items-center gap-2 md:gap-3 text-sm font-bold text-slate-600">
-                                    <div class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100 flex items-center shadow-sm">
-                                        📝 已作答: <span id="stat-answered" class="mx-1">${answered}</span> / 剩餘: <span id="stat-remaining" class="ml-1">${total - answered}</span>
-                                    </div>
-                                    <div class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100 flex items-center shadow-sm">
-                                        ✅ 答對: <span id="stat-correct" class="mx-1">${correct}</span>
-                                    </div>
-                                    <div class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-full border border-rose-100 flex items-center shadow-sm">
-                                        ❌ 錯誤: <span id="stat-wrong" class="mx-1">${answered - correct}</span>
-                                    </div>
-                                </div>
-                                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-                                    <div id="quiz-progress-bar-fill" class="bg-blue-400 h-full rounded-full transition-all duration-300" style="width: ${progress}%"></div>
-                                </div>
+                : ` <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 mb-8 flex justify-between items-center z-10 relative">
+                        <div class="flex items-center gap-4">
+                            <div id="quiz-progress-text" class="text-sm font-bold text-slate-600 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">進度 ${answered}/${total}</div>
+                            <div class="w-32 md:w-48 bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                <div id="quiz-progress-bar-fill" class="bg-blue-400 h-full rounded-full transition-all duration-300" style="width: ${progress}%"></div>
                             </div>
-                            <button onclick="clearQuizHistory()" class="text-sm text-slate-500 hover:text-rose-500 hover:bg-rose-50 px-5 py-2.5 rounded-full font-bold transition-colors border border-slate-200 hover:border-rose-200 bg-white w-full md:w-auto shrink-0 shadow-sm">放棄作答</button>
                         </div>
+                        <button onclick="clearQuizHistory()" class="text-sm text-slate-400 hover:text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-full font-bold transition-colors border border-transparent hover:border-rose-100">放棄作答</button>
                     </div>`;
 
             let html = `
                 <div class="w-full flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide" id="quiz-scroll-container">
-                    <div class="w-full max-w-3xl mx-auto relative pb-20">
+                    <div class="w-full max-w-3xl mx-auto relative">
                         ${headerHtml}
-                        <div class="space-y-8 w-full mt-4">
+                        <div class="space-y-8 w-full pb-20">
             `;
             quizState.questions.forEach((_, qIdx) => { html += `<div id="q-block-${qIdx}">${generateSingleQuestionHtml(qIdx)}</div>`; });
             
@@ -1051,57 +1037,51 @@
             }
         };
 
-        // 優化需求 3: 預先生成隱藏結構，避免 innerHTML 置換導致的畫面跳動
         const generateSingleQuestionHtml = (qIdx) => {
             const q = quizState.questions[qIdx];
             let optionsHtml = '';
             
             q.opts.forEach((opt, i) => {
                 let btnClass = "w-full text-left p-4 text-lg md:text-xl rounded-xl border-2 transition-all duration-200 flex flex-col items-start group mt-3 ";
-                let iconClass = "w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm shrink-0 shadow-sm ";
-                let iconText = String.fromCharCode(65+i);
-                let expClass = "mt-3 text-base px-3 py-2 rounded-lg w-full font-medium transition-all duration-300 ";
-                let expText = (q.exps && q.exps[i]) ? q.exps[i] : '無詳細解析';
+                let iconHtml = `<span class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center mr-3 font-bold text-sm shrink-0 border border-slate-200 group-hover:bg-slate-100">${String.fromCharCode(65+i)}</span>`;
+                
+                let optExpHtml = '';
                 
                 if (!q.showExplanation) {
                     btnClass += "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 bg-white cursor-pointer";
-                    iconClass += "bg-slate-50 text-slate-400 border border-slate-200 group-hover:bg-slate-100";
-                    expClass += "hidden";
                 } else {
-                    expClass += "block ";
+                    let expText = (q.exps && q.exps[i]) ? q.exps[i] : '無詳細解析';
+                    
                     if (i === q.ans) {
                         btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 shadow-sm";
-                        iconClass += "bg-emerald-400 text-white";
-                        iconText = "✓";
-                        expClass += "text-emerald-700 bg-emerald-100/50";
+                        iconHtml = `<span class="w-8 h-8 rounded-full bg-emerald-400 text-white flex items-center justify-center mr-3 font-bold text-sm shrink-0 shadow-sm">✓</span>`;
+                        optExpHtml = `<div class="mt-3 text-base text-emerald-700 bg-emerald-100/50 px-3 py-2 rounded-lg w-full font-medium"><span class="font-bold mr-1">解析：</span>${expText}</div>`;
                     } else if (i === q.selectedAns) {
                         btnClass += "border-rose-400 bg-rose-50 text-rose-900";
-                        iconClass += "bg-rose-400 text-white";
-                        iconText = "✗";
-                        expClass += "text-rose-700 bg-rose-100/50";
+                        iconHtml = `<span class="w-8 h-8 rounded-full bg-rose-400 text-white flex items-center justify-center mr-3 font-bold text-sm shrink-0 shadow-sm">✗</span>`;
+                        optExpHtml = `<div class="mt-3 text-base text-rose-700 bg-rose-100/50 px-3 py-2 rounded-lg w-full font-medium"><span class="font-bold mr-1">解析：</span>${expText}</div>`;
                     } else {
                         btnClass += "border-slate-100 bg-white opacity-60 cursor-not-allowed";
-                        iconClass += "bg-slate-50 text-slate-400 border border-slate-200";
-                        expClass += "text-slate-500 bg-slate-50";
+                        optExpHtml = `<div class="mt-3 text-base text-slate-500 bg-slate-50 px-3 py-2 rounded-lg w-full font-medium"><span class="font-bold mr-1">解析：</span>${expText}</div>`;
                     }
                 }
 
                 optionsHtml += `
-                    <button id="opt-btn-${qIdx}-${i}" ${q.showExplanation ? 'disabled' : ''} onclick="answerWaterfallQuestion(${qIdx}, ${i})" class="${btnClass}">
+                    <button ${q.showExplanation ? 'disabled' : `onclick="answerWaterfallQuestion(${qIdx}, ${i})"`} class="${btnClass}">
                         <div class="flex items-center w-full">
-                            <span id="opt-icon-${qIdx}-${i}" class="${iconClass}">${iconText}</span>
+                            ${iconHtml}
                             <span class="flex-1 leading-relaxed font-bold">${opt}</span>
                         </div>
-                        <div id="opt-exp-${qIdx}-${i}" class="${expClass}"><span class="font-bold mr-1">解析：</span>${expText}</div>
+                        ${optExpHtml}
                     </button>
                 `;
             });
 
             const isFav = userData.favorites && userData.favorites.includes(q.q);
-            const favBtn = `<button id="fav-btn-${qIdx}" onclick="toggleQuizFavorite(${qIdx})" class="text-2xl hover:scale-110 transition-transform focus:outline-none ml-3">${isFav ? '💖' : '🤍'}</button>`;
+            const favBtn = `<button onclick="toggleQuizFavorite(${qIdx})" class="text-2xl hover:scale-110 transition-transform focus:outline-none ml-3">${isFav ? '💖' : '🤍'}</button>`;
 
             return `
-                <div class="content-card p-6 md:p-8 relative" id="q-card-${qIdx}">
+                <div class="content-card p-6 md:p-8 relative">
                     <div class="flex justify-between items-start mb-4">
                         <h3 class="text-xl md:text-2xl font-bold text-slate-800 leading-relaxed flex-1"><span class="text-blue-500 mr-2">${qIdx + 1}.</span>${q.q}</h3>
                         ${favBtn}
@@ -1117,22 +1097,13 @@
             const q = quizState.questions[qIdx];
             if (!userData.favorites) userData.favorites = [];
             const idx = userData.favorites.indexOf(q.q);
-            const isFav = idx > -1;
-            
-            if (isFav) {
-                userData.favorites.splice(idx, 1);
-            } else {
-                userData.favorites.push(q.q);
-            }
+            if (idx > -1) userData.favorites.splice(idx, 1);
+            else userData.favorites.push(q.q);
             saveUserDataToCloud();
-            
-            const favBtnEl = document.getElementById(`fav-btn-${qIdx}`);
-            if (favBtnEl) {
-                favBtnEl.innerHTML = !isFav ? '💖' : '🤍';
-            }
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
         };
 
-        // 修改為只做 DOM class 替換，完全不重新加載節點，解決畫面跳動
         window.answerWaterfallQuestion = (qIdx, optIdx) => {
             const q = quizState.questions[qIdx];
             if(q.showExplanation) return; 
@@ -1152,64 +1123,18 @@
                 }
             }
             saveQuizState();
+            const block = document.getElementById(`q-block-${qIdx}`);
+            if (block) block.innerHTML = generateSingleQuestionHtml(qIdx);
             
-            // 執行 DOM 即時替換 (避免畫面抖動)
-            q.opts.forEach((opt, i) => {
-                const btn = document.getElementById(`opt-btn-${qIdx}-${i}`);
-                const icon = document.getElementById(`opt-icon-${qIdx}-${i}`);
-                const exp = document.getElementById(`opt-exp-${qIdx}-${i}`);
-                
-                if (!btn || !icon || !exp) return;
-                
-                btn.disabled = true;
-                
-                let btnClass = "w-full text-left p-4 text-lg md:text-xl rounded-xl border-2 transition-all duration-200 flex flex-col items-start group mt-3 ";
-                let iconClass = "w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm shrink-0 shadow-sm ";
-                let expClass = "mt-3 text-base px-3 py-2 rounded-lg w-full font-medium transition-all duration-300 block ";
-                
-                if (i === q.ans) {
-                    btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 shadow-sm";
-                    iconClass += "bg-emerald-400 text-white";
-                    icon.innerHTML = "✓";
-                    expClass += "text-emerald-700 bg-emerald-100/50";
-                } else if (i === q.selectedAns) {
-                    btnClass += "border-rose-400 bg-rose-50 text-rose-900";
-                    iconClass += "bg-rose-400 text-white";
-                    icon.innerHTML = "✗";
-                    expClass += "text-rose-700 bg-rose-100/50";
-                } else {
-                    btnClass += "border-slate-100 bg-white opacity-60 cursor-not-allowed";
-                    iconClass += "bg-slate-50 text-slate-400 border border-slate-200";
-                    icon.innerHTML = String.fromCharCode(65+i);
-                    expClass += "text-slate-500 bg-slate-50";
-                }
-                
-                btn.className = btnClass;
-                icon.className = iconClass;
-                exp.className = expClass;
-            });
-            
-            // 即時更新上方固定狀態列的數字
             let answeredCount = 0;
-            let correctCount = 0;
             quizState.questions.forEach(q => {
-                if (q.showExplanation && q.selectedAns !== -1) {
-                    answeredCount++;
-                    if (q.isCorrect) correctCount++;
-                }
+                if (q.showExplanation && q.selectedAns !== -1) answeredCount++;
             });
             const total = quizState.questions.length;
             const progress = total === 0 ? 0 : Math.round((answeredCount / total) * 100);
             
-            const elAns = document.getElementById('stat-answered');
-            if(elAns) elAns.innerText = answeredCount;
-            const elRem = document.getElementById('stat-remaining');
-            if(elRem) elRem.innerText = total - answeredCount;
-            const elCor = document.getElementById('stat-correct');
-            if(elCor) elCor.innerText = correctCount;
-            const elWro = document.getElementById('stat-wrong');
-            if(elWro) elWro.innerText = answeredCount - correctCount;
-            
+            const progText = document.getElementById('quiz-progress-text');
+            if (progText) progText.innerText = `進度 ${answeredCount}/${total}`;
             const progBar = document.getElementById('quiz-progress-bar-fill');
             if (progBar) progBar.style.width = `${progress}%`;
         };
