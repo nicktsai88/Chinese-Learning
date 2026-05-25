@@ -591,6 +591,34 @@
 
         const el = id => document.getElementById(id);
 
+        window.updateNavStats = () => {
+            const statsEl = el('nav-quiz-stats');
+            if(!statsEl) return;
+            if (currentTab === 'quiz' && quizState.active && !quizState.isFinished) {
+                statsEl.classList.remove('hidden');
+                statsEl.classList.add('flex');
+                
+                let answered = 0; let correct = 0;
+                quizState.questions.forEach(q => {
+                    if (q.showExplanation && q.selectedAns !== -1) {
+                        answered++;
+                        if (q.isCorrect) correct++;
+                    }
+                });
+                const total = quizState.questions.length;
+                const progress = total === 0 ? 0 : Math.round((answered / total) * 100);
+
+                const elAns = el('nav-stat-answered'); if(elAns) elAns.innerText = answered;
+                const elRem = el('nav-stat-remaining'); if(elRem) elRem.innerText = total - answered;
+                const elCor = el('nav-stat-correct'); if(elCor) elCor.innerText = correct;
+                const elWro = el('nav-stat-wrong'); if(elWro) elWro.innerText = answered - correct;
+                const progBar = el('nav-quiz-progress-bar'); if (progBar) progBar.style.width = `${progress}%`;
+            } else {
+                statsEl.classList.add('hidden');
+                statsEl.classList.remove('flex');
+            }
+        };
+
         const syncQuestionsFormat = (state) => {
             if (!state || !state.questions) return state;
             if (state.questions.length > 0 && !state.questions[0].exps) {
@@ -814,6 +842,17 @@
                                 </span>
                             </div>
                             
+                            <div id="nav-quiz-stats" class="hidden flex-1 justify-center items-center px-2 overflow-x-auto scrollbar-hide">
+                                <div class="flex items-center gap-2 md:gap-4 text-xs md:text-sm font-bold text-slate-600 bg-white/80 px-4 py-1.5 rounded-full border border-slate-200 whitespace-nowrap shadow-sm">
+                                    <span class="text-blue-700">📝 <span class="hidden md:inline">已作答:</span> <span id="nav-stat-answered">0</span> / <span class="hidden md:inline">剩餘:</span> <span id="nav-stat-remaining">168</span></span>
+                                    <span class="text-emerald-700 border-l border-slate-300 pl-2 md:pl-4">✅ <span id="nav-stat-correct">0</span></span>
+                                    <span class="text-rose-700 border-l border-slate-300 pl-2 md:pl-4">❌ <span id="nav-stat-wrong">0</span></span>
+                                    <div class="hidden lg:block w-16 md:w-24 bg-slate-200 rounded-full h-1.5 ml-2 md:ml-4 overflow-hidden">
+                                        <div id="nav-quiz-progress-bar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="flex items-center space-x-2 md:space-x-3 shrink-0">
                                 <button onclick="switchTab('learn')" id="nav-learn" class="nav-btn"><span class="mr-1.5">📚</span>學習</button>
                                 <button onclick="switchTab('quiz')" id="nav-quiz" class="nav-btn"><span class="mr-1.5">🎯</span>測驗(168)</button>
@@ -892,6 +931,7 @@
                 if(tab === 'favorites') renderFavorites(content);
                 if(tab === 'history') renderHistory(content);
             }
+            updateNavStats();
         };
 
         const renderLearnSubNav = (container) => {
@@ -958,6 +998,7 @@
             quizState = { active: true, isFinished: false, questions: qList };
             saveQuizState();
             renderQuizView(el('main-content'));
+            updateNavStats();
         };
 
         window.restartQuizWithConfirm = () => {
@@ -979,7 +1020,7 @@
 
             // 優化需求 1 & 2: 置頂、顯示統計數字與 Emoji
             let headerHtml = isFinished 
-                ? ` <div class="sticky top-0 z-40 pb-4 pt-1 md:pt-4">
+                ? ` <div class="mb-8">
                         <div class="bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all">
                             <div class="flex items-center mb-4 md:mb-0">
                                 <span class="text-4xl mr-4">🏆</span>
@@ -994,31 +1035,13 @@
                             </div>
                         </div>
                     </div>`
-                : ` <div class="sticky top-0 z-40 pb-3 pt-1 md:pt-2">
-                        <div class="bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all">
-                            <div class="flex flex-col w-full md:w-auto gap-3 mb-3 md:mb-0">
-                                <div class="flex flex-wrap items-center gap-2 md:gap-3 text-sm font-bold text-slate-600">
-                                    <div class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100 flex items-center shadow-sm">
-                                        📝 已作答: <span id="stat-answered" class="mx-1">${answered}</span> / 剩餘: <span id="stat-remaining" class="ml-1">${total - answered}</span>
-                                    </div>
-                                    <div class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100 flex items-center shadow-sm">
-                                        ✅ 答對: <span id="stat-correct" class="mx-1">${correct}</span>
-                                    </div>
-                                    <div class="bg-rose-50 text-rose-700 px-3 py-1.5 rounded-full border border-rose-100 flex items-center shadow-sm">
-                                        ❌ 錯誤: <span id="stat-wrong" class="mx-1">${answered - correct}</span>
-                                    </div>
-                                </div>
-                                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden shadow-inner">
-                                    <div id="quiz-progress-bar-fill" class="bg-blue-400 h-full rounded-full transition-all duration-300" style="width: ${progress}%"></div>
-                                </div>
-                            </div>
-                            <button onclick="clearQuizHistory()" class="text-sm text-slate-500 hover:text-rose-500 hover:bg-rose-50 px-5 py-2.5 rounded-full font-bold transition-colors border border-slate-200 hover:border-rose-200 bg-white w-full md:w-auto shrink-0 shadow-sm">放棄作答</button>
-                        </div>
+                : ` <div class="flex justify-end mb-2 relative z-10">
+                        <button onclick="clearQuizHistory()" class="text-sm text-slate-500 hover:text-rose-500 hover:bg-rose-50 px-5 py-2.5 rounded-full font-bold transition-colors border border-slate-200 hover:border-rose-200 bg-white shadow-sm flex items-center"><span class="mr-2 text-lg">🚪</span>放棄作答</button>
                     </div>`;
 
             let html = `
                 <div class="w-full flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide" id="quiz-scroll-container">
-                    <div class="w-full max-w-3xl mx-auto relative pb-20">
+                    <div class="w-full max-w-5xl mx-auto relative pb-20">
                         ${headerHtml}
                         <div class="space-y-8 w-full mt-4">
             `;
@@ -1032,6 +1055,8 @@
             }
             html += `</div></div></div>`;
             container.innerHTML = html;
+            
+            updateNavStats();
 
             if (!isFinished) {
                 setTimeout(() => {
@@ -1190,28 +1215,7 @@
             });
             
             // 即時更新上方固定狀態列的數字
-            let answeredCount = 0;
-            let correctCount = 0;
-            quizState.questions.forEach(q => {
-                if (q.showExplanation && q.selectedAns !== -1) {
-                    answeredCount++;
-                    if (q.isCorrect) correctCount++;
-                }
-            });
-            const total = quizState.questions.length;
-            const progress = total === 0 ? 0 : Math.round((answeredCount / total) * 100);
-            
-            const elAns = document.getElementById('stat-answered');
-            if(elAns) elAns.innerText = answeredCount;
-            const elRem = document.getElementById('stat-remaining');
-            if(elRem) elRem.innerText = total - answeredCount;
-            const elCor = document.getElementById('stat-correct');
-            if(elCor) elCor.innerText = correctCount;
-            const elWro = document.getElementById('stat-wrong');
-            if(elWro) elWro.innerText = answeredCount - correctCount;
-            
-            const progBar = document.getElementById('quiz-progress-bar-fill');
-            if (progBar) progBar.style.width = `${progress}%`;
+            updateNavStats();
         };
 
         window.finishQuizWaterfall = async () => {
@@ -1237,6 +1241,7 @@
             renderQuizView(el('main-content'));
             confetti({ particleCount: 200, spread: 80, origin: { y: 0.3 } });
             setTimeout(() => { const s = el('quiz-scroll-container'); if (s) s.scrollTo({ top: 0, behavior: 'smooth' }); }, 100);
+            updateNavStats();
         };
 
         window.clearQuizHistory = () => {
@@ -1244,6 +1249,7 @@
                 quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
                 saveQuizState();
                 renderQuizView(el('main-content'));
+                updateNavStats();
             }
         };
 
@@ -1256,7 +1262,7 @@
                     </div>`;
             }
             return `
-                <div class="space-y-6 w-full max-w-4xl mx-auto pb-20">
+                <div class="space-y-6 w-full max-w-5xl mx-auto pb-20">
                     ${list.map((m, i) => `
                         <div class="content-card p-6 md:p-8">
                             <div class="flex justify-between items-start mb-4">
@@ -1284,7 +1290,7 @@
             if(!container) container = el('main-content');
             container.innerHTML = `
                 <div class="w-full flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide">
-                    <div class="max-w-4xl mx-auto mb-6 flex justify-between items-end border-b border-rose-200 pb-4 px-2">
+                    <div class="max-w-5xl mx-auto mb-6 flex justify-between items-end border-b border-rose-200 pb-4 px-2">
                         <h2 class="text-3xl font-extrabold text-rose-700">🩹 錯題本</h2>
                         ${userData.mistakes?.length ? `<button onclick="clearMistakes()" class="text-sm text-rose-500 bg-white border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-full font-bold">清空</button>` : ''}
                     </div>
@@ -1308,7 +1314,7 @@
 
             container.innerHTML = `
                 <div class="w-full flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide">
-                    <div class="max-w-4xl mx-auto mb-6 border-b border-pink-200 pb-4 px-2">
+                    <div class="max-w-5xl mx-auto mb-6 border-b border-pink-200 pb-4 px-2">
                         <h2 class="text-3xl font-extrabold text-pink-600">💖 我的最愛</h2>
                     </div>
                     ${renderQuestionList(favs, '暫無收藏 📌', '🤍')}
