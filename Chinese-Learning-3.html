@@ -127,59 +127,119 @@
             let parts = str.split(/\[(.*?)\]/);
             return parts.map((part, i) => {
                 if (i % 2 === 1) {
-                    return `<span class="text-[#f43f5e] border-b-[3px] border-[#f43f5e] font-black pb-[2px] mx-[2px] text-[1.4rem] md:text-3xl tracking-wide">${part}</span>`;
+                    return `<span class="text-[#f43f5e] border-b-[3px] border-[#f43f5e] font-black pb-[2px] mx-[2px] text-[1.4rem] md:text-[1.8rem] tracking-wide">${part}</span>`;
                 } else {
-                    return `<span class="text-[#1e293b] font-black text-[1.4rem] md:text-3xl tracking-wide">${part}</span>`;
+                    return `<span class="text-[#1e293b] font-bold text-[1.2rem] md:text-[1.4rem] tracking-wide">${part}</span>`;
                 }
             }).join('');
         };
 
-        const renderTableRows = (pairs) => {
-            return pairs.map((p, index) => `
-                <tr class="bg-white shadow-sm hover:shadow-md transition-shadow group">
-                    <td class="p-5 md:p-6 text-center border-y border-l border-rose-100 rounded-l-2xl group-hover:bg-rose-50/30 transition-colors w-1/2">${formatPair(p[0])}</td>
-                    <td class="p-5 md:p-6 text-center border-y border-r border-rose-100 rounded-r-2xl group-hover:bg-rose-50/30 transition-colors w-1/2">${formatPair(p[1])}</td>
-                </tr>
-            `).join('');
+        const allGroups = [
+            /* 1 */ ["[布]公布、擺布", "[怖]恐怖"],
+            /* 2 */ ["[簿]對簿公堂", "[薄]刻薄、薄利多銷"],
+            /* 3 */ ["[補]亡羊補牢、補習", "[捕]捕風捉影、逮捕"],
+            /* 4 */ ["[繃]緊繃、繃著臉", "[蹦]蹦蹦跳跳"],
+            /* 5 */ ["[博]博學、博得喝采", "[搏]搏鬥、放手一搏", "[膊]打赤膊"],
+            /* 6 */ ["[敝]凋敝、視如敝屣", "[弊]作弊、弊端", "[幣]錢幣、貨幣", "[蔽]遮蔽、蒙蔽", "[斃]坐以待斃"],
+            /* 7 */ ["[辨]分辨", "[辯]辯論、百口莫辯", "[辦]辦公室", "[瓣]花瓣", "[辮]辮子"],
+            /* 8 */ ["[伴]伴奏、伴侶", "[拌]涼拌、攪拌", "[絆]絆腳石", "[畔]相思河畔", "[判]判若兩人", "[叛]背叛", "[扮]扮演、打扮"],
+            /* 9 */ ["[怦]怦然心動", "[抨]抨擊"],
+            /* 10 */ ["[矛]自相矛盾", "[茅]名列前茅"],
+            /* 11 */ ["[蜜]甜蜜、蜜月", "[密]親密、密切"],
+            /* 12 */ ["[蔓]蔓延、荒煙蔓草", "[漫]漫不經心、漫長等待"],
+            /* 13 */ ["[茫]茫然、無頭緒", "[瞞]瞞天過海", "[蹣]蹣跚而行", "[滿]滿不在乎"],
+            /* 14 */ ["[慕]羨慕、慕名而來", "[募]募捐", "[幕]開幕、夜幕低垂", "[暮]日暮途窮"],
+            /* 15 */ ["[袒]袒護", "[坦]平坦、坦白"],
+            /* 16 */ ["[途]窮途末路、途徑", "[塗]一敗塗地、塗鴉"],
+            /* 17 */ ["[妨]妨礙工作、妨害自由", "[防]防備、防止"],
+            /* 18 */ ["[瞠]瞠目結舌", "[攤]爛攤子、分攤", "[癱]全身癱瘓"],
+            /* 19 */ ["[番]三番兩次、創一番事業", "[翻]翻來覆去、鹹魚翻身"],
+            /* 20 */ ["[釜]破釜沉舟、釜底抽薪", "[斧]班門弄斧"],
+            /* 21 */ ["[分]勞燕分飛", "[紛]眾說紛紜、紛紛議論", "[氛]氣氛"],
+            /* 22 */ ["[鋒]兩軍交鋒、鋒芒畢露", "[峰]尖峰時刻、登峰造極", "[蜂]一窩蜂、蜂擁而來", "[烽]烽火連天"],
+            /* 23 */ ["[塌]坍塌、一塌糊塗", "[遢]邋遢", "[蹋]糟蹋糧食", "[榻]下榻飯店"],
+            /* 24 */ ["[謗]毀謗", "[傍]傍晚", "[磅]磅礴"],
+            /* 25 */ ["[芒]光芒萬丈、芒刺在背", "[茫]茫然無知", "[盲]盲目"],
+            /* 26 */ ["[砥]中流砥柱、砥礪", "[邸]官邸"],
+            /* 27 */ ["[惰]生性懶惰、怠惰", "[墮]自甘墮落、呱呱墮地", "[墜]墜下、墜球"],
+            /* 28 */ ["[咄]咄咄逼人", "[絀]相形見絀、左支右絀", "[拙]笨拙、弄巧成拙", "[茁]茁壯"],
+            /* 29 */ ["[匿]隱匿、匿名", "[暱]親暱、暱稱"],
+            /* 30 */ ["[腦]絞盡腦汁", "[惱]惱羞成怒、煩惱"],
+            /* 31 */ ["[締]締結、締造", "[諦]真諦、諦聽"],
+            /* 32 */ ["[睞]受到青睞", "[徠]招徠顧客"],
+            /* 33 */ ["[盯]緊迫盯人", "[叮]叮嚀"],
+            /* 34 */ ["[贏]輸贏", "[羸]羸弱"],
+            /* 35 */ ["[旦]一旦有了危險", "[但]但是、不但"],
+            /* 36 */ ["[碌]忙碌", "[祿]俸祿"],
+            /* 37 */ ["[概]英雄氣概", "[慨]感慨良多"],
+            /* 38 */ ["[稿]投稿、徵稿", "[槁]槁木死灰、形容枯槁"],
+            /* 39 */ ["[均]勢均力敵", "[鈞]千鈞一髮"],
+            /* 40 */ ["[刮]刮目相看", "[括]包括"],
+            /* 41 */ ["[果]果腹", "[裹]包裹、裹足不前"],
+            /* 42 */ ["[堪]不堪負荷", "[勘]勘查地形"],
+            /* 43 */ ["[籠]籠罩、籠統", "[攏]拉攏、合不攏嘴", "[壟]壟斷市場"],
+            /* 44 */ ["[栗]糖炒栗子", "[慄]不寒而慄"],
+            /* 45 */ ["[伶]伶牙俐齒", "[聆]聆聽教誨", "[玲]八面玲瓏"],
+            /* 46 */ ["[屢]屢試不爽、屢見不鮮", "[履]履行合約、履歷表"],
+            /* 47 */ ["[療]療養院、治療", "[潦]字跡潦草"],
+            /* 48 */ ["[勵]互相勉勵、敦品勵學", "[厲]再接再厲、變本加厲"],
+            /* 49 */ ["[掛]披掛上陣", "[褂]長袍馬褂"],
+            /* 50 */ ["[伽]瑜伽", "[枷]枷鎖"],
+            /* 51 */ ["[徑]別闢蹊徑、行不由徑", "[脛]不脛而走"],
+            /* 52 */ ["[籍]書籍、戶籍謄本", "[藉]憑藉、藉口"],
+            /* 53 */ ["[嬌]嬌生慣養", "[驕]驕傲、天之驕子"],
+            /* 54 */ ["[績]成績、績效", "[積]累積、積年累月", "[蹟]事蹟、名勝古蹟"],
+            /* 55 */ ["[框]籃框", "[筐]籮筐", "[眶]眼眶"],
+            /* 56 */ ["[夸]夸父逐日", "[誇]誇大不實", "[垮]打垮、垮臺", "[跨]跨越、橫跨", "[胯]胯下之辱"],
+            /* 57 */ ["[俊]青年才俊", "[駿]駿馬奔騰", "[竣]如期竣工", "[峻]高山峻嶺、嚴刑峻法", "[浚]疏浚河道"],
+            /* 58 */ ["[獲]不勞而獲", "[穫]收穫"],
+            /* 59 */ ["[悍]短小精悍", "[捍]捍衛國家"],
+            /* 60 */ ["[荒]落荒而逃、兵荒馬亂", "[慌]不慌不忙"],
+            /* 61 */ ["[晃]晃動、晃一眼", "[幌]騙人的幌子", "[恍]精神恍惚"],
+            /* 62 */ ["[奐]美輪美奐", "[煥]精神煥發", "[喚]一再呼喚", "[瘓]半身癱瘓"],
+            /* 63 */ ["[恰]恰到好處", "[洽]融洽、接洽"],
+            /* 64 */ ["[駭]驚濤駭浪", "[骸]遺骸"],
+            /* 65 */ ["[唳]風聲鶴唳", "[戾]暴戾之氣"],
+            /* 66 */ ["[臘]臘月、臘肉", "[蠟]味同嚼蠟"],
+            /* 67 */ ["[籃]打籃球", "[藍]青出於藍", "[闌]夜闌人靜", "[斕]色彩斑斕", "[覽]一覽無遺、博覽古今", "[攬]延攬人才、大權獨攬", "[纜]空中纜車、光纖電纜"],
+            /* 68 */ ["[麟]鳳毛麟角", "[鱗]遍體鱗傷", "[遴]遴選"],
+            /* 69 */ ["[抉]抉擇", "[訣]祕訣、訣別、訣竅", "[決]決裂、猶豫不決"],
+            /* 70 */ ["[踐]實踐、踐踏", "[賤]賤賣土地", "[餞]餞行"],
+            /* 71 */ ["[粟]滄海一粟", "[栗]糖炒栗子"],
+            /* 72 */ ["[旗]旗開得勝、旗鼓相當", "[棋]棋逢敵手、星羅棋布"],
+            /* 73 */ ["[氣]氣球", "[汽]汽水、汽車"],
+            /* 74 */ ["[券]消費券、入場券", "[卷]開卷有益"],
+            /* 75 */ ["[僚]幕僚、官僚", "[燎]星火燎原", "[繚]眼花繚亂", "[嘹]嘹亮"],
+            /* 76 */ ["[青]雨過天青", "[清]清一色"],
+            /* 77 */ ["[售]出售", "[罄]罄竹難書"],
+            /* 78 */ ["[馨]溫馨、馨香", "[聲]聲音"],
+            /* 79 */ ["[憾]遺憾、抱憾", "[撼]震撼"],
+            /* 80 */ ["[悻]悻悻然", "[倖]僥倖"]
+        ];
+
+        const renderGroupTable = (startIndex, endIndex) => {
+            const slice = allGroups.slice(startIndex - 1, endIndex);
+            return `
+                <div class="w-full overflow-hidden rounded-[1.2rem] border-2 border-rose-100 shadow-sm bg-white mt-4 mb-8">
+                    <table class="w-full text-left border-collapse">
+                        <tbody>
+                        ${slice.map((g, idx) => `
+                            <tr class="group border-b-2 border-rose-50 last:border-0 hover:bg-rose-50/20 transition-colors">
+                                <td class="p-3 md:p-5 text-center font-black text-rose-600 bg-rose-50/60 w-24 md:w-32 shrink-0 border-r-2 border-rose-50 text-base md:text-xl">
+                                    第 ${startIndex + idx} 組
+                                </td>
+                                <td class="p-3 md:p-5">
+                                    <div class="flex flex-wrap gap-2 md:gap-3 items-center">
+                                        ${g.map(item => `<div class="bg-white px-3 md:px-4 py-1.5 md:py-2 rounded-xl shadow-sm border border-slate-100 hover:border-rose-200 transition-colors">${formatPair(item)}</div>`).join('')}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         };
-
-        const pairs1 = [
-            ["公[布]、擺[布]", "恐[怖]"], ["對[簿]公堂", "刻[薄]、[薄]利多銷"], ["亡羊[補]牢", "[捕]風捉影"], ["緊[繃]、[繃]著臉", "[蹦]蹦跳跳"],
-            ["[博]學、[博]得", "放手一[搏]、[搏]鬥"], ["打赤[膊]", "視如[敝]屣"], ["作[弊]、[弊]端", "金[幣]、貨[幣]"], ["遮[蔽]、蒙[蔽]", "坐以待[斃]"],
-            ["明[辨]是非", "百口莫[辯]"], ["[辦]公室", "花[瓣]"], ["[伴]侶、[伴]奏", "攪[拌]、涼[拌]"], ["[絆]腳石", "相思河[畔]"],
-            ["[判]若兩人", "背[叛]"], ["打[扮]、[扮]演", "[抨]擊、[怦]然"], ["相互[矛]盾", "名列前[茅]"], ["甜[蜜]、[蜜]月", "親[密]、[密]切"],
-            ["[蔓]延、荒煙[蔓]草", "[漫]不經心"], ["[茫]然、無頭緒", "[瞞]天過海"], ["[蹣]跚而行", "[滿]不在乎"], ["夜[幕]低垂", "日[暮]途窮"],
-            ["羨[慕]、[慕]名", "招[募]、[募]捐"], ["[袒]護", "平[坦]"], ["窮[途]末路", "一敗[塗]地"], ["[妨]礙工作", "[防]備、[防]止"]
-        ];
-
-        const pairs2 = [
-            ["[瞠]目結舌", "爛[攤]子、分[攤]"], ["全身[癱]瘓", "三[番]兩次"], ["[翻]來覆去", "破[釜]沉舟"], ["班門弄[斧]", "勞燕[分]飛"],
-            ["眾說[紛]紜", "氣[氛]"], ["針[鋒]相對", "尖[峰]時刻"], ["一窩[蜂]", "[烽]火連天"], ["一[塌]糊塗", "邋[遢]"],
-            ["糟[蹋]糧食", "下[榻]飯店"], ["隱[匿]、[匿]名", "親[暱]、[暱]稱"], ["絞盡[腦]汁", "[惱]羞成怒"], ["中流[砥]柱", "官[邸]"],
-            ["懶[惰]、怠[惰]", "自甘[墮]落"], ["[墜]落、[墜]下", "[咄]咄逼人"], ["左支右[絀]", "弄巧成[拙]"], ["[茁]壯", "[銀]行、[銀]色"],
-            ["輸[贏]", "[羸]弱"], ["[締]造、[締]結", "真[諦]、[諦]聽"], ["青[睞]", "招[徠]"], ["緊迫[盯]人", "[叮]嚀"],
-            ["一[旦]有了危險", "[但]是、不[但]"], ["忙[碌]", "俸[祿]"]
-        ];
-
-        const pairs3 = [
-            ["轉[捩]點", "投[稿]、徵[稿]"], ["枯[槁]、形[槁]", "勢[均]力敵"], ["千[鈞]一髮", "[刮]目相看"], ["包[括]、概[括]", "[果]腹"],
-            ["[裹]足不前", "不[堪]負荷"], ["[勘]查地形", "[籠]罩、[籠]統"], ["拉[攏]、合不[攏]", "[壟]斷市場"], ["糖炒[栗]子", "不寒而[慄]"],
-            ["[伶]牙俐齒", "[聆]聽教誨"], ["八面[玲]瓏", "[屢]見不鮮"], ["[履]行、[履]歷", "[療]養院"], ["字跡[潦]草", "勉[勵]、[勵]學"],
-            ["再接再[厲]", "披[掛]上陣"], ["長袍馬[褂]", "英雄氣[概]"], ["感[慨]良多", "別闢蹊[徑]"], ["不[脛]而走", "戶[籍]謄本"],
-            ["憑[藉]、[藉]口", "[嬌]生慣養"], ["天之[驕]子", "成[績]、[績]效"], ["[積]年累月", "名勝古[蹟]"], ["籃[框]", "籮[筐]"],
-            ["眼[眶]", "[夸]父追日"], ["[誇]大不實", "打[垮]、[垮]臺"]
-        ];
-
-        const pairs4 = [
-            ["[跨]越、橫[跨]", "[胯]下之辱"], ["青年才[俊]", "[駿]馬奔騰"], ["如期[竣]工", "高山[峻]嶺"], ["疏[浚]河道", "落[荒]而逃"],
-            ["不[慌]不忙", "搖[晃]、[晃]眼"], ["[幌]子", "精神[恍]惚"], ["繼[續]、連[續]", "不絕如[縷]"], ["消費[券]", "開[卷]有益"],
-            ["美輪美[奐]", "精神[煥]發"], ["呼[喚]", "癱[瘓]"], ["[恰]到好處", "融[洽]、接[洽]"], ["驚濤[駭]浪", "遺[骸]"],
-            ["瑜[伽]", "[枷]鎖"], ["味同嚼[蠟]", "[臘]月、[臘]肉"], ["打[籃]球", "青出於[藍]"], ["夜[闌]人靜", "色彩斑[斕]"],
-            ["一[覽]無遺", "大權獨[攬]"], ["光纖電[纜]", "鳳毛[麟]角"], ["遍體[鱗]傷", "[遴]選"], ["[抉]擇", "祕[訣]、[訣]別"],
-            ["猶豫不[決]", "實[踐]、[踐]踏"], ["[賤]賣", "[餞]行"], ["滄海一[粟]", "不勞而[獲]"], ["精[悍]", "[捍]衛"],
-            ["[旗]開得勝", "星羅[棋]布"], ["[氣]球", "[汽]水、[汽]車"], ["官[僚]", "[清]一色、雨過天[青]"], ["出[售]", "[罄]竹難書"],
-            ["溫[馨]", "遺[憾]"], ["震[撼]", "[悻]悻然"], ["僥[倖]", "[幸]運"]
-        ];
 
         const learnData = [
             {
@@ -190,32 +250,32 @@
                         <span class="text-4xl">💡</span> 認識字形與解題密碼 <span class="text-4xl">🗝️</span>
                     </div>
                     <div class="mb-6">
-                        <div class="bg-rose-50 p-4 rounded-xl border border-rose-200 mb-6 shadow-sm">
-                            <h3 class="font-bold text-2xl text-rose-800 mb-2 flex items-center"><span class="mr-2">🧩</span> 漢字特性：一字一義</h3>
-                            <ul class="list-none space-y-2 font-medium text-rose-900">
+                        <div class="bg-rose-50 p-4 md:p-6 rounded-2xl border border-rose-200 mb-8 shadow-sm">
+                            <h3 class="font-bold text-2xl text-rose-800 mb-3 flex items-center"><span class="mr-2">🧩</span> 漢字特性：一字一義</h3>
+                            <ul class="list-none space-y-3 font-medium text-rose-900">
                                 <li>✨ <strong>表形：</strong>透過部首、偏旁記憶單字，字形相近容易混淆。</li>
                                 <li>✨ <strong>表義：</strong>從前後文用詞與部首關聯，類推字義。</li>
                             </ul>
                         </div>
                         <h3 class="font-bold text-2xl md:text-3xl text-emerald-700 mb-4 flex items-center">
-                            <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded mr-3 text-xl">1</span> 部首表義：破解字形相近的陷阱 🔍
+                            <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg mr-3 text-xl">1</span> 部首表義：破解字形相近的陷阱 🔍
                         </h3>
-                        <div class="bg-white p-5 rounded-xl border border-slate-200 mb-6 shadow-sm">
-                            <h4 class="font-bold text-blue-600 mb-4 flex items-center"><span class="mr-2">💬</span>實戰一：辨、辯、辦、瓣、辮 的分辨</h4>
+                        <div class="bg-white p-5 md:p-8 rounded-2xl border-2 border-slate-100 mb-6 shadow-sm">
+                            <h4 class="font-bold text-blue-600 mb-5 flex items-center text-xl md:text-2xl"><span class="mr-2">💬</span>實戰一：辨、辯、辦、瓣、辮 的分辨</h4>
                             <ul class="list-none space-y-4 font-medium text-slate-700">
-                                <li class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-rose-50/30 transition-colors">
                                     <span class="text-rose-500 font-bold text-2xl mr-2">辨 (刀部)：</span>中間是「刀」，用刀剖開，引申為判別。如：明<span class="text-rose-500 border-b-2 border-rose-500 font-black">辨</span>是非。
                                 </li>
-                                <li class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-rose-50/30 transition-colors">
                                     <span class="text-rose-500 font-bold text-2xl mr-2">辯 (言部)：</span>中間是「言」，用言語爭論。如：百口莫<span class="text-rose-500 border-b-2 border-rose-500 font-black">辯</span>、<span class="text-rose-500 border-b-2 border-rose-500 font-black">辯</span>論。
                                 </li>
-                                <li class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-rose-50/30 transition-colors">
                                     <span class="text-rose-500 font-bold text-2xl mr-2">辦 (力部)：</span>中間是「力」，用力處理事物。如：<span class="text-rose-500 border-b-2 border-rose-500 font-black">辦</span>公室、<span class="text-rose-500 border-b-2 border-rose-500 font-black">辦</span>事。
                                 </li>
-                                <li class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-rose-50/30 transition-colors">
                                     <span class="text-rose-500 font-bold text-2xl mr-2">瓣 (瓜部)：</span>中間是「瓜」，瓜類的種子或花片。如：花<span class="text-rose-500 border-b-2 border-rose-500 font-black">瓣</span>、豆<span class="text-rose-500 border-b-2 border-rose-500 font-black">瓣</span>。
                                 </li>
-                                <li class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:bg-rose-50/30 transition-colors">
                                     <span class="text-rose-500 font-bold text-2xl mr-2">辮 (糸部)：</span>中間是「糸」，用線或絲交織。如：髮<span class="text-rose-500 border-b-2 border-rose-500 font-black">辮</span>、綁<span class="text-rose-500 border-b-2 border-rose-500 font-black">辮</span>子。
                                 </li>
                             </ul>
@@ -224,73 +284,65 @@
                 </div>`
             },
             {
-                id: 'sec2', title: '貳、形近字大揭密 (一) 🆚',
+                id: 'sec2', title: '貳、形近字(1~20組) 🆚',
                 content: `
                 <div class="space-y-6 text-xl md:text-2xl text-slate-800">
-                    <div class="mb-4">
-                        <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
-                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 易混淆形近字 (第一部分) 🥊
-                        </h3>
-                        <div class="w-full">
-                            <table class="w-full border-separate" style="border-spacing: 0 1rem;">
-                                <tbody>${renderTableRows(pairs1)}</tbody>
-                            </table>
-                        </div>
-                        <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center mt-10">
-                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 易混淆形近字 (第二部分) 🥊
-                        </h3>
-                        <div class="w-full">
-                            <table class="w-full border-separate" style="border-spacing: 0 1rem;">
-                                <tbody>${renderTableRows(pairs2)}</tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> 形近字大揭密 (第 1 ~ 20 組)
+                    </h3>
+                    ${renderGroupTable(1, 20)}
                 </div>`
             },
             {
-                id: 'sec3', title: '參、形近字大揭密 (二) 🆚',
+                id: 'sec3', title: '參、形近字(21~40組) 🆚',
                 content: `
                 <div class="space-y-6 text-xl md:text-2xl text-slate-800">
-                    <div class="mb-4">
-                        <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
-                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 易混淆形近字 (第三部分) 🥊
-                        </h3>
-                        <div class="w-full">
-                            <table class="w-full border-separate" style="border-spacing: 0 1rem;">
-                                <tbody>${renderTableRows(pairs3)}</tbody>
-                            </table>
-                        </div>
-                        <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center mt-10">
-                            <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded mr-3 text-xl">-</span> 易混淆形近字 (第四部分) 🥊
-                        </h3>
-                        <div class="w-full">
-                            <table class="w-full border-separate" style="border-spacing: 0 1rem;">
-                                <tbody>${renderTableRows(pairs4)}</tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> 形近字大揭密 (第 21 ~ 40 組)
+                    </h3>
+                    ${renderGroupTable(21, 40)}
                 </div>`
             },
             {
-                id: 'sec4', title: '肆、必考！生難字詞全解 📖',
+                id: 'sec4', title: '肆、形近字(41~60組) 🆚',
+                content: `
+                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> 形近字大揭密 (第 41 ~ 60 組)
+                    </h3>
+                    ${renderGroupTable(41, 60)}
+                </div>`
+            },
+            {
+                id: 'sec5', title: '伍、形近字(61~80組) 🆚',
+                content: `
+                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> 形近字大揭密 (第 61 ~ 80 組)
+                    </h3>
+                    ${renderGroupTable(61, 80)}
+                </div>`
+            },
+            {
+                id: 'sec6', title: '陸、必考！生難字詞全解 📖',
                 content: `
                 <div class="space-y-6 text-xl md:text-2xl text-slate-800">
                     <div class="mb-4">
                         <h3 class="font-bold text-2xl md:text-3xl text-emerald-700 mb-6 flex items-center">
-                            <span class="bg-emerald-200 text-emerald-800 px-3 py-1 rounded mr-3 text-xl">-</span> 形近字專屬成語解析 💡
+                            <span class="bg-emerald-200 text-emerald-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> 形近字專屬成語解析 💡
                         </h3>
-                        <div class="bg-white p-6 md:p-8 rounded-2xl border border-emerald-200 shadow-sm">
+                        <div class="bg-white p-6 md:p-8 rounded-2xl border-2 border-emerald-100 shadow-sm">
                             <ul class="space-y-5 text-lg md:text-xl text-slate-700 font-medium list-none">
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">對簿公堂</span><span class="flex-1">原告、被告雙方在法庭上公開審問、爭訟，以辨是非。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">視如敝屣</span><span class="flex-1">比喻輕蔑，不屑一顧。敝屣：破鞋。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">釜底抽薪</span><span class="flex-1">從根本上解決問題。釜：鍋子。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">勞燕分飛</span><span class="flex-1">比喻分離，多用於夫妻、情人之間。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">呱呱墮地</span><span class="flex-1">形容嬰兒出生。也作「呱呱墜地」。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">鳳毛麟角</span><span class="flex-1">稀罕珍貴的人、物。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">屢試不爽</span><span class="flex-1">屢次試驗，結果都相同。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">秣馬厲兵</span><span class="flex-1">比喻完成作戰的準備。厲：磨利。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">別闢蹊徑</span><span class="flex-1">使用另一種方法解決問題或創新事物。蹊徑：小路。</span></li>
-                                <li class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">天之驕子</span><span class="flex-1">泛指得天獨厚，倍受重視的人。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">對簿公堂</span><span class="flex-1">原告、被告雙方在法庭上公開審問、爭訟，以辨是非。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">視如敝屣</span><span class="flex-1">比喻輕蔑，不屑一顧。敝屣：破鞋。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">釜底抽薪</span><span class="flex-1">從根本上解決問題。釜：鍋子。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">勞燕分飛</span><span class="flex-1">比喻分離，多用於夫妻、情人之間。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">呱呱墮地</span><span class="flex-1">形容嬰兒出生。也作「呱呱墜地」。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">鳳毛麟角</span><span class="flex-1">稀罕珍貴的人、物。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">屢試不爽</span><span class="flex-1">屢次試驗，結果都相同。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">秣馬厲兵</span><span class="flex-1">比喻完成作戰的準備。厲：磨利。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">別闢蹊徑</span><span class="flex-1">使用另一種方法解決問題或創新事物。蹊徑：小路。</span></li>
+                                <li class="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center hover:bg-emerald-50/30 transition-colors"><span class="text-blue-700 font-bold text-xl md:text-2xl min-w-[8rem] mb-2 md:mb-0">天之驕子</span><span class="flex-1">泛指得天獨厚，倍受重視的人。</span></li>
                             </ul>
                         </div>
                     </div>
@@ -306,7 +358,7 @@
                 "繃": "拉緊。如：緊繃。", "蹦": "跳躍。如：蹦蹦跳跳。", 
                 "博": "廣泛、取得。如：博學、博得。", "搏": "對打。如：搏鬥、放手一搏。", "膊": "肩膀以下。如：打赤膊。", 
                 "敝": "破舊。如：視如敝屣。", "弊": "壞事。如：作弊、弊端。", "幣": "錢。如：錢幣。", "蔽": "遮蓋。如：遮蔽。", "斃": "死亡。如：坐以待斃。", 
-                "辨": "判別。如：明辨是非。", "辯": "言語爭論。如：百口莫辯。", "辦": "處理。如：辦公室。", "瓣": "花片。如：花瓣。", 
+                "辨": "判別。如：明辨是非。", "辯": "言語爭論。如：百口莫辯。", "辦": "處理。如：辦公室。", "瓣": "花片。如：花瓣。", "辮": "用絲線編結的條狀物。如：辮子。",
                 "伴": "陪伴。如：伴侶。", "拌": "攪和。如：攪拌。", "絆": "阻礙。如：絆腳石。", "畔": "水邊。如：河畔。", "判": "分辨、斷定。如：判若兩人。", "叛": "背叛。", "扮": "裝飾、化裝。如：打扮。", 
                 "抨": "彈劾、攻擊。如：抨擊。", "怦": "心跳聲。如：怦然心動。", 
                 "矛": "兵器。如：自相矛盾。", "茅": "草名。如：名列前茅。", 
@@ -322,6 +374,8 @@
                 "分": "區別、離開。如：勞燕分飛。", "紛": "雜亂。如：眾說紛紜。", "氛": "氣體。如：氣氛。", 
                 "鋒": "兵器尖端。如：針鋒相對。", "峰": "山頂。如：尖峰。", "蜂": "昆蟲。如：一窩蜂。", "烽": "邊防報警的煙火。如：烽火。", 
                 "塌": "倒下。如：一塌糊塗。", "遢": "走路樣子。如：邋遢。", "蹋": "踩。如：糟蹋。", "榻": "狹長而矮的床。如：下榻。", 
+                "謗": "毀謗。", "傍": "臨近。如：傍晚。", "磅": "磅礴。", 
+                "芒": "光芒、鋒芒。如：光芒萬丈。", "盲": "眼睛失明、盲目。如：盲從。",
                 "匿": "隱藏。如：匿名。", "暱": "親近。如：親暱。", 
                 "腦": "頭部器官。如：絞盡腦汁。", "惱": "生氣。如：惱羞成怒。", 
                 "砥": "磨刀石。如：中流砥柱。", "邸": "官員住所。如：官邸。", "惰": "懈怠。如：懶惰。", "墮": "落下。如：墮落。", "墜": "落下。如：墜落。", 
@@ -335,7 +389,7 @@
                 "捩": "扭轉。如：轉捩點。", "稿": "草書、文章。如：投稿。", "槁": "乾枯。如：枯槁。", 
                 "均": "平正。如：勢均力敵。", "鈞": "重量單位。如：千鈞一髮。", 
                 "刮": "用刀削。如：刮目相看。", "括": "包含。如：包括。", 
-                "果": "植物結的實。如：果腹。", "裏": "內部。如：包裹(此為裹字形近字)。", "裹": "包紮。如：裹足不前。", 
+                "果": "植物結的實。如：果腹。", "裏": "內部。", "裹": "包紮。如：裹足不前。", 
                 "堪": "忍受。如：不堪。", "勘": "核對、查看。如：勘查。", 
                 "籠": "竹編器具。如：籠罩。", "攏": "靠近、聚合。如：拉攏。", "壟": "田地界限、獨占。如：壟斷。", 
                 "栗": "植物名。如：栗子。", "慄": "恐懼。如：不寒而慄。", 
@@ -359,6 +413,7 @@
                 "奐": "盛大貌。如：美輪美奐。", "煥": "光彩。如：煥發。", "喚": "呼叫。如：呼喚。", "瘓": "神經機能障礙。如：癱瘓。", 
                 "恰": "正好。如：恰好。", "洽": "和協、商量。如：融洽。", 
                 "駭": "驚怕。如：驚濤駭浪。", "骸": "骨。如：遺骸。", 
+                "唳": "鳥鳴。如：風聲鶴唳。", "戾": "暴戾之氣。", 
                 "伽": "音譯字。如：瑜伽。", "枷": "刑具。如：枷鎖。", 
                 "蠟": "動植物或礦物提煉的脂質。如：味同嚼蠟。", "臘": "農曆十二月、乾肉。如：臘肉。", 
                 "籃": "竹器。如：籃球。", "藍": "顏色。如：青出於藍。", 
@@ -371,13 +426,16 @@
                 "悍": "勇猛。如：精悍。", "捍": "保衛。如：捍衛。", 
                 "旗": "布帛標誌。如：旗開得勝。", "棋": "遊戲用品。如：星羅棋布。", 
                 "氣": "無形無色的流體。如：生氣。", "汽": "液體受熱變成的氣體。如：汽水。", 
-                "僚": "官吏。如：官僚。", "青": "顏色。如：雨過天青。", "清": "純潔。如：清澈。", 
+                "僚": "官吏。如：官僚。", "燎": "燃燒。如：星火燎原。", "繚": "纏繞。如：眼花繚亂。", "嘹": "聲音清脆。如：嘹亮。",
+                "青": "顏色。如：雨過天青。", "清": "純潔。如：清澈。", 
                 "售": "賣。如：出售。", "罄": "盡。如：罄竹難書。", 
-                "馨": "香氣。如：溫馨。", "憾": "怨恨、不滿。如：遺憾。", "撼": "搖動。如：震撼。", 
-                "悻": "怨恨貌。如：悻悻然。", "倖": "意外獲得。如：僥倖。", "幸": "吉利。如：幸運。"
+                "馨": "香氣。如：溫馨。", "聲": "聲音。", "憾": "怨恨、不滿。如：遺憾。", "撼": "搖動。如：震撼。", 
+                "悻": "怨恨貌。如：悻悻然。", "倖": "意外獲得。如：僥倖。"
             };
 
             const rawData = [
+                ["學校「[ㄍㄨㄥ ㄅㄨˋ]」了這學期的考試成績。", "布", "怖", "簿", "薄"],
+                ["看到這部電影的結局，真讓人感到恐「[ㄅㄨˋ]」。", "怖", "布", "部", "步"],
                 ["雙方為了解決糾紛，決定對「[ㄅㄨˋ]」公堂。", "簿", "薄", "布", "部"],
                 ["這家商店以「[ㄅㄛˊ]」利多銷的方式吸引顧客。", "薄", "簿", "博", "搏"],
                 ["與其事後亡羊「[ㄅㄨˇ]」牢，不如事前做好準備。", "補", "捕", "哺", "輔"],
@@ -396,14 +454,16 @@
                 ["證據確鑿，讓他百口莫「[ㄅㄧㄢˋ]」。", "辯", "辨", "辦", "瓣"],
                 ["他現在正在「[ㄅㄢˋ]」公室裡處理公文。", "辦", "瓣", "辨", "辯"],
                 ["這朵玫瑰花掉落了一片花「[ㄅㄢˋ]」。", "瓣", "辦", "辨", "辯"],
+                ["這名小女孩綁著兩條可愛的髮「[ㄅㄧㄢˋ]」。", "辮", "辨", "辦", "瓣"],
                 ["她是我一生的好「[ㄅㄢˋ]」侶。", "伴", "拌", "絆", "畔"],
                 ["做這道菜需要將醬料均勻攪「[ㄅㄢˋ]」。", "拌", "伴", "絆", "畔"],
                 ["失敗不是「[ㄅㄢˋ]」腳石，而是成功的墊腳石。", "絆", "拌", "伴", "畔"],
                 ["我們漫步在浪漫的相思河「[ㄆㄢˋ]」。", "畔", "判", "叛", "伴"],
                 ["他經過這次打擊後，個性「[ㄆㄢˋ]」若兩人。", "判", "叛", "畔", "扮"],
                 ["他因為背「[ㄆㄢˋ]」國家，受到嚴厲的制裁。", "叛", "判", "畔", "扮"],
-                ["文章一發表，便受到各界的嚴厲「[ㄆㄥ]」擊。", "抨", "怦", "澎", "砰"],
+                ["哥哥在舞台劇中「[ㄅㄢˋ]」演一棵大樹。", "扮", "伴", "拌", "判"],
                 ["看見他溫柔的微笑，讓我「[ㄆㄥ]」然心動。", "怦", "抨", "澎", "砰"],
+                ["文章一發表，便受到各界的嚴厲「[ㄆㄥ]」擊。", "抨", "怦", "澎", "砰"],
                 ["他的說詞前後相互「[ㄇㄠˊ]」盾，破綻百出。", "矛", "茅", "毛", "卯"],
                 ["他在這次考試中名列前「[ㄇㄠˊ]」，備受讚譽。", "茅", "矛", "毛", "卯"],
                 ["他們剛結婚，正在度「[ㄇㄧˋ]」月。", "蜜", "密", "祕", "覓"],
@@ -442,6 +502,11 @@
                 ["他不修邊幅，看起來很邋「[ㄊㄚˋ]」。", "遢", "塌", "蹋", "榻"],
                 ["農夫辛苦種出來的米，不可以隨便糟「[ㄊㄚˋ]」。", "蹋", "塌", "遢", "榻"],
                 ["總統來到我國，下「[ㄊㄚˋ]」於五星級飯店。", "榻", "蹋", "遢", "塌"],
+                ["大家不要隨意在網路上毀「[ㄅㄤˋ]」他人。", "謗", "傍", "磅", "榜"],
+                ["他們在「[ㄅㄤ]」晚時分抵達了目的地。", "傍", "謗", "磅", "榜"],
+                ["這座高山氣勢「[ㄆㄤ]」礴，令人敬畏。", "磅", "傍", "謗", "榜"],
+                ["太陽發出光「[ㄇㄤˊ]」萬丈，照亮了大地。", "芒", "盲", "茫", "忙"],
+                ["這群粉絲對偶像的崇拜簡直是「[ㄇㄤˊ]」目了。", "盲", "芒", "茫", "忙"],
                 ["這封信是匿名寄來的，發件人刻意隱「[ㄋㄧˋ]」了身分。", "匿", "暱", "溺", "膩"],
                 ["他們兩人舉止親「[ㄋㄧˋ]」，看來關係匪淺。", "暱", "匿", "溺", "膩"],
                 ["為了想出好點子，他絞盡了「[ㄋㄠˇ]」汁。", "腦", "惱", "囊", "鬧"],
@@ -481,7 +546,14 @@
                 ["工程團隊正在現場「[ㄎㄢ]」查地形。", "勘", "堪", "砍", "看"],
                 ["大霧「[ㄌㄨㄥˊ]」罩了整個山頭。", "籠", "攏", "壟", "龍"],
                 ["聽到這個笑話，大家都笑得合不「[ㄌㄨㄥˇ]」嘴。", "攏", "籠", "壟", "龍"],
-                ["這家公司企圖「[ㄌㄨㄥˇ]」斷整個市場。", "壟", "攏", "籠", "龍"]
+                ["這家公司企圖「[ㄌㄨㄥˇ]」斷整個市場。", "壟", "攏", "籠", "龍"],
+                ["這場車禍的畫面令人不寒而「[ㄌㄧˋ]」。", "慄", "栗", "粒", "力"],
+                ["他的演講「[ㄌㄧㄥˊ]」牙俐齒，滔滔不絕。", "伶", "聆", "玲", "鈴"],
+                ["他總是八面「[ㄌㄧㄥˊ]」瓏，人緣極佳。", "玲", "伶", "聆", "鈴"],
+                ["這種詐騙手法雖然老套，但卻「[ㄌㄩˇ]」見不鮮。", "屢", "履", "縷", "呂"],
+                ["字跡如此「[ㄌㄧㄠˊ]」草，老師根本看不懂。", "潦", "療", "僚", "燎"],
+                ["他最近表現優異，長官決定勉「[ㄌㄧˋ]」他。", "勵", "厲", "利", "力"],
+                ["他因為粗心大意而犯錯，被老師嚴「[ㄌㄧˋ]」斥責。", "厲", "勵", "利", "力"]
             ];
 
             const qList = rawData.map(q => {
