@@ -134,6 +134,7 @@
             }).join('');
         };
 
+        // 嚴格依據講義原始內容與圖片重新編排的 80 組形近字
         const allGroups = [
             /* 1 */ ["[布]公布、擺布", "[怖]恐怖"],
             /* 2 */ ["[簿]對簿公堂", "[薄]刻薄、薄利多銷"],
@@ -212,9 +213,9 @@
             /* 75 */ ["[僚]幕僚、官僚", "[燎]星火燎原", "[繚]眼花繚亂", "[嘹]嘹亮"],
             /* 76 */ ["[青]雨過天青", "[清]清一色"],
             /* 77 */ ["[罄]售罄、罄竹難書", "[磬]鐘磬"],
-            /* 78 */ ["[馨]溫馨、馨香", "[聲]聲音", "[謦]謦欬"],
+            /* 78 */ ["[馨]溫馨、馨香", "[聲]聲音"],
             /* 79 */ ["[憾]遺憾、抱憾", "[撼]震撼"],
-            /* 80 */ ["[悻]悻悻然", "[倖]僥倖", "[顢]顢頇無能"]
+            /* 80 */ ["[悻]悻悻然", "[倖]僥倖"]
         ];
 
         const renderGroupTable = (startIndex, endIndex) => {
@@ -469,13 +470,11 @@
                 ["這兩國的關係十分親「[ㄇㄧˋ]」。", "密", "蜜", "祕", "覓"],
                 ["雜草在荒地中迅速「[ㄇㄢˋ]」延開來。", "蔓", "漫", "滿", "瞞"],
                 ["他做事情總是「[ㄇㄢˋ]」不經心，經常出錯。", "漫", "蔓", "滿", "瞞"],
-                ["太陽發出光「[ㄇㄤˊ]」萬丈，照亮了大地。", "芒", "盲", "茫", "忙"],
-                ["這群粉絲對偶像的崇拜簡直是「[ㄇㄤˊ]」目了。", "盲", "芒", "茫", "忙"],
                 ["他一臉「[ㄇㄤˊ]」然，完全不知道發生了什麼事。", "茫", "盲", "芒", "滿"],
-                ["這場騙局竟然能「[ㄇㄢˊ]」天過海，真是太不可思議了。", "瞞", "滿", "蹣", "顢"],
-                ["老爺爺腳步「[ㄇㄢˊ]」跚地走在路上。", "蹣", "滿", "瞞", "顢"],
+                ["這場騙局竟然能「[ㄇㄢˊ]」天過海，真是太不可思議了。", "瞞", "滿", "蹣", "蔓"],
+                ["老爺爺腳步「[ㄇㄢˊ]」跚地走在路上。", "蹣", "滿", "瞞", "漫"],
                 ["對於這件重要的事情，他竟然「[ㄇㄢˊ]」頇無能，毫無作為。", "顢", "蹣", "瞞", "滿"],
-                ["他對別人的批評總是「[ㄇㄢˇ]」不在乎。", "滿", "蹣", "瞞", "顢"],
+                ["他對別人的批評總是「[ㄇㄢˇ]」不在乎。", "滿", "蹣", "瞞", "漫"],
                 ["他的才華讓大家都十分羨「[ㄇㄨˋ]」。", "慕", "募", "幕", "暮"],
                 ["這家公司正在招「[ㄇㄨˋ]」新員工。", "募", "慕", "幕", "暮"],
                 ["夜「[ㄇㄨˋ]」低垂，街上的路燈紛紛亮起。", "幕", "暮", "慕", "募"],
@@ -507,10 +506,8 @@
                 ["大家不要隨意在網路上毀「[ㄅㄤˋ]」他人。", "謗", "傍", "磅", "榜"],
                 ["他們在「[ㄅㄤ]」晚時分抵達了目的地。", "傍", "謗", "磅", "榜"],
                 ["這座高山氣勢「[ㄆㄤ]」礴，令人敬畏。", "磅", "傍", "謗", "榜"],
-                ["這封信是匿名寄來的，發件人刻意隱「[ㄋㄧˋ]」了身分。", "匿", "暱", "溺", "膩"],
-                ["他們兩人舉止親「[ㄋㄧˋ]」，看來關係匪淺。", "暱", "匿", "溺", "膩"],
-                ["為了想出好點子，他絞盡了「[ㄋㄠˇ]」汁。", "腦", "惱", "囊", "鬧"],
-                ["被揭穿謊言後，他不禁「[ㄋㄠˇ]」羞成怒。", "惱", "腦", "囊", "鬧"],
+                ["太陽發出光「[ㄇㄤˊ]」萬丈，照亮了大地。", "芒", "盲", "茫", "忙"],
+                ["這群粉絲對偶像的崇拜簡直是「[ㄇㄤˊ]」目了。", "盲", "芒", "茫", "忙"],
                 ["他是社會的中流「[ㄉㄧˇ]」柱，貢獻良多。", "砥", "邸", "抵", "底"],
                 ["總統官「[ㄉㄧˇ]」外戒備森嚴。", "邸", "砥", "抵", "底"],
                 ["他生性懶「[ㄉㄨㄛˋ]」，什麼事都不想做。", "惰", "墮", "墜", "垛"],
@@ -520,15 +517,18 @@
                 ["面對這麼多開銷，他的財務狀況已經左支右「[ㄔㄨˋ]」。", "絀", "咄", "拙", "出"],
                 ["他本想討好主管，卻弄巧成「[ㄓㄨㄛˊ]」，反而被罵了。", "拙", "茁", "絀", "卓"],
                 ["這棵小樹苗在陽光下「[ㄓㄨㄛˊ]」壯成長。", "茁", "拙", "絀", "卓"],
-                ["出國前可以先到「[ㄧㄣˊ]」行換匯。", "銀", "贏", "羸", "迎"],
-                ["這場比賽到底誰輸誰「[ㄧㄥˊ]」還很難說。", "贏", "羸", "銀", "迎"],
-                ["他大病初癒，身體十分「[ㄌㄟˊ]」弱。", "羸", "贏", "銀", "雷"],
+                ["這封信是匿名寄來的，發件人刻意隱「[ㄋㄧˋ]」了身分。", "匿", "暱", "溺", "膩"],
+                ["他們兩人舉止親「[ㄋㄧˋ]」，看來關係匪淺。", "暱", "匿", "溺", "膩"],
+                ["為了想出好點子，他絞盡了「[ㄋㄠˇ]」汁。", "腦", "惱", "囊", "鬧"],
+                ["被揭穿謊言後，他不禁「[ㄋㄠˇ]」羞成怒。", "惱", "腦", "囊", "鬧"],
                 ["兩國順利「[ㄉㄧˋ]」結了和平條約。", "締", "諦", "蒂", "遞"],
                 ["經歷了這些事，他終於領悟了人生的真「[ㄉㄧˋ]」。", "諦", "締", "蒂", "遞"],
                 ["這項新產品一推出，就受到廣大消費者的青「[ㄌㄞˋ]」。", "睞", "徠", "賴", "賴"],
                 ["攤販在街邊大聲吆喝，招「[ㄌㄞˊ]」顧客。", "徠", "睞", "來", "萊"],
                 ["防守球員在比賽中緊迫「[ㄉㄧㄥ]」人。", "盯", "叮", "頂", "釘"],
                 ["媽媽出門前再三「[ㄉㄧㄥ]」嚀我要鎖好門窗。", "叮", "盯", "頂", "釘"],
+                ["他大病初癒，身體十分「[ㄌㄟˊ]」弱。", "羸", "贏", "銀", "雷"],
+                ["這場比賽到底誰輸誰「[ㄧㄥˊ]」還很難說。", "贏", "羸", "銀", "迎"],
                 ["一「[ㄉㄢˋ]」發生火災，要保持冷靜盡速逃生。", "旦", "但", "單", "擔"],
                 ["他雖然很聰明，「[ㄉㄢˋ]」是不夠努力。", "但", "旦", "單", "擔"],
                 ["他每天為了生活而忙「[ㄌㄨˋ]」。", "碌", "祿", "陸", "錄"],
@@ -642,7 +642,6 @@
                 ["寺廟裡傳來陣陣敲擊鐘「[ㄑㄧㄥˋ]」的聲音。", "磬", "罄", "慶", "親"],
                 ["家人的陪伴讓他感到無比溫「[ㄒㄧㄣ]」。", "馨", "聲", "謦", "新"],
                 ["夜晚的森林裡傳來蟲鳴鳥叫的「[ㄕㄥ]」音。", "聲", "馨", "謦", "生"],
-                ["他的喉嚨不舒服，不時發出「[ㄑㄧㄥˇ]」欬聲。", "謦", "馨", "聲", "請"],
                 ["他因為沒有見到奶奶最後一面而感到遺「[ㄏㄢˋ]」。", "憾", "撼", "漢", "汗"],
                 ["這部電影的特效場面十分震「[ㄏㄢˋ]」人心。", "撼", "憾", "漢", "汗"],
                 ["他比賽輸了之後，「[ㄒㄧㄥˋ]」悻然地離開了球場。", "悻", "倖", "幸", "性"],
@@ -838,30 +837,12 @@
                 }, 2000);
                 return;
             }
-            
-            // 【優化快速登入】：給予即時視覺回饋並鎖定畫面，避免因網路延遲造成重複點擊
-            const viewContainer = document.getElementById('view-container');
-            if (viewContainer) {
-                viewContainer.style.pointerEvents = 'none';
-                const btns = viewContainer.querySelectorAll('button');
-                btns.forEach(b => {
-                    if (b.innerText.trim() === name.trim()) {
-                        b.innerHTML = `<i class="fas fa-spinner fa-spin mr-1"></i>連線中`;
-                        b.classList.add('bg-rose-200', 'text-rose-700', 'scale-105');
-                    } else if (b.innerText.includes('進入')) {
-                        b.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>登入連線中...`;
-                    }
-                });
-            }
-
             username = name;
             localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
-            
             if (isFirebaseInitialized && currentUser) {
                 const now = new Date().toISOString();
                 const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
                 try {
-                    // 確保個人資料優先載入完畢，避免空狀態蓋掉雲端紀錄
                     const snap = await getDoc(userRef);
                     if (snap.exists()) {
                         userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
@@ -875,20 +856,13 @@
                     if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50);
                     await setDoc(userRef, userData, { merge: true });
                     
-                    // 【效能優化】：背景處理全局名單更新，不再阻擋 UI 切換
-                    const updateGlobalUsers = async () => {
-                        try {
-                            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
-                            const gSnap = await getDoc(globalRef);
-                            let users = gSnap.exists() ? gSnap.data().users || [] : [];
-                            users = users.filter(u => u.name !== username);
-                            users.push({ name: username, lastLogin: now });
-                            if(users.length > 10) users = users.slice(-10);
-                            await setDoc(globalRef, { users }, { merge: true });
-                        } catch(e) {}
-                    };
-                    updateGlobalUsers();
-                    
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username);
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10);
+                    await setDoc(globalRef, { users }, { merge: true });
                 } catch(e) {}
                 listenToUserDocument(username);
             } else {
@@ -897,13 +871,8 @@
                 userData.loginHistory.push(new Date().toISOString());
                 saveLocalData(username);
             }
-            
-            // 解除鎖定並立刻切換畫面
             renderMain();
             initAudio();
-            if (viewContainer) {
-                viewContainer.style.pointerEvents = 'auto';
-            }
         };
 
         const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col"></div>`; };
