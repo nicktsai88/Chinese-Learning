@@ -658,15 +658,14 @@
                     
                     if (userData.quizState) {
                         userData.quizState = syncQuestionsFormat(userData.quizState); 
-                        
-                        // 判斷是否為外部裝置的更新，如果是自己作答觸發的雲端回傳，則略過畫面重繪避免跳動
-                        const isExternalUpdate = !quizState || (userData.quizState._updateId !== quizState._updateId);
-                        
-                        quizState = userData.quizState;
-                        try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
-                        
-                        if (isExternalUpdate && currentTab === 'quiz') {
-                            renderQuizView(el('main-content'));
+                        const cloudStateStr = JSON.stringify(userData.quizState);
+                        const localStateStr = JSON.stringify(quizState);
+                        if (cloudStateStr !== localStateStr) {
+                            quizState = userData.quizState;
+                            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, cloudStateStr); } catch(e) {}
+                            if(currentTab === 'quiz') {
+                                renderQuizView(el('main-content'));
+                            }
                         }
                     }
                 } else {
@@ -698,8 +697,6 @@
         };
 
         const saveQuizState = () => {
-            // 每次儲存時加入獨立標記，讓雲端接收端知道這是我們自己剛發出的更新，不需重繪畫面
-            quizState._updateId = Date.now().toString();
             try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
             userData.quizState = quizState;
             saveUserDataToCloud();
