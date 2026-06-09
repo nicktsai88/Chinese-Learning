@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>重要讀音辯正 part1 - 互動學習系統 🧸✨</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { 
+            font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif; 
+            color: #431407; 
+            font-size: 1.125rem; 
+            line-height: 1.8; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #ffffff;
+            background-image: radial-gradient(#fbcfe8 1.5px, transparent 1.5px), radial-gradient(#bae6fd 1.5px, transparent 1.5px);
+            background-size: 32px 32px;
+            background-position: 0 0, 16px 16px;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .status-loading { background-color: #fbbf24; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        .status-success { background-color: #34d399; }
+        .status-error { background-color: #f87171; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .content-card {
+            background-color: #fffdf8;
+            border: 2px solid #fde68a;
+            border-radius: 1rem;
+            box-shadow: 6px 6px 0px #ffedd5;
+        }
+
+        .knowledge-table { width: 100%; text-align: left; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1rem; font-size: 1rem; border-radius: 0.5rem; overflow: hidden; }
+        .knowledge-table th, .knowledge-table td { border: 1px solid #fef3c7; padding: 0.75rem; }
+        .knowledge-table th { background-color: #ffedd5; color: #9a3412; font-weight: bold; text-align: center; }
+        .knowledge-table tr:nth-child(even) { background-color: #fffbeb; }
+        .knowledge-table tr:hover { background-color: #ffedd5; transition: background-color 0.2s; }
+    </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col overflow-hidden overscroll-none">
+
+    <div id="app" class="w-full h-full flex flex-col overflow-hidden"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxQFt76ZPXE7d0i1XeNZ1yiiD2WYNIfHs", 
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'idiom-app-default';
+        const COLLECTION_NAME = 'Chinese-Learning-13'; 
+        const DOC_GLOBAL = 'Global_Users';      
+        
+        let app, auth, db;
+        let isFirebaseInitialized = false;
+        let currentUser = null;
+        let username = '';
+        let userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+        let connectionStatus = 'loading';
+        let recentUsers = [];
+        let unsubscribeUser = null;
+        let unsubscribeGlobal = null;
+        
+        let audioCtx = null;
+        const initAudio = () => {
+            if (!audioCtx) {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new AudioContext();
+                } catch(e) {}
+            }
+        };
+        const playTone = (freq, type, duration) => {
+            initAudio();
+            if(!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        };
+        const playCorrectSound = () => { playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.2), 100); };
+        const playWrongSound = () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.3), 150); };
+
+        try {
+            const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+            if (actualConfig.apiKey && actualConfig.apiKey !== "填入key" && actualConfig.apiKey !== "YOUR_API_KEY") {
+                app = initializeApp(actualConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                isFirebaseInitialized = true;
+                connectionStatus = 'success';
+            } else { connectionStatus = 'error'; }
+        } catch (error) { connectionStatus = 'error'; }
+
+        const initAuth = async () => {
+            if (!isFirebaseInitialized) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                else await signInAnonymously(auth);
+            } catch (error) { connectionStatus = 'error'; }
+        };
+
+        const formatPair = (str) => {
+            let parts = str.split(/\[(.*?)\]/);
+            return parts.map((part, i) => {
+                if (i % 2 === 1) {
+                    return `<span class="text-[#0080FF] border-b-[3px] border-[#0080FF] font-black pb-[2px] mx-[2px] text-[1.4rem] md:text-[1.8rem] tracking-wide">${part}</span>`;
+                } else {
+                    return `<span class="text-[#1e293b] font-bold text-[1.2rem] md:text-[1.4rem] tracking-wide">${part}</span>`;
+                }
+            }).join('');
+        };
+
+        // 重要讀音辯正 part1 講義原始內容 (162組)
+        const categories = [
+            {
+                title: '一、海鮮 🐟',
+                groups: [
+                    /* 1 */ ["[鮪](ㄨㄟˇ)鮪魚罐頭"],
+                    /* 2 */ ["[鰻](ㄇㄢˊ)三杯鰻魚"],
+                    /* 3 */ ["[鯛](ㄉㄧㄠ)糖醋鯛魚"],
+                    /* 4 */ ["[鮭](ㄍㄨㄟ)鮭魚沙拉"],
+                    /* 5 */ ["[鯽](ㄐㄧˋ)紅燒鯽魚"],
+                    /* 6 */ ["[鰾](ㄅㄧㄠˋ)酥炸魚鰾"],
+                    /* 7 */ ["[鯰](ㄋㄧㄢˊ)清蒸鯰魚"],
+                    /* 8 */ ["[鱖](ㄍㄨㄟˋ)紅燒鱖魚"],
+                    /* 9 */ ["[蟳](ㄒㄩㄣˊ)蔥爆紅蟳"],
+                    /* 10 */ ["[鮑](ㄅㄠˋ)海參燉鮑魚"],
+                    /* 11 */ ["[虱](ㄕ)乾煎虱目魚"],
+                    /* 12 */ ["[蜇](ㄓㄜˊ)涼拌海蜇皮"],
+                    /* 13 */ ["[閘](ㄓㄚˊ)清蒸大閘蟹"],
+                    /* 14 */ ["[蚵](ㄜˊ)蚵仔煎"]
+                ]
+            },
+            {
+                title: '二、肉品 🥩',
+                groups: [
+                    /* 1 */ ["[炮](ㄅㄠ)炮羊肉"],
+                    /* 2 */ ["[涮](ㄕㄨㄢˋ)涮羊肉"],
+                    /* 3 */ ["[煨](ㄨㄟ)煨蹄膀"],
+                    /* 4 */ ["[腩](ㄋㄢˇ)牛腩飯"],
+                    /* 5 */ ["[醃](ㄧㄢ)梅子醃肉"],
+                    /* 6 */ ["[豉](ㄔˇ)豆豉排骨"],
+                    /* 7 */ ["[腓](ㄈㄟˊ)腓力牛排"],
+                    /* 8 */ ["[煲](ㄅㄠ)酸辣牛筋煲"],
+                    /* 9 */ ["[燉](ㄉㄨㄣˋ)馬鈴薯燉肉"],
+                    /* 10 */ ["[榨](ㄓㄚˋ)榨菜肉絲麵"]
+                ]
+            },
+            {
+                title: '三、青菜類 🥬',
+                groups: [
+                    /* 1 */ ["[蒿](ㄏㄠ)燙茼蒿"],
+                    /* 2 */ ["[萵](ㄨㄛ)快炒萵苣"],
+                    /* 3 */ ["[莧](ㄒㄧㄢˋ)莧菜小魚"],
+                    /* 4 */ ["[瓠](ㄏㄨˋ)涼拌瓠瓜"],
+                    /* 5 */ ["[蒡](ㄅㄤˋ)鮮炒牛蒡絲"],
+                    /* 6 */ ["[椒](ㄐㄧㄠ)炒青椒"]
+                ]
+            },
+            {
+                title: '四、飯食 🍚',
+                groups: [
+                    /* 1 */ ["[燥](ㄙㄠˋ)肉燥飯"],
+                    /* 2 */ ["[糙](ㄘㄠ)糙米飯"],
+                    /* 3 */ ["[糯](ㄋㄨㄛˋ)糯米飯"],
+                    /* 4 */ ["[咖](ㄎㄚ)咖哩飯"]
+                ]
+            },
+            {
+                title: '五、小吃 🥟',
+                groups: [
+                    /* 1 */ ["[刈](ㄧˋ)刈包"],
+                    /* 2 */ ["[烙](ㄌㄠˋ)烙餅"],
+                    /* 3 */ ["[炸](ㄓㄚˊ)炸醬麵"],
+                    /* 4 */ ["[苔](ㄊㄞˊ)米苔目"],
+                    /* 5 */ ["[脯](ㄈㄨˇ)菜脯蛋"],
+                    /* 6 */ ["[螺](ㄌㄨㄛˊ)燒酒螺"],
+                    /* 7 */ ["[餛飩](ㄏㄨㄣˊ ㄉㄨㄣˋ)餛飩麵"],
+                    /* 8 */ ["[粿](ㄍㄨㄛˇ)煎芋粿"],
+                    /* 9 */ ["[韭](ㄐㄧㄡˇ)韭菜盒子"],
+                    /* 10 */ ["[餡](ㄒㄧㄢˋ)牛肉餡餅"]
+                ]
+            },
+            {
+                title: '六、湯類 🍲',
+                groups: [
+                    /* 1 */ ["[蛤蜊](ㄍㄜˊ ㄌㄧˊ)蛤蜊湯"],
+                    /* 2 */ ["[肚](ㄉㄨˇ)豬肚湯"],
+                    /* 3 */ ["[蜆](ㄒㄧㄢˇ)蒜頭蜆湯"],
+                    /* 4 */ ["[盅](ㄓㄨㄥ)龍鳳雙瓜盅"],
+                    /* 5 */ ["[芡](ㄑㄧㄢˋ)勾芡魚湯"],
+                    /* 6 */ ["[鶉](ㄔㄨㄣˊ)洋菇鶉蛋湯"],
+                    /* 7 */ ["[茸](ㄖㄨㄥˊ)雞茸玉米湯"],
+                    /* 8 */ ["[羹](ㄍㄥ)土魠魚羹"]
+                ]
+            },
+            {
+                title: '七、甜點 🍧',
+                groups: [
+                    /* 1 */ ["[飴](ㄧˊ)香蕉飴"],
+                    /* 2 */ ["[桔](ㄐㄩˊ)金桔茶"],
+                    /* 3 */ ["[蒟蒻](ㄐㄩˇ ㄖㄨㄛˋ)蒟蒻冰"],
+                    /* 4 */ ["[刨](ㄅㄠˋ)草莓刨冰"],
+                    /* 5 */ ["[焙](ㄅㄟˋ)烘焙麵包"],
+                    /* 6 */ ["[枸杞](ㄍㄡˇ ㄑㄧˇ)枸杞蜂蜜茶"]
+                ]
+            },
+            {
+                title: '八、各地走透透 🗺️',
+                groups: [
+                    /* 1 */ ["[枋](ㄈㄤ)枋寮"],
+                    /* 2 */ ["[埕](ㄔㄥˊ)車埕"],
+                    /* 3 */ ["[梓](ㄗˇ)楠梓"],
+                    /* 4 */ ["[貂](ㄉㄧㄠ)三貂嶺"],
+                    /* 5 */ ["[沂](ㄧˊ)沂水"],
+                    /* 6 */ ["[苑](ㄩㄢˋ)苑裡"],
+                    /* 7 */ ["[薊](ㄐㄧˋ)薊北"],
+                    /* 8 */ ["[圳](ㄓㄣˋ)深圳"],
+                    /* 9 */ ["[芎](ㄑㄩㄥ)芎林"],
+                    /* 10 */ ["[圳](ㄗㄨㄣˋ)嘉南大圳"]
+                ]
+            },
+            {
+                title: '九、時光穿梭機 ⏳',
+                groups: [
+                    /* 1 */ ["[曙](ㄕㄨˋ)曙光"],
+                    /* 2 */ ["[暾](ㄊㄨㄣ)朝暾"],
+                    /* 3 */ ["[寅卯](ㄧㄣˊ ㄇㄠˇ)寅卯"],
+                    /* 4 */ ["[辰巳](ㄔㄣˊ ㄙˋ)辰巳"],
+                    /* 5 */ ["[申酉](ㄕㄣ ㄧㄡˇ)申酉"],
+                    /* 6 */ ["[戌亥](ㄒㄩ ㄏㄞˋ)戌亥"],
+                    /* 7 */ ["[正](ㄓㄥ)農曆正月"],
+                    /* 8 */ ["[晌](ㄕㄤˇ)正值晌午"]
+                ]
+            },
+            {
+                title: '十、動物大觀園 🦉',
+                groups: [
+                    /* 1 */ ["[蝙蝠](ㄅㄧㄢ ㄈㄨˊ)蝙蝠"],
+                    /* 2 */ ["[獺](ㄊㄚˋ)水獺"],
+                    /* 3 */ ["[鴻鵠](ㄏㄨㄥˊ ㄏㄨˊ)鴻鵠"],
+                    /* 4 */ ["[螞蚱](ㄇㄚ ㄓㄚ˙)螞蚱"],
+                    /* 5 */ ["[牝](ㄆㄧㄣˋ)牝雞司晨"],
+                    /* 6 */ ["[鰲](ㄠˊ)獨占鰲頭"],
+                    /* 7 */ ["[鳶](ㄩㄢ)鳶飛魚躍"],
+                    /* 8 */ ["[鷸蚌](ㄩˋ ㄅㄤˋ)鷸蚌相爭"]
+                ]
+            },
+            {
+                title: '十一、姓氏大觀園 👤',
+                groups: [
+                    /* 1 */ ["[句](ㄍㄡ)句踐"],
+                    /* 2 */ ["[查](ㄓㄚ)查良鏞"],
+                    /* 3 */ ["[裴](ㄆㄟˊ)裴勇俊"],
+                    /* 4 */ ["[聶](ㄋㄧㄝˋ)聶小倩"],
+                    /* 5 */ ["[翟](ㄓㄞˊ)翟宗泉"],
+                    /* 6 */ ["[單](ㄕㄢˋ)單小琳"],
+                    /* 7 */ ["[龔](ㄍㄨㄥ)龔主任"],
+                    /* 8 */ ["[郝](ㄏㄠˇ)郝小龍"],
+                    /* 9 */ ["[褚](ㄔㄨˇ)褚遂良"],
+                    /* 10 */ ["[璩](ㄑㄩˊ)璩美鳳"],
+                    /* 11 */ ["[阮](ㄖㄨㄢˇ)阮玲玉"],
+                    /* 12 */ ["[庾](ㄩˇ)庾澄慶"],
+                    /* 13 */ ["[那](ㄋㄚ)那英"],
+                    /* 14 */ ["[鄺](ㄎㄨㄤˋ)鄺督學"],
+                    /* 15 */ ["[仇](ㄑㄧㄡˊ)仇議員"],
+                    /* 16 */ ["[華](ㄏㄨㄚˋ)華佗"]
+                ]
+            },
+            {
+                title: '十二、其他重要讀音 🌟',
+                groups: [
+                    /* 1 */ ["[蓓蕾](ㄅㄟˋ ㄌㄟˇ)蓓蕾"],
+                    /* 2 */ ["[摒](ㄅㄧㄥˋ)摒除"],
+                    /* 3 */ ["[甭](ㄅㄥˊ)甭說了"],
+                    /* 4 */ ["[扳](ㄅㄢ)扳回一局"],
+                    /* 5 */ ["[畚箕](ㄅㄣˇ ㄐㄧ)畚箕"],
+                    /* 6 */ ["[鑣](ㄅㄧㄠ)分道揚鑣"],
+                    /* 7 */ ["[娉婷](ㄆㄧㄥ ㄊㄧㄥˊ)娉婷"],
+                    /* 8 */ ["[烹飪](ㄆㄥ ㄖㄣˋ)烹飪"],
+                    /* 9 */ ["[叵](ㄆㄛˇ)居心叵測"],
+                    /* 10 */ ["[滂沱](ㄆㄤ ㄊㄨㄛˊ)大雨滂沱"],
+                    /* 11 */ ["[皤皤](ㄆㄛˊ ㄆㄛˊ)白髮皤皤"],
+                    /* 12 */ ["[痞](ㄆ一ˇ)地痞流氓"],
+                    /* 13 */ ["[剽](ㄆㄧㄠˋ)個性剽悍"],
+                    /* 14 */ ["[靦腆](ㄇㄧㄢˇ ㄊㄧㄢˇ)靦腆"],
+                    /* 15 */ ["[牟](ㄇㄡˊ)牟利"],
+                    /* 16 */ ["[膜](ㄇㄛˋ)膜拜"],
+                    /* 17 */ ["[霾](ㄇㄞˊ)滿天陰霾"],
+                    /* 18 */ ["[萌](ㄇㄥˊ)故態復萌"],
+                    /* 19 */ ["[彌](ㄇㄧˊ)彌月之喜"],
+                    /* 20 */ ["[拂](ㄈㄨˊ)拂曉攻擊"],
+                    /* 21 */ ["[坊](ㄈㄤ)坊間"],
+                    /* 22 */ ["[酩酊](ㄇㄧㄥˇ ㄉㄧㄥˇ)酩酊大醉"],
+                    /* 23 */ ["[掂掂](ㄉㄧㄢ ㄉㄧㄢ)掂掂斤兩"],
+                    /* 24 */ ["[兌](ㄉㄨㄟˋ)擠兌風波"],
+                    /* 25 */ ["[撢](ㄉㄢˇ)雞毛撢子"],
+                    /* 26 */ ["[宕](ㄉㄤˋ)計畫延宕"],
+                    /* 27 */ ["[嚏](ㄊㄧˋ)噴嚏"],
+                    /* 28 */ ["[撻](ㄊㄚˋ)撻伐"],
+                    /* 29 */ ["[殄](ㄊㄧㄢˇ)暴殄天物"],
+                    /* 30 */ ["[忐忑](ㄊㄢˇ ㄊㄜˋ)忐忑不安"],
+                    /* 31 */ ["[褪](ㄊㄨㄣˋ)衣服褪色"],
+                    /* 32 */ ["[慟](ㄊㄨㄥˋ)全民哀慟"],
+                    /* 33 */ ["[帑](ㄊㄤˇ)浪費公帑"],
+                    /* 34 */ ["[忸怩](ㄋㄧㄡˇ ㄋㄧˊ)忸怩作態"],
+                    /* 35 */ ["[拗](ㄋ一ㄡˋ)倔強執拗"],
+                    /* 36 */ ["[賃](ㄌㄧㄣˋ)租賃"],
+                    /* 37 */ ["[躪](ㄌㄧㄣˋ)蹂躪"],
+                    /* 38 */ ["[罹](ㄌㄧˊ)罹難"],
+                    /* 39 */ ["[稜](ㄌㄥˊ)模稜兩可"],
+                    /* 40 */ ["[囹圄](ㄌㄧㄥˊ ㄩˇ)身陷囹圄"],
+                    /* 41 */ ["[鸞鳳](ㄌㄨㄢˊ ㄈㄥˋ)鸞鳳和鳴"],
+                    /* 42 */ ["[尷尬](ㄍㄢ ㄍㄚˋ)尷尬"],
+                    /* 43 */ ["[嗝](ㄍㄜˊ)打嗝"],
+                    /* 44 */ ["[蠱](ㄍㄨˇ)蠱惑人心"],
+                    /* 45 */ ["[皈](ㄍㄨㄟ)皈依佛門"],
+                    /* 46 */ ["[痼](ㄍㄨˋ)陳年痼疾"],
+                    /* 47 */ ["[愾](ㄎㄞˋ)同仇敵愾"],
+                    /* 48 */ ["[龕](ㄎㄢ)神龕"],
+                    /* 49 */ ["[摳](ㄎㄡ)摳鼻子"],
+                    /* 50 */ ["[膏肓](ㄍㄠ ㄏㄨㄤ)病入膏肓"]
+                ]
+            }
+        ];
+
+        const renderCategoryTable = (category) => {
+            return `
+                <div class="w-full overflow-hidden rounded-[1.2rem] border-2 border-rose-100 shadow-sm bg-white mt-4 mb-8">
+                    <table class="w-full text-left border-collapse">
+                        <tbody>
+                        ${category.groups.map((g, idx) => `
+                            <tr class="group border-b-2 border-rose-50 last:border-0 hover:bg-rose-50/20 transition-colors">
+                                <td class="p-3 md:p-5 text-center font-black text-rose-600 bg-rose-50/60 w-24 md:w-32 shrink-0 border-r-2 border-rose-50 text-base md:text-xl">
+                                    第 ${idx + 1} 題
+                                </td>
+                                <td class="p-3 md:p-5">
+                                    <div class="flex flex-wrap gap-2 md:gap-3 items-center">
+                                        ${g.map(item => `<div class="bg-white px-3 md:px-4 py-1.5 md:py-2 rounded-xl shadow-sm border border-slate-100 hover:border-rose-200 transition-colors">${formatPair(item)}</div>`).join('')}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        };
+
+        const learnData = [
+            {
+                id: 'sec1', title: '壹、海鮮/肉品/青菜 🍲',
+                content: `
+                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[0].title}
+                    </h3>
+                    ${renderCategoryTable(categories[0])}
+                    
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[1].title}
+                    </h3>
+                    ${renderCategoryTable(categories[1])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[2].title}
+                    </h3>
+                    ${renderCategoryTable(categories[2])}
+                </div>`
+            },
+            {
+                id: 'sec2', title: '貳、飯食/小吃/湯/甜點 🍡',
+                content: `
+                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[3].title}
+                    </h3>
+                    ${renderCategoryTable(categories[3])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[4].title}
+                    </h3>
+                    ${renderCategoryTable(categories[4])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[5].title}
+                    </h3>
+                    ${renderCategoryTable(categories[5])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[6].title}
+                    </h3>
+                    ${renderCategoryTable(categories[6])}
+                </div>`
+            },
+            {
+                id: 'sec3', title: '參、各地/時光/動物 🗺️',
+                content: `
+                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[7].title}
+                    </h3>
+                    ${renderCategoryTable(categories[7])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[8].title}
+                    </h3>
+                    ${renderCategoryTable(categories[8])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[9].title}
+                    </h3>
+                    ${renderCategoryTable(categories[9])}
+                </div>`
+            },
+            {
+                id: 'sec4', title: '肆、姓氏/其他重要讀音 🌟',
+                content: `
+                <div class="space-y-6 text-xl md:text-2xl text-slate-800">
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[10].title}
+                    </h3>
+                    ${renderCategoryTable(categories[10])}
+
+                    <h3 class="font-bold text-2xl md:text-3xl text-indigo-700 mb-4 mt-8 flex items-center">
+                        <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-lg mr-3 text-xl">-</span> ${categories[11].title}
+                    </h3>
+                    ${renderCategoryTable(categories[11])}
+                </div>`
+            }
+        ];
+
+        const generateQuestions = () => {
+            const wordDefs = {
+                // 一、海鮮
+                "鮪": "魚名。如：鮪魚罐頭。", "鰻": "魚名。如：三杯鰻魚。", "鯛": "魚名。如：糖醋鯛魚。", "鮭": "魚名。如：鮭魚沙拉。", "鯽": "魚名。如：紅燒鯽魚。", 
+                "鰾": "魚類體內輔助浮沉的器官。如：酥炸魚鰾。", "鯰": "魚名。如：清蒸鯰魚。", "鱖": "魚名。如：紅燒鱖魚。", "蟳": "螃蟹的一種。如：蔥爆紅蟳。", 
+                "鮑": "海產軟體動物。如：海參燉鮑魚。", "虱": "魚名。如：乾煎虱目魚。", "蜇": "海產腔腸動物。如：涼拌海蜇皮。", "閘": "螃蟹的一種。如：清蒸大閘蟹。", "蚵": "牡蠣。如：蚵仔煎。",
+                // 二、肉品
+                "炮": "一種烹調方法，在極熱的鐵鍋上急炒。如：炮羊肉。", "涮": "把生肉片放在滾水中略煮一下。如：涮羊肉。", "煨": "用微火慢慢烹煮。如：煨蹄膀。", 
+                "腩": "牛腹部下側的肉。如：牛腩飯。", "醃": "用鹽或糖浸漬食物。如：梅子醃肉。", "豉": "豆發酵製成的調味品。如：豆豉排骨。", "腓": "小腿肚/音譯外來語。如：腓力牛排。", 
+                "煲": "用小火慢煮食物。如：酸辣牛筋煲。", "燉": "用文火慢慢煮爛。如：馬鈴薯燉肉。", "榨": "壓出汁液。如：榨菜肉絲麵。",
+                // 三、青菜類
+                "蒿": "植物名。如：燙茼蒿。", "萵": "植物名。如：快炒萵苣。", "莧": "植物名。如：莧菜小魚。", "瓠": "植物名，果實可食。如：涼拌瓠瓜。", "蒡": "植物名。如：鮮炒牛蒡絲。", "椒": "植物名。如：炒青椒。",
+                // 四、飯食
+                "燥": "碎肉。如：肉燥飯。", "糙": "未經精輾的米。如：糙米飯。", "糯": "稻的一種。如：糯米飯。", "咖": "音譯外來語。如：咖哩飯。",
+                // 五、小吃
+                "刈": "割、切。如：刈包。", "烙": "把麵食放在燒熱的鍋子上烘烤。如：烙餅。", "炸": "一種烹調方法。如：炸醬麵。", "苔": "小吃名。如：米苔目。", 
+                "脯": "醃製過曬乾的肉或菜。如：菜脯蛋。", "螺": "軟體動物。如：燒酒螺。", "餛飩": "一種麵食。如：餛飩麵。", "粿": "米食。如：煎芋粿。", 
+                "韭": "植物名。如：韭菜盒子。", "餡": "包在麵食裡的食物。如：牛肉餡餅。",
+                // 六、湯類
+                "蛤蜊": "海產軟體動物。如：蛤蜊湯。", "肚": "動物的胃。如：豬肚湯。", "蜆": "海產軟體動物。如：蒜頭蜆湯。", "盅": "沒有把手的杯子/湯的量詞。如：龍鳳雙瓜盅。", 
+                "芡": "水生植物/澱粉。如：勾芡魚湯。", "鶉": "鳥名。如：洋菇鶉蛋湯。", "茸": "切碎成泥狀的肉。如：雞茸玉米湯。", "羹": "濃湯。如：土魠魚羹。",
+                // 七、甜點
+                "飴": "糖漿、軟糖。如：香蕉飴。", "桔": "植物名。如：金桔茶。", "蒟蒻": "植物名/製成的食品。如：蒟蒻冰。", "刨": "刮平。如：草莓刨冰。", 
+                "焙": "用微火烘烤。如：烘焙麵包。", "枸杞": "植物名，果實可入藥。如：枸杞蜂蜜茶。",
+                // 八、各地走透透
+                "枋": "地名。如：枋寮。", "埕": "地名/廣場。如：車埕。", "梓": "植物名/地名。如：楠梓。", "貂": "動物名/地名。如：三貂嶺。", "沂": "水名/地名。如：沂水。", 
+                "苑": "養禽獸種林木的地方/地名。如：苑裡。", "薊": "植物名/地名。如：薊北。", "圳": "水溝/地名。如：深圳(ㄓㄣˋ)。(註：嘉南大圳音ㄗㄨㄣˋ)。", 
+                "芎": "植物名/地名。如：芎林。", 
+                // 九、時光穿梭機
+                "曙": "天剛亮。如：曙光。", "暾": "剛升起的太陽。如：朝暾。", "寅卯": "十二地支。如：寅卯。", "辰巳": "十二地支。如：辰巳。", "申酉": "十二地支。如：申酉。", 
+                "戌亥": "十二地支。如：戌亥。", "正": "農曆的第一個月。如：農曆正月。", "晌": "片刻、正午。如：正值晌午。",
+                // 十、動物大觀園
+                "蝙蝠": "動物名。如：蝙蝠。", "獺": "動物名。如：水獺。", "鴻鵠": "大雁與天鵝。如：鴻鵠。", "螞蚱": "蝗蟲的俗稱。如：螞蚱。", "牝": "雌性動物。如：牝雞司晨。", 
+                "鰲": "傳說中的大龜或大鱉。如：獨占鰲頭。", "鳶": "老鷹。如：鳶飛魚躍。", "鷸蚌": "水鳥與貝類。如：鷸蚌相爭。",
+                // 十一、姓氏大觀園
+                "句": "姓氏。如：句踐。", "查": "姓氏。如：查良鏞。", "裴": "姓氏。如：裴勇俊。", "聶": "姓氏。如：聶小倩。", "翟": "姓氏。如：翟宗泉。", 
+                "單": "姓氏。如：單小琳。", "龔": "姓氏。如：龔主任。", "郝": "姓氏。如：郝小龍。", "褚": "姓氏。如：褚遂良。", "璩": "姓氏。如：璩美鳳。", 
+                "阮": "姓氏。如：阮玲玉。", "庾": "姓氏。如：庾澄慶。", "那": "姓氏。如：那英。", "鄺": "姓氏。如：鄺督學。", "仇": "姓氏。如：仇議員。", "華": "姓氏。如：華佗。",
+                // 十二、其他重要讀音
+                "蓓蕾": "含苞未放的花。如：蓓蕾。", "摒": "排除。如：摒除。", "甭": "不用、不要。如：甭說了。", "扳": "拉、扭轉。如：扳回一局。", "畚箕": "裝垃圾的器具。如：畚箕。", 
+                "鑣": "馬口所含的鐵環。如：分道揚鑣。", "娉婷": "姿態美好的樣子。如：娉婷。", "烹飪": "做飯做菜。如：烹飪。", "叵": "不可。如：居心叵測。", 
+                "滂沱": "雨下得很大的樣子。如：大雨滂沱。", "皤皤": "頭髮白淨的樣子。如：白髮皤皤。", "痞": "流氓。如：地痞流氓。", "剽": "強悍、搶劫。如：個性剽悍。", 
+                "靦腆": "害羞的樣子。如：靦腆。", "牟": "獲取。如：牟利。", "膜": "跪拜。如：膜拜。", "霾": "空氣中的灰塵。如：滿天陰霾。", "萌": "發芽、發生。如：故態復萌。", 
+                "彌": "滿、補足。如：彌月之喜。", "拂": "輕輕掠過。如：拂曉攻擊。", "坊": "街巷。如：坊間。", "酩酊": "喝醉的樣子。如：酩酊大醉。", "掂掂": "估量。如：掂掂斤兩。", 
+                "兌": "交換、提取現金。如：擠兌風波。", "撢": "拂去灰塵。如：雞毛撢子。", "宕": "拖延。如：計畫延宕。", "嚏": "鼻黏膜受刺激而噴氣發聲。如：噴嚏。", 
+                "撻": "用鞭棍打。如：撻伐。", "殄": "滅絕、浪費。如：暴殄天物。", "忐忑": "心神不寧。如：忐忑不安。", "褪": "脫下、顏色消退。如：衣服褪色。", 
+                "慟": "極度悲哀。如：全民哀慟。", "帑": "公家的錢財。如：浪費公帑。", "忸怩": "不好意思的樣子。如：忸怩作態。", "拗": "固執。如：倔強執拗。", 
+                "賃": "租借。如：租賃。", "躪": "踐踏。如：蹂躪。", "罹": "遭遇(災病)。如：罹難。", "稜": "物體邊緣的交角。如：模稜兩可。", "囹圄": "監獄。如：身陷囹圄。", 
+                "鸞鳳": "傳說中的神鳥。如：鸞鳳和鳴。", "尷尬": "處境困窘或神態不自然。如：尷尬。", "嗝": "胃裡的氣體從嘴裡出來並發出聲音。如：打嗝。", "蠱": "毒蟲、毒害。如：蠱惑人心。", 
+                "皈": "歸順、依附。如：皈依佛門。", "痼": "久治不癒的病。如：陳年痼疾。", "愾": "嘆息、憤怒。如：同仇敵愾。", "龕": "供奉神佛的石室或小閣。如：神龕。", 
+                "摳": "用手指挖。如：摳鼻子。", "膏肓": "中醫指心下膈上的部位。如：病入膏肓。"
+            };
+
+            // 精心設計 162 題全方位測驗，完美覆蓋 162 個目標藍色必考字，每個字只出題一次
+            const rawData = [
+                ["我們早餐吃了抹醬吐司搭配一罐「[ㄨㄟˇ]」魚罐頭。", "鮪", "尾", "萎", "偽"],
+                ["這家日本料理店的三杯「[ㄇㄢˊ]」魚非常道地美味。", "鰻", "蠻", "瞞", "漫"],
+                ["媽媽今晚準備了一道酸甜可口的糖醋「[ㄉㄧㄠ]」魚。", "鯛", "雕", "凋", "貂"],
+                ["這份清爽的「[ㄍㄨㄟ]」魚沙拉是夏日的最佳開胃菜。", "鮭", "龜", "規", "歸"],
+                ["奶奶拿手的紅燒「[ㄐㄧˋ]」魚，總是讓人垂涎三尺。", "鯽", "季", "記", "既"],
+                ["這道酥炸魚「[ㄅㄧㄠˋ]」外酥內軟，口感十分特別。", "鰾", "票", "漂", "驃"],
+                ["新鮮的清蒸「[ㄋㄧㄢˊ]」魚保留了魚肉最原始的鮮甜。", "鯰", "黏", "年", "娘"],
+                ["宴席上端出了一道色香味俱全的紅燒「[ㄍㄨㄟˋ]」魚。", "鱖", "貴", "櫃", "桂"],
+                ["秋天是品嚐蔥爆紅「[ㄒㄩㄣˊ]」的最佳季節。", "蟳", "尋", "循", "旬"],
+                ["這盅海參燉「[ㄅㄠˋ]」魚是今晚宴會的頂級湯品。", "鮑", "報", "暴", "抱"],
+                ["乾煎「[ㄕ]」目魚是台灣常見的家常美食。", "虱", "獅", "失", "濕"],
+                ["開胃小菜涼拌海「[ㄓㄜˊ]」皮吃起來十分爽脆。", "蜇", "折", "哲", "輒"],
+                ["到了秋季，就是品嚐清蒸大「[ㄓㄚˊ]」蟹的好時機。", "閘", "炸", "軋", "鍘"],
+                ["夜市裡大排長龍的那攤，賣的是有名的「[ㄜˊ]」仔煎。", "蚵", "鵝", "額", "蛾"],
+                ["廚師正在用高溫鐵板「[ㄅㄠ]」羊肉，香氣四溢。", "炮", "包", "褒", "剝"],
+                ["冬天大家最喜歡圍在一起吃熱騰騰的「[ㄕㄨㄢˋ]」羊肉。", "涮", "算", "蒜", "爽"],
+                ["這道「[ㄨㄟ]」蹄膀需要用微火慢煮數小時才能入味。", "煨", "威", "微", "巍"],
+                ["這間老店的招牌牛「[ㄋㄢˇ]」飯，肉質軟嫩入口即化。", "腩", "南", "男", "難"],
+                ["阿嬤特製的梅子「[ㄧㄢ]」肉，酸酸甜甜很下飯。", "醃", "煙", "淹", "燕"],
+                ["這道豆「[ㄔˇ]」排骨鹹香入味，是配飯的絕佳選擇。", "豉", "齒", "尺", "恥"],
+                ["他點了一客五分熟的「[ㄈㄟˊ]」力牛排作為晚餐。", "腓", "肥", "回", "雷"],
+                ["這鍋酸辣牛筋「[ㄅㄠ]」，冷天吃起來特別暖胃。", "煲", "包", "褒", "剝"],
+                ["馬鈴薯「[ㄉㄨㄣˋ]」肉是一道充滿媽媽味道的家常菜。", "燉", "頓", "盾", "鈍"],
+                ["這碗「[ㄓㄚˋ]」菜肉絲麵的湯頭十分鮮美甘甜。", "榨", "炸", "詐", "乍"],
+                ["冬天吃火鍋，絕對不能少了新鮮的燙茼「[ㄏㄠ]」。", "蒿", "高", "膏", "糕"],
+                ["快炒「[ㄨㄛ]」苣保留了蔬菜的翠綠與清脆口感。", "萵", "窩", "渦", "蝸"],
+                ["「[ㄒㄧㄢˋ]」菜小魚是一道營養豐富且補鈣的好菜。", "莧", "現", "獻", "限"],
+                ["夏天吃涼拌「[ㄏㄨˋ]」瓜，既消暑又解渴。", "瓠", "戶", "互", "護"],
+                ["鮮炒牛「[ㄅㄤˋ]」絲吃起來口感獨特且富含纖維。", "蒡", "棒", "榜", "傍"],
+                ["這道炒青「[ㄐㄧㄠ]」顏色鮮豔，讓人看了食指大動。", "椒", "交", "嬌", "焦"],
+                ["這家小吃店的招牌肉「[ㄙㄠˋ]」飯，香味傳遍整條街。", "燥", "躁", "躁", "噪"],
+                ["為了健康，他現在每天主食都改吃「[ㄘㄠ]」米飯。", "糙", "操", "操", "草"],
+                ["端午節到了，家家戶戶都在準備包「[ㄋㄨㄛˋ]」米粽。", "糯", "懦", "諾", "娜"],
+                ["這間餐廳的日式「[ㄎㄚ]」哩飯風味十分濃郁。", "咖", "加", "家", "佳"],
+                ["傳統的「[ㄧˋ]」包裡夾著肥瘦相間的控肉和酸菜。", "刈", "義", "意", "易"],
+                ["剛出爐的蔥肉「[ㄌㄠˋ]」餅外酥內軟，香氣逼人。", "烙", "落", "酪", "絡"],
+                ["這碗道地的北京「[ㄓㄚˊ]」醬麵，麵條Q彈有勁。", "炸", "閘", "札", "軋"],
+                ["夏天吃一碗冰涼的米「[ㄊㄞˊ]」目，真是消暑聖品。", "苔", "台", "抬", "臺"],
+                ["便當裡的菜「[ㄈㄨˇ]」蛋，充滿了濃濃的古早味。", "脯", "輔", "府", "腐"],
+                ["夜市攤販賣的麻辣燒酒「[ㄌㄨㄛˊ]」，是受歡迎的下酒菜。", "螺", "羅", "蘿", "邏"],
+                ["這家老字號的「[ㄏㄨㄣˊ ㄉㄨㄣˋ]」麵，湯鮮味美遠近馳名。", "餛飩", "渾沌", "混頓", "魂盾"],
+                ["這間早餐店的香煎芋「[ㄍㄨㄛˇ]」，口感綿密扎實。", "粿", "果", "裹", "鍋"],
+                ["現炸的「[ㄐㄧㄡˇ]」菜盒子，一口咬下湯汁四溢。", "韭", "九", "久", "酒"],
+                ["這個牛肉「[ㄒㄧㄢˋ]」餅皮薄餡多，非常美味。", "餡", "陷", "線", "現"],
+                ["這碗新鮮的「[ㄍㄜˊ ㄌㄧˊ]」湯，喝起來非常清甜。", "蛤蜊", "隔離", "格離", "閣離"],
+                ["冷天喝一碗熱呼呼的豬「[ㄉㄨˇ]」湯，全身都暖了起來。", "肚", "賭", "睹", "堵"],
+                ["這碗蒜頭「[ㄒㄧㄢˇ]」湯能護肝解勞，對身體很好。", "蜆", "顯", "險", "險"],
+                ["宴席上端出了一「[ㄓㄨㄥ]」精緻的龍鳳雙瓜湯。", "盅", "中", "忠", "終"],
+                ["這道魚湯經過勾「[ㄑㄧㄢˋ]」後，口感更加滑順濃郁。", "芡", "歉", "欠", "嵌"],
+                ["這道洋菇「[ㄔㄨㄣˊ]」蛋湯，食材豐富且營養價值高。", "鶉", "純", "淳", "醇"],
+                ["這碗西式的雞「[ㄖㄨㄥˊ]」玉米湯，深受小孩子喜愛。", "茸", "容", "融", "絨"],
+                ["來到台南，一定要品嚐道地的土魠魚「[ㄍㄥ]」。", "羹", "耕", "庚", "更"],
+                ["這種傳統零嘴香蕉「[ㄧˊ]」，吃起來軟Q彈牙。", "飴", "移", "宜", "疑"],
+                ["冬天喝一杯熱熱的金「[ㄐㄩˊ]」茶，可以潤喉養生。", "桔", "局", "局", "菊"],
+                ["這款低熱量的「[ㄐㄩˇ ㄖㄨㄛˋ]」冰，是減肥者的最愛。", "蒟蒻", "舉弱", "矩若", "咀弱"],
+                ["炎炎夏日，吃一碗草莓「[ㄅㄠˋ]」冰最能消暑解熱。", "刨", "報", "暴", "抱"],
+                ["剛出爐的烘「[ㄅㄟˋ]」麵包，散發出陣陣誘人的香氣。", "焙", "背", "備", "被"],
+                ["這杯「[ㄍㄡˇ ㄑㄧˇ]」蜂蜜茶，具有明目養神的功效。", "枸杞", "狗起", "苟企", "九起"],
+                ["搭乘火車前往墾丁，途中會經過屏東的「[ㄈㄤ]」寮車站。", "枋", "方", "坊", "防"],
+                ["南投的車「[ㄔㄥˊ]」車站，保有濃厚的日式木造風情。", "埕", "成", "城", "呈"],
+                ["這班南下的客運，下一站即將停靠高雄楠「[ㄗˇ]」。", "梓", "紫", "子", "仔"],
+                ["新北市的三「[ㄉㄧㄠ]」嶺車站，是鐵道迷喜愛的秘境。", "貂", "雕", "凋", "刁"],
+                ["孔子曾說過：『浴乎「[ㄧˊ]」，風乎舞雩，詠而歸。』", "沂", "移", "宜", "儀"],
+                ["苗栗的「[ㄩㄢˋ]」裡鎮，以傳統的藺草編織工藝聞名。", "苑", "院", "願", "怨"],
+                ["古代詩人常以「[ㄐㄧˋ]」北來泛指中國北方的邊塞地區。", "薊", "記", "季", "既"],
+                ["近年來，中國大陸的「[ㄓㄣˋ]」圳市經濟發展極為迅速。", "圳", "陣", "鎮", "震"],
+                ["新竹的「[ㄑㄩㄥ]」林鄉，是個風景優美的客家小鎮。", "芎", "窮", "瓊", "穹"],
+                ["八田與一建設的嘉南大「[ㄗㄨㄣˋ]」，造福了無數農民。", "圳", "俊", "峻", "駿"],
+                ["經過漫長的黑夜，終於看見了一線希望的「[ㄕㄨˋ]」光。", "曙", "樹", "數", "術"],
+                ["詩人常以『朝「[ㄊㄨㄣ]」』來形容清晨剛升起的溫暖太陽。", "暾", "吞", "豚", "屯"],
+                ["中國古代以地支來計時，如子丑「[ㄧㄣˊ ㄇㄠˇ]」。", "寅卯", "銀毛", "迎卯", "音毛"],
+                ["在地支中，排在寅卯之後的依序是「[ㄔㄣˊ ㄙˋ]」。", "辰巳", "塵四", "臣四", "沉寺"],
+                ["古代的計時方法，午後的時間包含了「[ㄕㄣ ㄧㄡˇ]」。", "申酉", "深有", "身友", "伸有"],
+                ["一天的最後兩個時辰分別是「[ㄒㄩ ㄏㄞˋ]」。", "戌亥", "需害", "虛駭", "墟亥"],
+                ["農曆「[ㄓㄥ]」月是新的一年的開始，充滿了節慶氣氛。", "正", "爭", "蒸", "政"],
+                ["到了「[ㄕㄤˇ]」午時分，烈日當頭，大家都躲進屋內休息。", "晌", "賞", "上", "尚"],
+                ["每到傍晚時分，成群的「[ㄅㄧㄢ ㄈㄨˊ]」就會從洞穴中飛出覓食。", "蝙蝠", "邊福", "編浮", "邊扶"],
+                ["這種棲息在溪流邊的水「[ㄊㄚˋ]」，模樣十分可愛逗趣。", "獺", "踏", "塔", "拓"],
+                ["俗話說『燕雀安知「[ㄏㄨㄥˊ ㄏㄨˊ]」之志』，比喻凡人不知英雄的志向。", "鴻鵠", "紅湖", "洪狐", "宏胡"],
+                ["秋天的草叢裡，經常可以看到「[ㄇㄚ ㄓㄚ˙]」在跳躍。", "螞蚱", "馬眨", "碼扎", "瑪閘"],
+                ["古代將女子干政，比喻為「[ㄆㄧㄣˋ]」雞司晨，認為是不祥之兆。", "牝", "聘", "品", "拼"],
+                ["他在這次全國競賽中表現優異，最終獨占「[ㄠˊ]」頭。", "鰲", "熬", "翱", "傲"],
+                ["這幅描繪『「[ㄩㄢ]」飛魚躍』的畫作，充滿了生機與活力。", "鳶", "淵", "冤", "鴛"],
+                ["「[ㄩˋ ㄅㄤˋ]」相爭，漁翁得利，這個寓言故事告訴我們要避免兩敗俱傷。", "鷸蚌", "玉棒", "遇傍", "欲棒"],
+                ["春秋時期，越王「[ㄍㄡ]」踐臥薪嘗膽，最終復國成功。", "句", "溝", "鉤", "篝"],
+                ["武俠小說泰斗金庸的本名叫做「[ㄓㄚ]」良鏞。", "查", "扎", "眨", "渣"],
+                ["這位韓國男星「[ㄆㄟˊ]」勇俊，曾在全亞洲掀起一陣韓流旋風。", "裴", "賠", "陪", "培"],
+                ["這部經典電影中的女主角「[ㄋㄧㄝˋ]」小倩，形象深植人心。", "聶", "捏", "孽", "涅"],
+                ["這次會議特別邀請了著名的「[ㄓㄞˊ]」宗泉教授來發表演講。", "翟", "宅", "窄", "債"],
+                ["「[ㄕㄢˋ]」小琳是這次專案團隊中表現最出色的核心成員。", "單", "善", "膳", "擅"],
+                ["這份重要的企劃案，是由部門的「[ㄍㄨㄥ]」主任親自審核通過的。", "龔", "公", "工", "功"],
+                ["「[ㄏㄠˇ]」小龍同學在這次的校慶大隊接力中擔任最後一棒。", "郝", "好", "浩", "皓"],
+                ["唐代著名的書法家「[ㄔㄨˇ]」遂良，其楷書字體端正秀麗。", "褚", "楚", "處", "觸"],
+                ["資深媒體人「[ㄑㄩˊ]」美鳳，過去曾主持過多個知名電視節目。", "璩", "渠", "衢", "渠"],
+                ["民國初年著名的電影女星「[ㄖㄨㄢˇ]」玲玉，演技十分精湛。", "阮", "軟", "卵", "阮"],
+                ["知名歌手「[ㄩˇ]」澄慶，在華語樂壇擁有極高的知名度。", "庾", "雨", "語", "宇"],
+                ["大陸實力派女歌手「[ㄋㄚ]」英，以其獨特的嗓音征服了無數歌迷。", "那", "拿", "納", "吶"],
+                ["教育局派了「[ㄎㄨㄤˋ]」督學來視察學校的教學狀況。", "鄺", "礦", "曠", "況"],
+                ["這次市議會的質詢中，「[ㄑㄧㄡˊ]」議員提出了許多犀利的問題。", "仇", "求", "球", "囚"],
+                ["三國時代的神醫「[ㄏㄨㄚˋ]」佗，醫術高超，救人無數。", "華", "畫", "話", "化"],
+                ["春天到了，花園裡的玫瑰花「[ㄅㄟˋ ㄌㄟˇ]」正準備綻放。", "蓓蕾", "背雷", "倍累", "被類"],
+                ["為了專心準備大考，他決定「[ㄅㄧㄥˋ]」除一切外在的干擾。", "摒", "病", "並", "併"],
+                ["這件事的後果大家都心知肚明，你也就「[ㄅㄥˊ]」說了。", "甭", "朋", "彭", "鵬"],
+                ["在最後關鍵的五分鐘，我方球隊順利「[ㄅㄢ]」回了一局。", "扳", "班", "斑", "般"],
+                ["請用掃把將地上的灰塵全部掃進「[ㄅㄣˇ ㄐㄧ]」裡倒掉。", "畚箕", "本基", "笨機", "本肌"],
+                ["畢業後，昔日的同窗好友們各自發展，從此分道揚「[ㄅㄧㄠ]」。", "鑣", "標", "彪", "鏢"],
+                ["那位舞者舞姿輕盈、「[ㄆㄧㄥ ㄊㄧㄥˊ]」多姿，吸引了全場目光。", "娉婷", "平停", "瓶亭", "憑庭"],
+                ["她報名了週末的「[ㄆㄥ ㄖㄣˋ]」課程，希望能精進自己的廚藝。", "烹飪", "彭認", "朋刃", "澎任"],
+                ["那個神祕的陌生人行蹤詭異、居心「[ㄆㄛˇ]」測，大家要多加小心。", "叵", "剖", "剖", "婆"],
+                ["午後突然下起了一陣大雨「[ㄆㄤ ㄊㄨㄛˊ]」，路上的行人都躲避不及。", "滂沱", "旁駝", "胖陀", "龐駝"],
+                ["那位老爺爺雖然白髮「[ㄆㄛˊ ㄆㄛˊ]」，但精神依然十分硬朗。", "皤皤", "婆婆", "婆婆", "破破"],
+                ["那個社區最近治安不好，常有地「[ㄆ一ˇ]」流氓在那裡聚集鬧事。", "痞", "匹", "劈", "疲"],
+                ["北方遊牧民族的個性通常較為「[ㄆㄧㄠˋ]」悍，善於騎馬打仗。", "剽", "票", "漂", "驃"],
+                ["這個小男孩生性害羞，在陌生人面前總是顯得十分「[ㄇㄧㄢˇ ㄊㄧㄢˇ]」。", "靦腆", "免舔", "勉舔", "面舔"],
+                ["商人做生意最主要的目的就是為了「[ㄇㄡˊ]」利，這無可厚非。", "牟", "謀", "眸", "眸"],
+                ["每年到了這個神聖的節日，信徒們都會虔誠地向神像「[ㄇㄛˋ]」拜。", "膜", "莫", "墨", "末"],
+                ["今天受東北季風影響，城市上空籠罩著滿天陰「[ㄇㄞˊ]」，空氣品質很差。", "霾", "埋", "買", "買"],
+                ["他才剛戒菸沒多久，最近又故態復「[ㄇㄥˊ]」，開始抽了起來。", "萌", "蒙", "蒙", "猛"],
+                ["為了慶祝新生兒的「[ㄇㄧˊ]」月之喜，他們家分送了許多油飯和紅蛋。", "彌", "迷", "謎", "迷"],
+                ["軍隊在將軍的指揮下，對敵方陣營發動了突如其來的「[ㄈㄨˊ]」曉攻擊。", "拂", "服", "福", "符"],
+                ["這本暢銷小說目前在「[ㄈㄤ]」間已經找不到任何庫存了。", "坊", "方", "防", "妨"],
+                ["昨晚的慶功宴上，他喝得「[ㄇㄧㄥˇ ㄉㄧㄥˇ]」大醉，連路都走不穩了。", "酩酊", "銘頂", "名頂", "明頂"],
+                ["做人做事要有自知之明，要懂得先「[ㄉㄧㄢ ㄉㄧㄢ]」自己的斤兩，別不自量力。", "掂掂", "顛顛", "顛顛", "點點"],
+                ["這家銀行因為財務危機的謠言，引發了嚴重的擠「[ㄉㄨㄟˋ]」風波。", "兌", "對", "隊", "對"],
+                ["大掃除時，媽媽拿著雞毛「[ㄉㄢˇ]」子將櫃子上的灰塵清掃乾淨。", "撢", "膽", "黨", "擋"],
+                ["因為資金遲遲未能到位，導致這項重要的建設工程被迫延「[ㄉㄤˋ]」。", "宕", "蕩", "盪", "蕩"],
+                ["他因為著涼感冒，一整個早上都在不停地打噴「[ㄊㄧˋ]」。", "嚏", "替", "涕", "剃"],
+                ["這位貪官汙吏的惡行被媒體曝光後，立刻受到了社會大眾的嚴厲「[ㄊㄚˋ]」伐。", "撻", "踏", "塔", "拓"],
+                ["宴會結束後剩下一大堆完好無缺的食物，就這樣倒掉實在是暴「[ㄊㄧㄢˇ]」天物。", "殄", "舔", "舔", "填"],
+                ["在等待放榜結果公布的這段期間，他的心裡感到十分「[ㄊㄢˇ ㄊㄜˋ]」不安。", "忐忑", "坦特", "毯特", "袒特"],
+                ["這件衣服的品質不好，洗過幾次之後就嚴重「[ㄊㄨㄣˋ]」色了。", "褪", "退", "腿", "推"],
+                ["這位德高望重的偉人逝世的消息傳出，舉國上下無不哀「[ㄊㄨㄥˋ]」。", "慟", "痛", "通", "桶"],
+                ["政府官員如果在公共工程上圖利他人，那就是在浪費公「[ㄊㄤˇ]」。", "帑", "躺", "趟", "燙"],
+                ["他明明就很想參加這個活動，卻還在那邊「[ㄋㄧㄡˇ ㄋㄧˊ]」作態，假裝不在意。", "忸怩", "扭泥", "牛泥", "紐泥"],
+                ["這孩子的個性十分倔強執「[ㄋ一ㄡˋ]」，一旦決定的事情誰也勸不聽。", "拗", "扭", "牛", "鈕"],
+                ["大學剛畢業時，他一個人在台北租「[ㄌㄧㄣˋ]」了一間小套房。", "賃", "吝", "吝", "臨"],
+                ["敵軍攻陷這座城市後，四處燒殺擄掠、蹂「[ㄌㄧㄣˋ]」百姓。", "躪", "吝", "吝", "臨"],
+                ["在這次嚴重的空難意外中，不幸有數十名乘客「[ㄌㄧˊ]」難。", "罹", "離", "黎", "梨"],
+                ["主管對於這個專案的態度總是模「[ㄌㄥˊ]」兩可，讓下屬不知該如何執行。", "稜", "冷", "冷", "愣"],
+                ["那名嫌犯因為犯下重罪，最終被判刑入獄、身陷「[ㄌㄧㄥˊ ㄩˇ]」。", "囹圄", "陵宇", "零宇", "靈宇"],
+                ["在婚禮上，大家紛紛祝福這對新人百年好合、「[ㄌㄨㄢˊ ㄈㄥˋ]」和鳴。", "鸞鳳", "巒鳳", "鑾鳳", "攣鳳"],
+                ["他在眾人面前說錯了話，頓時覺得處境十分「[ㄍㄢ ㄍㄚˋ]」。", "尷尬", "干尬", "甘尬", "竿尬"],
+                ["他剛吃飽飯，忍不住在會議室裡打了個響亮的打「[ㄍㄜˊ]」。", "嗝", "格", "閣", "革"],
+                ["這些詐騙集團總是利用各種花言巧語來「[ㄍㄨˇ]」惑人心。", "蠱", "古", "骨", "股"],
+                ["歷經了人生的種種波折後，他看破紅塵，決定「[ㄍㄨㄟ]」依佛門。", "皈", "歸", "規", "龜"],
+                ["長年累積的勞累，讓他的身體落下了難以根治的陳年「[ㄍㄨˋ]」疾。", "痼", "固", "故", "顧"],
+                ["面對外敵的無理挑釁，全國軍民同仇敵「[ㄎㄞˋ]」，誓死保衛國家。", "愾", "慨", "概", "蓋"],
+                ["老奶奶每天早晨都會在神「[ㄎㄢ]」前虔誠地上香祈福。", "龕", "刊", "看", "勘"],
+                ["在公共場合隨意「[ㄎㄡ]」鼻子是一件非常不禮貌的行為。", "摳", "扣", "叩", "寇"],
+                ["這位病人的病情已經惡化到了病入「[ㄍㄠ ㄏㄨㄤ]」的地步，無藥可救了。", "膏肓", "高荒", "糕荒", "羔荒"]
+            ];
+
+            const qList = rawData.map(q => {
+                const ansWord = q[1];
+                const opts = [q[1], q[2], q[3], q[4]].sort(() => Math.random() - 0.5);
+                const ansIdx = opts.indexOf(ansWord);
+                const exps = opts.map(opt => {
+                    if (opt === ansWord) return `🌟 答對了！${wordDefs[opt] || ''}`;
+                    return `💡 此字音或字義與語境不符，請仔細分辨喔！`;
+                });
+                return {
+                    q: q[0].replace(/\[/g, '').replace(/\]/g, ''),
+                    opts: opts,
+                    ans: ansIdx,
+                    exps: exps,
+                    showExplanation: false,
+                    selectedAns: null,
+                    isCorrect: false
+                };
+            });
+
+            return qList;
+        };
+
+        let currentTab = 'login';
+        let learnSubTab = 'sec1';
+        let quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+
+        const el = id => document.getElementById(id);
+
+        window.updateNavStats = () => {
+            const statsEl = el('nav-quiz-stats');
+            if(!statsEl) return;
+            if (currentTab === 'quiz' && quizState.active && !quizState.isFinished) {
+                statsEl.classList.remove('hidden');
+                statsEl.classList.add('flex');
+                
+                let answered = 0; let correct = 0;
+                quizState.questions.forEach(q => {
+                    if (q.showExplanation && q.selectedAns !== -1) {
+                        answered++;
+                        if (q.isCorrect) correct++;
+                    }
+                });
+                const total = quizState.questions.length;
+                const progress = total === 0 ? 0 : Math.round((answered / total) * 100);
+
+                const elAns = el('nav-stat-answered'); if(elAns) elAns.innerText = answered;
+                const elRem = el('nav-stat-remaining'); if(elRem) elRem.innerText = total - answered;
+                const elCor = el('nav-stat-correct'); if(elCor) elCor.innerText = correct;
+                const elWro = el('nav-stat-wrong'); if(elWro) elWro.innerText = answered - correct;
+                const progBar = el('nav-quiz-progress-bar'); if (progBar) progBar.style.width = `${progress}%`;
+            } else {
+                statsEl.classList.add('hidden');
+                statsEl.classList.remove('flex');
+            }
+        };
+
+        const syncQuestionsFormat = (state) => {
+            if (!state || !state.questions) return state;
+            if (state.questions.length > 0 && !state.questions[0].exps) {
+                const freshQuestions = generateQuestions();
+                state.questions = state.questions.map(oldQ => {
+                    const freshQ = freshQuestions.find(fq => fq.q === oldQ.q);
+                    if (freshQ) return { ...freshQ, showExplanation: oldQ.showExplanation, selectedAns: oldQ.selectedAns, isCorrect: oldQ.isCorrect };
+                    return oldQ;
+                });
+            }
+            return state;
+        };
+
+        const listenToGlobalUsers = () => {
+            if (!isFirebaseInitialized || !currentUser) return;
+            const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+            if(unsubscribeGlobal) unsubscribeGlobal();
+            unsubscribeGlobal = onSnapshot(globalRef, (snap) => {
+                if(snap.exists()) recentUsers = snap.data().users || [];
+                else recentUsers = [];
+                if(currentTab === 'login') renderLogin();
+            });
+        };
+
+        const listenToUserDocument = (name) => {
+            if (!isFirebaseInitialized || !currentUser) {
+                loadLocalData(name);
+                return;
+            }
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, name);
+            if(unsubscribeUser) unsubscribeUser();
+            unsubscribeUser = onSnapshot(userRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, data);
+                    saveLocalData(name);
+                    
+                    if (userData.quizState) {
+                        userData.quizState = syncQuestionsFormat(userData.quizState); 
+                        
+                        const isExternalUpdate = !quizState || (userData.quizState._updateId !== quizState._updateId);
+                        
+                        quizState = userData.quizState;
+                        try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+                        
+                        if (isExternalUpdate && currentTab === 'quiz') {
+                            renderQuizView(el('main-content'));
+                        }
+                    }
+                } else {
+                    userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [new Date().toISOString()], quizState: null };
+                    setDoc(userRef, userData, { merge: true });
+                }
+                if(currentTab === 'favorites') renderFavorites();
+                else if(currentTab === 'mistakes') renderMistakes();
+                else if(currentTab === 'history') renderHistory();
+            }, (error) => console.error("Listen user error", error));
+        };
+
+        const saveUserDataToCloud = async () => {
+            saveLocalData(username);
+            if (!isFirebaseInitialized || !currentUser || !username) return;
+            const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+            try { await setDoc(userRef, userData, { merge: true }); } catch(e) {}
+        };
+
+        const loadLocalData = (name) => {
+            try {
+                const localData = localStorage.getItem(`${COLLECTION_NAME}_${name}_data`);
+                if (localData) userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, JSON.parse(localData));
+            } catch(e) {}
+        };
+
+        const saveLocalData = (name) => {
+            try { if (name) localStorage.setItem(`${COLLECTION_NAME}_${name}_data`, JSON.stringify(userData)); } catch(e) {}
+        };
+
+        const saveQuizState = () => {
+            quizState._updateId = Date.now().toString();
+            try { if(username) localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e) {}
+            userData.quizState = quizState;
+            saveUserDataToCloud();
+        };
+
+        const loadLocalQuizState = () => {
+            if (userData.quizState) { quizState = syncQuestionsFormat(userData.quizState); return; }
+            try {
+                const localQuiz = localStorage.getItem(`${COLLECTION_NAME}_${username}_quiz`);
+                if (localQuiz) {
+                    const q = JSON.parse(localQuiz);
+                    if (q && q.active) quizState = syncQuestionsFormat(q);
+                }
+            } catch(e) {}
+        };
+
+        const initApp = async () => {
+            renderApp();
+            const lastUser = localStorage.getItem(`${COLLECTION_NAME}_last_user`);
+            if (isFirebaseInitialized) {
+                await initAuth(); 
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+                        listenToGlobalUsers();
+                        if (lastUser) {
+                            username = lastUser;
+                            setTimeout(() => listenToUserDocument(username), 200);
+                            loadLocalQuizState();
+                            renderMain();
+                        } else renderLogin();
+                    } else renderLogin();
+                });
+            } else {
+                if (lastUser) {
+                    username = lastUser;
+                    loadLocalData(username);
+                    loadLocalQuizState();
+                    renderMain();
+                } else renderLogin();
+            }
+        };
+
+        window.handleLogin = async (name) => {
+            if(!name.trim()) {
+                const inputEl = document.getElementById('usernameInput');
+                inputEl.classList.add('border-red-400', 'bg-red-50');
+                inputEl.placeholder = "名稱不能為空！";
+                setTimeout(() => {
+                    inputEl.classList.remove('border-red-400', 'bg-red-50');
+                    inputEl.placeholder = "✍️ 點擊這裡輸入名字進入";
+                }, 2000);
+                return;
+            }
+            username = name;
+            localStorage.setItem(`${COLLECTION_NAME}_last_user`, username);
+            if (isFirebaseInitialized && currentUser) {
+                const now = new Date().toISOString();
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                try {
+                    const snap = await getDoc(userRef);
+                    if (snap.exists()) {
+                        userData = Object.assign({ favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, snap.data());
+                        if (userData.quizState) {
+                            quizState = syncQuestionsFormat(userData.quizState);
+                            try { localStorage.setItem(`${COLLECTION_NAME}_${username}_quiz`, JSON.stringify(quizState)); } catch(e){}
+                        }
+                    } else loadLocalData(username);
+                    if (!userData.loginHistory) userData.loginHistory = [];
+                    userData.loginHistory.push(now);
+                    if (userData.loginHistory.length > 50) userData.loginHistory = userData.loginHistory.slice(-50);
+                    await setDoc(userRef, userData, { merge: true });
+                    
+                    const globalRef = doc(db, 'artifacts', appId, 'public', 'data', DOC_GLOBAL, COLLECTION_NAME);
+                    const gSnap = await getDoc(globalRef);
+                    let users = gSnap.exists() ? gSnap.data().users || [] : [];
+                    users = users.filter(u => u.name !== username);
+                    users.push({ name: username, lastLogin: now });
+                    if(users.length > 10) users = users.slice(-10);
+                    await setDoc(globalRef, { users }, { merge: true });
+                } catch(e) {}
+                listenToUserDocument(username);
+            } else {
+                loadLocalData(username);
+                if (!userData.loginHistory) userData.loginHistory = [];
+                userData.loginHistory.push(new Date().toISOString());
+                saveLocalData(username);
+            }
+            renderMain();
+            initAudio();
+        };
+
+        const renderApp = () => { el('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col"></div>`; };
+
+        window.renderLogin = () => {
+            currentTab = 'login';
+            el('view-container').innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-6 z-0">
+                    <div class="absolute top-4 right-4 z-20">
+                        <div class="bg-white px-3 py-1.5 rounded-full shadow-sm text-xs font-bold text-slate-500 flex items-center border border-slate-200">
+                            <span class="status-dot ${connectionStatus === 'loading' ? 'status-loading' : connectionStatus === 'success' ? 'status-success' : 'status-error'}"></span>
+                            ${connectionStatus === 'loading' ? '雲端同步中 ⏳' : connectionStatus === 'success' ? '雲端已同步 ☁️✨' : '連線失敗 ❌'}
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-xl z-10 w-[30rem] max-w-[95vw] text-center border-2 border-dashed border-rose-200 animate-fade-in">
+                        <div class="w-[4.5rem] h-[4.5rem] bg-rose-50 rounded-full mx-auto mb-5 flex items-center justify-center shadow-inner border border-rose-100">
+                            <span class="text-4xl">🎒</span>
+                        </div>
+                        <h1 class="text-4xl md:text-5xl font-black text-rose-500 mb-3 tracking-wide">重要讀音辯正 part1</h1>
+                        <div class="text-3xl mb-5 text-amber-400">🌈✨</div>
+                        
+                        <div class="inline-block bg-rose-50 text-rose-700 font-bold px-5 py-2 rounded-full text-sm mb-8 border border-rose-100 shadow-sm">
+                            會考衝刺核心單元 💡
+                        </div>
+                        
+                        <div class="space-y-4 w-full px-2 md:px-6">
+                            <input type="text" id="usernameInput" placeholder="✍️ 點擊這裡輸入名字進入" class="w-full px-6 py-3.5 text-base rounded-full border-2 border-rose-100 focus:outline-none focus:border-rose-400 focus:ring-4 focus:ring-rose-50 text-center transition-all bg-white shadow-inner text-rose-700 placeholder-rose-300 font-bold">
+                            <button onclick="handleLogin(document.getElementById('usernameInput').value)" class="w-full bg-[#fa7788] hover:bg-[#f45c70] text-white font-bold py-3.5 px-6 text-base rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
+                                進入 學習 / 測驗 🚀
+                            </button>
+                        </div>
+                        
+                        <div class="mt-10 pt-6 border-t border-slate-100">
+                            <p class="text-xs text-slate-400 mb-4 font-bold tracking-wide flex items-center justify-center"><span class="mr-2">☁️</span> 雲端最近登入 <span class="ml-2">👥</span></p>
+                            <div class="flex flex-wrap justify-center gap-2 px-4">
+                                ${recentUsers.length > 0 ? recentUsers.slice().reverse().slice(0, 6).map(u => `<button onclick="handleLogin('${u.name}')" class="text-xs font-bold bg-slate-50 border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 px-3 py-1.5 rounded-full transition-all">${u.name}</button>`).join('') : `<span class="text-xs text-slate-400">尚無紀錄或尚未連線</span>`}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderMain = () => {
+            el('view-container').innerHTML = `
+                <nav class="bg-white/95 backdrop-blur-md border-b border-rose-100 shadow-sm z-50 shrink-0 w-full">
+                    <div class="w-full px-2 md:px-4 lg:px-6 mx-auto">
+                        <div class="flex flex-wrap lg:flex-nowrap justify-between items-center py-2 md:py-3 gap-y-3 gap-x-2 w-full">
+                            
+                            <!-- Left: Title -->
+                            <div class="flex items-center shrink-0">
+                                <span class="font-extrabold text-lg md:text-2xl tracking-wide flex items-center text-rose-500">
+                                    🎒 重要讀音辯正 part1
+                                </span>
+                            </div>
+                            
+                            <!-- Middle: Stats -->
+                            <div id="nav-quiz-stats" class="hidden w-full lg:w-auto lg:flex-1 order-3 lg:order-2 justify-center items-center px-1">
+                                <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-xs md:text-sm font-bold text-slate-600 bg-white/80 px-3 py-1.5 md:px-4 rounded-xl md:rounded-full border border-slate-200 shadow-sm w-full md:w-auto max-w-full">
+                                    <span class="text-blue-700 whitespace-nowrap">📝 <span class="hidden md:inline">已作答:</span> <span id="nav-stat-answered">0</span> / <span class="hidden md:inline">剩餘:</span> <span id="nav-stat-remaining">162</span></span>
+                                    <span class="text-emerald-700 whitespace-nowrap md:border-l border-slate-300 md:pl-3">✅ <span class="hidden md:inline">答對:</span> <span id="nav-stat-correct">0</span></span>
+                                    <span class="text-rose-700 whitespace-nowrap md:border-l border-slate-300 md:pl-3">❌ <span class="hidden md:inline">錯誤:</span> <span id="nav-stat-wrong">0</span></span>
+                                    <div class="w-full sm:w-24 md:w-32 bg-slate-200 rounded-full h-1.5 md:ml-3 overflow-hidden shrink-0 mt-1 sm:mt-0">
+                                        <div id="nav-quiz-progress-bar" class="bg-blue-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right: Tabs & User -->
+                            <div class="flex items-center space-x-1 md:space-x-2 shrink-0 order-2 lg:order-3 overflow-x-auto scrollbar-hide flex-nowrap w-full sm:w-auto pb-1 sm:pb-0">
+                                <button onclick="switchTab('learn')" id="nav-learn" class="nav-btn whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base font-bold transition-all duration-200 border flex items-center shadow-sm border-slate-200 bg-white text-slate-600 hover:bg-slate-50"><span class="mr-1 md:mr-1.5">📚</span>學習</button>
+                                <button onclick="switchTab('quiz')" id="nav-quiz" class="nav-btn whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base font-bold transition-all duration-200 border flex items-center shadow-sm border-slate-200 bg-white text-slate-600 hover:bg-slate-50"><span class="mr-1 md:mr-1.5">🎯</span>測驗</button>
+                                <button onclick="switchTab('mistakes')" id="nav-mistakes" class="nav-btn whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base font-bold transition-all duration-200 border flex items-center shadow-sm border-slate-200 bg-white text-slate-600 hover:bg-slate-50"><span class="mr-1 md:mr-1.5">🩹</span>錯題</button>
+                                <button onclick="switchTab('favorites')" id="nav-favorites" class="nav-btn whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base font-bold transition-all duration-200 border flex items-center shadow-sm border-slate-200 bg-white text-slate-600 hover:bg-slate-50"><span class="mr-1 md:mr-1.5">💖</span>最愛</button>
+                                
+                                <div class="ml-1 md:ml-2 flex items-center pl-2 md:pl-4 border-l border-slate-200 shrink-0 gap-1 md:gap-2">
+                                    <div class="text-xs md:text-sm font-bold bg-rose-50 px-2 py-1 md:px-3 md:py-1.5 rounded-full text-rose-700 flex items-center border border-rose-100 whitespace-nowrap">
+                                        <span class="mr-1">👤</span>${username}
+                                    </div>
+                                    <button onclick="logout()" class="text-slate-400 hover:text-rose-500 bg-white hover:bg-rose-50 p-1.5 rounded-full transition-colors text-sm border border-slate-200 shadow-sm shrink-0" title="登出">🚪</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+                <div id="main-nav-submenu" class="w-full bg-[#fffbfa] border-b border-rose-100 px-4 py-2 overflow-x-auto scrollbar-hide hidden"></div>
+                <div id="main-content" class="flex-1 overflow-hidden flex flex-col w-full z-10 relative"></div>
+            `;
+            switchTab('learn');
+        };
+
+        window.logout = () => {
+            username = '';
+            userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null };
+            quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+            localStorage.removeItem(`${COLLECTION_NAME}_last_user`);
+            if(unsubscribeUser) unsubscribeUser();
+            renderLogin();
+        };
+
+        window.deleteUserData = async () => {
+            if(!confirm(`確定要清除錯題與進度紀錄嗎？`)) return;
+            try {
+                if (isFirebaseInitialized && currentUser) {
+                    const userRef = doc(db, 'artifacts', appId, 'public', 'data', `${COLLECTION_NAME}_profiles`, username);
+                    await setDoc(userRef, { favorites: [], mistakes: [], quizHistory: [], loginHistory: [], quizState: null }, { merge: true });
+                }
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_data`);
+                localStorage.removeItem(`${COLLECTION_NAME}_${username}_quiz`);
+                userData = { favorites: [], mistakes: [], quizHistory: [], loginHistory: userData.loginHistory, quizState: null };
+                renderMain();
+            } catch(e) {}
+        };
+
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            const btnBase = "whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base font-bold transition-all duration-200 border flex items-center shadow-sm";
+            const btnInactive = `${btnBase} border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 hover:border-slate-300`;
+            
+            const activeThemes = {
+                'learn': `${btnBase} border-emerald-400 bg-emerald-400 text-white`,
+                'quiz': `${btnBase} border-blue-400 bg-blue-400 text-white`,
+                'mistakes': `${btnBase} border-rose-400 bg-rose-400 text-white`,
+                'favorites': `${btnBase} border-pink-400 bg-pink-400 text-white`,
+                'history': `${btnBase} border-purple-400 bg-purple-400 text-white`
+            };
+
+            ['learn', 'quiz', 'mistakes', 'favorites', 'history'].forEach(t => {
+                const btn = el(`nav-${t}`);
+                if(btn) btn.className = (t === tab) ? activeThemes[t] : btnInactive;
+            });
+
+            const content = el('main-content');
+            const subNav = el('main-nav-submenu');
+            
+            if(tab === 'learn') {
+                subNav.classList.remove('hidden');
+                renderLearnSubNav(subNav);
+                renderLearnView(content);
+            } else {
+                subNav.classList.add('hidden');
+                if(tab === 'quiz') renderQuizView(content);
+                if(tab === 'mistakes') renderMistakes(content);
+                if(tab === 'favorites') renderFavorites(content);
+                if(tab === 'history') renderHistory(content);
+            }
+            updateNavStats();
+        };
+
+        const renderLearnSubNav = (container) => {
+            container.innerHTML = `
+                <div class="flex space-x-2 md:space-x-3 items-center mx-auto max-w-6xl">
+                    <span class="text-xs font-bold text-rose-400/80 mr-2 shrink-0"><i class="fas fa-list-ul mr-1"></i>重點目錄</span>
+                    ${learnData.map(d => {
+                        const isSel = d.id === learnSubTab;
+                        return `<button onclick="selectLearnTab('${d.id}')" class="whitespace-nowrap px-3 py-1 rounded-full text-sm font-bold transition-colors ${isSel ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700'}">${d.title.split(' ')[0]}</button>`;
+                    }).join('')}
+                </div>
+            `;
+        };
+
+        window.selectLearnTab = (id) => {
+            learnSubTab = id;
+            renderLearnSubNav(el('main-nav-submenu'));
+            renderLearnView(el('main-content'));
+        };
+
+        const renderLearnView = (container) => {
+            const data = learnData.find(d => d.id === learnSubTab);
+            container.innerHTML = `
+                <div class="w-full flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto overflow-x-hidden scrollbar-hide">
+                    <div class="w-full max-w-5xl mx-auto animate-fade-in pb-12 pt-2">
+                        <div class="content-card p-6 md:p-10 relative">
+                            ${data.content}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderQuizView = (container) => {
+            if(!quizState.active) {
+                container.innerHTML = `
+                    <div class="w-full flex-1 flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+                        <div class="content-card p-8 md:p-12 text-center max-w-3xl w-full">
+                            <div class="w-24 h-24 bg-blue-50 rounded-full mx-auto mb-6 flex items-center justify-center shadow-inner border border-blue-100">
+                                <span class="text-6xl">🎯</span>
+                            </div>
+                            <h2 class="text-3xl md:text-4xl font-extrabold mb-4 text-slate-800">重要讀音辯正 <span id="ui-quiz-count">162</span>題大挑戰 🚀</h2>
+                            <p class="text-slate-500 mb-8 text-lg md:text-xl font-medium">
+                                點擊選項後，詳細解析將直接顯示於下方，無須滑動對照！<br>
+                                <span class="text-rose-500 font-bold text-base mt-2 block">本題庫特別設計無「以上皆是/非」選項，全面提升鑑別度！💪</span>
+                            </p>
+                            <button onclick="startQuiz()" class="bg-blue-400 hover:bg-blue-500 text-white font-bold py-4 px-12 text-xl md:text-2xl rounded-full shadow-md transition-all transform hover:-translate-y-0.5 border-b-4 border-blue-500 hover:border-blue-600">
+                                開始測驗 ✏️
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // 動態更新題數顯示
+                const tempQList = generateQuestions();
+                const countEl = document.getElementById('ui-quiz-count');
+                if (countEl) countEl.innerText = tempQList.length;
+                const remEl = document.getElementById('nav-stat-remaining');
+                if (remEl) remEl.innerText = tempQList.length;
+
+            } else {
+                renderQuizWaterfall(container);
+            }
+        };
+
+        window.startQuiz = () => {
+            initAudio(); 
+            const qList = [...generateQuestions()].map(q => ({
+                ...q, selectedAns: null, showExplanation: false, isCorrect: false
+            }));
+            quizState = { active: true, isFinished: false, questions: qList };
+            saveQuizState();
+            renderQuizView(el('main-content'));
+            updateNavStats();
+        };
+
+        window.restartQuizWithConfirm = () => {
+            if(confirm('確定要重新開始挑戰嗎？這將會清除目前的畫面，並產生全新的測驗題目！')) startQuiz();
+        };
+
+        const renderQuizWaterfall = (container) => {
+            const total = quizState.questions.length;
+            const isFinished = quizState.isFinished;
+            
+            let correct = 0; let answered = 0;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation && q.selectedAns !== -1) {
+                    answered++;
+                    if (q.isCorrect) correct++;
+                }
+            });
+            const progress = total === 0 ? 0 : Math.round((answered / total) * 100);
+
+            let headerHtml = isFinished 
+                ? ` <div class="mb-8">
+                        <div class="bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all">
+                            <div class="flex items-center mb-4 md:mb-0">
+                                <span class="text-4xl mr-4">🏆</span>
+                                <div>
+                                    <h2 class="text-2xl font-extrabold text-slate-800">測驗結算完成</h2>
+                                    <p class="text-slate-500 font-bold text-base mt-1">總分：<span class="text-2xl text-blue-500">${quizState.scorePercent}</span> 分 (答對 ${quizState.correctCount} / 共 ${total} 題)</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="switchTab('mistakes')" class="text-sm md:text-base text-rose-500 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-full font-bold transition-colors border border-rose-200 shadow-sm">看錯題 🩹</button>
+                                <button onclick="restartQuizWithConfirm()" class="text-sm md:text-base text-white bg-blue-400 hover:bg-blue-500 px-4 py-2 rounded-full font-bold transition-colors shadow-sm">重新挑戰 🔄</button>
+                            </div>
+                        </div>
+                    </div>`
+                : ` <div class="flex justify-end mb-2 relative z-10 w-full max-w-5xl mx-auto">
+                        <button onclick="clearQuizHistory()" class="text-sm text-slate-500 hover:text-rose-500 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full font-bold transition-colors border border-slate-200 hover:border-rose-200 shadow-sm flex items-center"><span class="mr-1">🚪</span>放棄作答</button>
+                    </div>`;
+
+            let html = `
+                <div class="w-full flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide" id="quiz-scroll-container">
+                    <div class="w-full max-w-5xl mx-auto relative pb-20">
+                        ${headerHtml}
+                        <div class="space-y-8 w-full mt-4">
+            `;
+            quizState.questions.forEach((_, qIdx) => { html += `<div id="q-block-${qIdx}">${generateSingleQuestionHtml(qIdx)}</div>`; });
+            
+            if (!isFinished) {
+                html += `
+                        <button onclick="finishQuizWaterfall()" class="w-full mt-10 bg-slate-800 hover:bg-slate-900 text-white font-bold py-5 text-xl rounded-2xl shadow-md transition-all">
+                            交卷結算 📊
+                        </button>`;
+            }
+            html += `</div></div></div>`;
+            container.innerHTML = html;
+            
+            updateNavStats();
+
+            if (!isFinished) {
+                setTimeout(() => {
+                    let lastAnsweredIdx = -1;
+                    for (let i = 0; i < quizState.questions.length; i++) {
+                        if (quizState.questions[i].showExplanation && quizState.questions[i].selectedAns !== -1) {
+                            lastAnsweredIdx = i;
+                        }
+                    }
+                    if (lastAnsweredIdx !== -1) {
+                        const targetBlock = document.getElementById(`q-block-${lastAnsweredIdx}`);
+                        if (targetBlock) {
+                            targetBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }, 100);
+            }
+        };
+
+        const generateSingleQuestionHtml = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            let optionsHtml = '';
+            
+            q.opts.forEach((opt, i) => {
+                let btnClass = "w-full text-left p-4 text-lg md:text-xl rounded-xl border-2 transition-all duration-200 flex flex-col items-start group mt-3 ";
+                let iconClass = "w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm shrink-0 shadow-sm ";
+                let iconText = String.fromCharCode(65+i);
+                let expClass = "mt-3 text-base px-3 py-2 rounded-lg w-full font-medium transition-all duration-300 ";
+                let expText = (q.exps && q.exps[i]) ? q.exps[i] : '無詳細解析';
+                
+                if (!q.showExplanation) {
+                    btnClass += "border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 bg-white cursor-pointer";
+                    iconClass += "bg-slate-50 text-slate-400 border border-slate-200 group-hover:bg-slate-100";
+                    expClass += "hidden";
+                } else {
+                    expClass += "block ";
+                    if (i === q.ans) {
+                        btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 shadow-sm";
+                        iconClass += "bg-emerald-400 text-white";
+                        iconText = "✓";
+                        expClass += "text-emerald-700 bg-emerald-100/50";
+                    } else if (i === q.selectedAns) {
+                        btnClass += "border-rose-400 bg-rose-50 text-rose-900";
+                        iconClass += "bg-rose-400 text-white";
+                        iconText = "✗";
+                        expClass += "text-rose-700 bg-rose-100/50";
+                    } else {
+                        btnClass += "border-slate-100 bg-white opacity-60 cursor-not-allowed";
+                        iconClass += "bg-slate-50 text-slate-400 border border-slate-200";
+                        expClass += "text-slate-500 bg-slate-50";
+                    }
+                }
+
+                optionsHtml += `
+                    <button id="opt-btn-${qIdx}-${i}" ${q.showExplanation ? 'disabled' : ''} onclick="answerWaterfallQuestion(${qIdx}, ${i})" class="${btnClass}">
+                        <div class="flex items-center w-full">
+                            <span id="opt-icon-${qIdx}-${i}" class="${iconClass}">${iconText}</span>
+                            <span class="flex-1 leading-relaxed font-bold">${opt}</span>
+                        </div>
+                        <div id="opt-exp-${qIdx}-${i}" class="${expClass}"><span class="font-bold mr-1">解析：</span>${expText}</div>
+                    </button>
+                `;
+            });
+
+            const isFav = userData.favorites && userData.favorites.includes(q.q);
+            const favBtn = `<button id="fav-btn-${qIdx}" onclick="toggleQuizFavorite(${qIdx})" class="text-2xl hover:scale-110 transition-transform focus:outline-none ml-3">${isFav ? '💖' : '🤍'}</button>`;
+
+            return `
+                <div class="content-card p-6 md:p-8 relative" id="q-card-${qIdx}">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-xl md:text-2xl font-bold text-slate-800 leading-relaxed flex-1"><span class="text-blue-500 mr-2">${qIdx + 1}.</span>${q.q}</h3>
+                        ${favBtn}
+                    </div>
+                    <div class="w-full">
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        window.toggleQuizFavorite = (qIdx) => {
+            const q = quizState.questions[qIdx];
+            if (!userData.favorites) userData.favorites = [];
+            const idx = userData.favorites.indexOf(q.q);
+            const isFav = idx > -1;
+            
+            if (isFav) {
+                userData.favorites.splice(idx, 1);
+            } else {
+                userData.favorites.push(q.q);
+            }
+            saveUserDataToCloud();
+            
+            const favBtnEl = document.getElementById(`fav-btn-${qIdx}`);
+            if (favBtnEl) {
+                favBtnEl.innerHTML = !isFav ? '💖' : '🤍';
+            }
+        };
+
+        window.answerWaterfallQuestion = (qIdx, optIdx) => {
+            const q = quizState.questions[qIdx];
+            if(q.showExplanation) return; 
+
+            q.selectedAns = optIdx;
+            q.showExplanation = true;
+            q.isCorrect = (optIdx === q.ans);
+            
+            if (q.isCorrect) {
+                playCorrectSound();
+            } else {
+                playWrongSound();
+                if(!userData.mistakes) userData.mistakes = [];
+                if(!userData.mistakes.find(m => m.id === q.q)) {
+                    userData.mistakes.push({ id: q.q, q: q.q, opts: q.opts, ans: q.ans, exps: q.exps, time: new Date().toISOString() });
+                    saveUserDataToCloud();
+                }
+            }
+            saveQuizState();
+            
+            q.opts.forEach((opt, i) => {
+                const btn = document.getElementById(`opt-btn-${qIdx}-${i}`);
+                const icon = document.getElementById(`opt-icon-${qIdx}-${i}`);
+                const exp = document.getElementById(`opt-exp-${qIdx}-${i}`);
+                
+                if (!btn || !icon || !exp) return;
+                
+                btn.disabled = true;
+                
+                let btnClass = "w-full text-left p-4 text-lg md:text-xl rounded-xl border-2 transition-all duration-200 flex flex-col items-start group mt-3 ";
+                let iconClass = "w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold text-sm shrink-0 shadow-sm ";
+                let expClass = "mt-3 text-base px-3 py-2 rounded-lg w-full font-medium transition-all duration-300 block ";
+                
+                if (i === q.ans) {
+                    btnClass += "border-emerald-400 bg-emerald-50 text-emerald-900 shadow-sm";
+                    iconClass += "bg-emerald-400 text-white";
+                    icon.innerHTML = "✓";
+                    expClass += "text-emerald-700 bg-emerald-100/50";
+                } else if (i === q.selectedAns) {
+                    btnClass += "border-rose-400 bg-rose-50 text-rose-900";
+                    iconClass += "bg-rose-400 text-white";
+                    icon.innerHTML = "✗";
+                    expClass += "text-rose-700 bg-rose-100/50";
+                } else {
+                    btnClass += "border-slate-100 bg-white opacity-60 cursor-not-allowed";
+                    iconClass += "bg-slate-50 text-slate-400 border border-slate-200";
+                    icon.innerHTML = String.fromCharCode(65+i);
+                    expClass += "text-slate-500 bg-slate-50";
+                }
+                
+                btn.className = btnClass;
+                icon.className = iconClass;
+                exp.className = expClass;
+            });
+            
+            updateNavStats();
+        };
+
+        window.finishQuizWaterfall = async () => {
+            let correct = 0; let answered = 0;
+            quizState.questions.forEach(q => {
+                if (q.showExplanation) { answered++; if (q.isCorrect) correct++; }
+            });
+            if (answered < quizState.questions.length) {
+                if(!confirm(`還有 ${quizState.questions.length - answered} 題未作答，確定直接交卷？`)) return;
+            }
+            quizState.questions.forEach(q => {
+                if (!q.showExplanation) { q.showExplanation = true; q.isCorrect = false; q.selectedAns = -1; }
+            });
+            quizState.isFinished = true; quizState.correctCount = correct;
+            quizState.scorePercent = Math.round((correct / quizState.questions.length) * 100);
+            saveQuizState();
+            
+            if (!userData.quizHistory) userData.quizHistory = [];
+            userData.quizHistory.push({ date: new Date().toLocaleString(), score: quizState.scorePercent, total: quizState.questions.length, correct: correct });
+            if (userData.quizHistory.length > 50) userData.quizHistory = userData.quizHistory.slice(-50);
+            saveUserDataToCloud();
+
+            renderQuizView(el('main-content'));
+            confetti({ particleCount: 200, spread: 80, origin: { y: 0.3 } });
+            setTimeout(() => { const s = el('quiz-scroll-container'); if (s) s.scrollTo({ top: 0, behavior: 'smooth' }); }, 100);
+            updateNavStats();
+        };
+
+        window.clearQuizHistory = () => {
+            if(confirm('確定放棄目前的作答進度嗎？')) {
+                quizState = { active: false, currentQ: 0, score: 0, answers: [], questions: [], showExplanation: false, selectedAns: null };
+                saveQuizState();
+                renderQuizView(el('main-content'));
+                updateNavStats();
+            }
+        };
+
+        const renderQuestionList = (list, emptyMsg, icon) => {
+            if(!list || list.length === 0) {
+                return `
+                    <div class="flex-1 flex flex-col items-center justify-center p-10 text-slate-400">
+                        <div class="text-6xl mb-4 opacity-50">${icon}</div>
+                        <h2 class="text-2xl font-bold mb-2">${emptyMsg}</h2>
+                    </div>`;
+            }
+            return `
+                <div class="space-y-6 w-full max-w-5xl mx-auto pb-20">
+                    ${list.map((m, i) => `
+                        <div class="content-card p-6 md:p-8">
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-rose-500 mr-2 font-black">Q.</span>${m.q}</h3>
+                                ${m.isFavRender ? `<button onclick="toggleFavoritePage('${m.q}')" class="text-2xl ml-3">💖</button>` : ''}
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                ${m.opts.map((opt, idx) => `
+                                    <div class="p-3 rounded-xl flex flex-col ${idx === m.ans ? 'bg-emerald-50 border border-emerald-200' : 'bg-white border border-slate-100'}">
+                                        <div class="flex items-start text-base font-bold ${idx === m.ans ? 'text-emerald-800' : 'text-slate-600'}">
+                                            <span class="mr-2">${String.fromCharCode(65+idx)}.</span> 
+                                            <span class="flex-1">${opt}</span>
+                                            ${idx === m.ans ? '<span class="ml-2">✓</span>' : ''}
+                                        </div>
+                                        ${(m.exps && m.exps[idx]) ? `<div class="mt-2 text-sm ${idx === m.ans ? 'text-emerald-600' : 'text-slate-400'}"><span class="font-bold">解析：</span>${m.exps[idx]}</div>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).reverse().join('')}
+                </div>`;
+        };
+
+        window.renderMistakes = (container) => {
+            if(!container) container = el('main-content');
+            container.innerHTML = `
+                <div class="w-full flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide">
+                    <div class="max-w-5xl mx-auto mb-6 flex justify-between items-end border-b border-rose-200 pb-4 px-2">
+                        <h2 class="text-3xl font-extrabold text-rose-700">🩹 錯題本</h2>
+                        ${userData.mistakes?.length ? `<button onclick="clearMistakes()" class="text-sm text-rose-500 bg-white border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-full font-bold">清空</button>` : ''}
+                    </div>
+                    ${renderQuestionList(userData.mistakes, '目前沒有錯題紀錄 🎉', '🥳')}
+                </div>`;
+        };
+
+        window.clearMistakes = () => {
+            if(confirm('確定要清空所有錯題紀錄嗎？')) {
+                userData.mistakes = []; saveUserDataToCloud(); renderMistakes();
+            }
+        };
+
+        window.renderFavorites = (container) => {
+            if(!container) container = el('main-content');
+            const allQ = generateQuestions();
+            const favs = (userData.favorites || []).map(qText => {
+                const found = allQ.find(q => q.q === qText) || { q: qText, opts: [], ans: 0, exps: [] };
+                return { ...found, isFavRender: true };
+            }).filter(f => f.opts.length > 0);
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide">
+                    <div class="max-w-5xl mx-auto mb-6 border-b border-pink-200 pb-4 px-2">
+                        <h2 class="text-3xl font-extrabold text-pink-600">💖 我的最愛</h2>
+                    </div>
+                    ${renderQuestionList(favs, '暫無收藏 📌', '🤍')}
+                </div>`;
+        };
+
+        window.toggleFavoritePage = (qText) => {
+            const idx = userData.favorites.indexOf(qText);
+            if (idx > -1) {
+                userData.favorites.splice(idx, 1);
+                saveUserDataToCloud();
+                renderFavorites();
+            }
+        };
+
+        window.renderHistory = (container) => {
+            if(!container) container = el('main-content');
+            const hasQuiz = userData.quizHistory?.length > 0;
+            const hasLogin = userData.loginHistory?.length > 0;
+
+            container.innerHTML = `
+                <div class="w-full flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto scrollbar-hide">
+                    <div class="max-w-5xl mx-auto mb-8 border-b border-purple-200 pb-4 px-2">
+                        <h2 class="text-3xl font-extrabold text-purple-700">📜 學習紀錄</h2>
+                    </div>
+                    ${(!hasQuiz && !hasLogin) ? `<div class="text-center p-10 text-slate-400 text-xl font-bold mt-10">尚無紀錄</div>` : `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                        <div class="content-card p-6">
+                            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">🎯 測驗成績</h3>
+                            <div class="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+                                ${(userData.quizHistory || []).slice().reverse().map(h => `
+                                    <div class="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center">
+                                        <div class="text-sm">
+                                            <div class="font-bold text-slate-700">${h.date}</div>
+                                            <div class="text-slate-500">${h.correct} / ${h.total} 題</div>
+                                        </div>
+                                        <div class="text-2xl font-black ${h.score >= 80 ? 'text-emerald-500' : (h.score < 60 ? 'text-rose-500' : 'text-blue-500')}">${h.score}分</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="content-card p-6">
+                            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">👣 登入足跡</h3>
+                            <div class="space-y-2 max-h-[50vh] overflow-y-auto pr-2">
+                                ${(userData.loginHistory || []).slice().reverse().map((t, i) => `
+                                    <div class="bg-white p-2.5 rounded-lg border border-slate-100 text-sm font-medium text-slate-600 flex items-center">
+                                        <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center mr-3 text-xs">${i+1}</span>
+                                        ${new Date(t).toLocaleString()}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>`}
+                </div>`;
+        };
+
+        initApp();
+
+    </script>
+</body>
+</html>
